@@ -156,6 +156,16 @@
 			<locationURI>PARENT-2-PROJECT_LOC/src/app/delay_line.h</locationURI>
 		</link>
 		<link>
+			<name>app/file_system.cpp</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/src/app/file_system.cpp</locationURI>
+		</link>
+		<link>
+			<name>app/file_system.h</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/src/app/file_system.h</locationURI>
+		</link>
+		<link>
 			<name>app/main.cpp</name>
 			<type>1</type>
 			<locationURI>PARENT-2-PROJECT_LOC/src/app/main.cpp</locationURI>
@@ -186,24 +196,19 @@
 			<locationURI>PARENT-2-PROJECT_LOC/src/app/rbj_filter.h</locationURI>
 		</link>
 		<link>
-			<name>app/reverb_filter.cpp</name>
-			<type>1</type>
-			<locationURI>PARENT-2-PROJECT_LOC/src/app/reverb_filter.cpp</locationURI>
-		</link>
-		<link>
 			<name>app/reverb_filter.h</name>
 			<type>1</type>
 			<locationURI>PARENT-2-PROJECT_LOC/src/app/reverb_filter.h</locationURI>
 		</link>
 		<link>
-			<name>app/rotary_decoder.cpp</name>
+			<name>app/wav_file.cpp</name>
 			<type>1</type>
-			<locationURI>PARENT-2-PROJECT_LOC/src/app/rotary_decoder.cpp</locationURI>
+			<locationURI>PARENT-2-PROJECT_LOC/src/app/wav_file.cpp</locationURI>
 		</link>
 		<link>
-			<name>app/rotary_decoder.h</name>
+			<name>app/wav_file.h</name>
 			<type>1</type>
-			<locationURI>PARENT-2-PROJECT_LOC/src/app/rotary_decoder.h</locationURI>
+			<locationURI>PARENT-2-PROJECT_LOC/src/app/wav_file.h</locationURI>
 		</link>
 		<link>
 			<name>argon/ar_classes.h</name>
@@ -314,16 +319,6 @@
 			<name>ksdk/fsl_edma.h</name>
 			<type>1</type>
 			<locationURI>PARENT-2-PROJECT_LOC/src/ksdk/fsl_edma.h</locationURI>
-		</link>
-		<link>
-			<name>ksdk/fsl_fxos.c</name>
-			<type>1</type>
-			<locationURI>PARENT-2-PROJECT_LOC/src/ksdk/fsl_fxos.c</locationURI>
-		</link>
-		<link>
-			<name>ksdk/fsl_fxos.h</name>
-			<type>1</type>
-			<locationURI>PARENT-2-PROJECT_LOC/src/ksdk/fsl_fxos.h</locationURI>
 		</link>
 		<link>
 			<name>ksdk/fsl_gpio.c</name>
@@ -679,6 +674,16 @@
 			<name>fatfs/src/diskio.h</name>
 			<type>1</type>
 			<locationURI>PARENT-2-PROJECT_LOC/src/fatfs/src/diskio.h</locationURI>
+		</link>
+		<link>
+			<name>fatfs/src/event.c</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/src/fatfs/src/event.c</locationURI>
+		</link>
+		<link>
+			<name>fatfs/src/event.h</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/src/fatfs/src/event.h</locationURI>
 		</link>
 		<link>
 			<name>fatfs/src/ff.c</name>
