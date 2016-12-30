@@ -19,11 +19,11 @@
 #ifndef _FATFS
 #define _FATFS	64180	/* Revision ID */
 
+#include "argon/argon.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#include "argon/argon.h"
 
 /* RTOS includes to osupport reentrancy in syscall file */
 #ifdef FSL_RTOS_FREE_RTOS
