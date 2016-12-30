@@ -93,12 +93,20 @@ void init_board()
     PORT_SetPinMux(PIN_I2S_RXD_PORT, PIN_I2S_RXD_BIT, kPORT_MuxAlt4);
 
     // SDHC pins
-    PORT_SetPinMux(PIN_SDHC_CLK_PORT, PIN_SDHC_CLK_BIT, kPORT_MuxAlt4);
-    PORT_SetPinMux(PIN_SDHC_CMD_PORT, PIN_SDHC_CMD_BIT, kPORT_MuxAlt4);
-    PORT_SetPinMux(PIN_SDHC_D0_PORT, PIN_SDHC_D0_BIT, kPORT_MuxAlt4);
-    PORT_SetPinMux(PIN_SDHC_D1_PORT, PIN_SDHC_D1_BIT, kPORT_MuxAlt4);
-    PORT_SetPinMux(PIN_SDHC_D2_PORT, PIN_SDHC_D2_BIT, kPORT_MuxAlt4);
-    PORT_SetPinMux(PIN_SDHC_D3_PORT, PIN_SDHC_D3_BIT, kPORT_MuxAlt4);
+    const port_pin_config_t sdhcPinConfig = {
+        .pullSelect = kPORT_PullUp,
+        .slewRate = kPORT_FastSlewRate,
+        .passiveFilterEnable = kPORT_PassiveFilterDisable,
+        .openDrainEnable = kPORT_OpenDrainDisable,
+        .driveStrength = kPORT_HighDriveStrength,
+        .mux = kPORT_MuxAlt4,
+    };
+    PORT_SetPinConfig(PIN_SDHC_CLK_PORT, PIN_SDHC_CLK_BIT, &sdhcPinConfig);
+    PORT_SetPinConfig(PIN_SDHC_CMD_PORT, PIN_SDHC_CMD_BIT, &sdhcPinConfig);
+    PORT_SetPinConfig(PIN_SDHC_D0_PORT, PIN_SDHC_D0_BIT, &sdhcPinConfig);
+    PORT_SetPinConfig(PIN_SDHC_D1_PORT, PIN_SDHC_D1_BIT, &sdhcPinConfig);
+    PORT_SetPinConfig(PIN_SDHC_D2_PORT, PIN_SDHC_D2_BIT, &sdhcPinConfig);
+    PORT_SetPinConfig(PIN_SDHC_D3_PORT, PIN_SDHC_D3_BIT, &sdhcPinConfig);
 
     // LED pins
     // PTC9 = Red

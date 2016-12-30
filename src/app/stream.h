@@ -26,10 +26,10 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#if !defined(_WAV_FILE_H_)
-#define _WAV_FILE_H_
+#if !defined(_STREAM_H_)
+#define _STREAM_H_
 
-#include "argon/argon.h"
+#include <stdint.h>
 
 //------------------------------------------------------------------------------
 // Definitions
@@ -38,29 +38,24 @@
 namespace slab {
 
 /*!
- * @brief Decodes a .wav file.
+ * @brief Abstract data stream class.
  */
-class WaveFile
+class Stream
 {
 public:
 
-    SequenceFileReader();
-    ~SequenceFileReader() {}
+    Stream() {}
+    virtual ~Stream() {}
 
-    void init();
-
-    uint32_t scan_dir(const char * path, SequenceInfo ** head);
-
-protected:
-    FATFS g_fs;
-
-    SequenceInfo * parse_file(FIL * fp);
+    virtual uint32_t read(uint32_t count, void * data)=0;
+    virtual uint32_t write(uint32_t count, const void * data)=0;
+    virtual bool seek(uint32_t offset)=0;
 
 };
 
 } // namespace slab
 
-#endif // _WAV_FILE_H_
+#endif // _STREAM_H_
 //------------------------------------------------------------------------------
 // EOF
 //------------------------------------------------------------------------------

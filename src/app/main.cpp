@@ -37,6 +37,8 @@
 #include "asr_envelope.h"
 #include "rbj_filter.h"
 #include "pin_irq_manager.h"
+#include "file_system.h"
+#include "wav_file.h"
 #include "fsl_port.h"
 #include "fsl_gpio.h"
 #include "fsl_i2c.h"
@@ -46,6 +48,8 @@
 #include <math.h>
 #include <stdlib.h>
 #include <assert.h>
+#include <ctype.h>
+#include <utility>
 
 using namespace slab;
 
@@ -85,6 +89,8 @@ void init_audio_out();
 void init_audio_synth();
 void init_fs();
 
+void scan_for_files();
+
 //------------------------------------------------------------------------------
 // Variables
 //------------------------------------------------------------------------------
@@ -100,6 +106,7 @@ AudioOutputConverter g_audioOutConverter;
 // RBJFilter g_filter;
 // DelayLine g_delay;
 i2c_master_handle_t g_i2c1Handle;
+FileSystem g_fs;
 
 Ar::Thread * g_audioInitThread = NULL;
 Ar::Thread * g_initThread = NULL;
@@ -192,7 +199,7 @@ void pots_thread(void * arg)
 
         if (value2 != lastValue2)
         {
-            printf("ch2 %s\r\n", (value2 ? "on" : "off"));
+//             printf("ch2 %s\r\n", (value2 ? "on" : "off"));
 
             lastValue2 = value2;
         }
@@ -282,8 +289,76 @@ void init_audio_synth()
 //     g_mixer.set_input(1, &g_bassGen, 0.34f);
 }
 
+class SamplerVoice
+{
+public:
+    SamplerVoice();
+    ~SamplerVoice() {}
+
+    void set_file(WaveFile & file);
+
+protected:
+    WaveFile _wav;
+};
+
+SamplerVoice g_voice[4];
+
+SamplerVoice::SamplerVoice()
+:   _wav()
+{
+}
+
+void SamplerVoice::set_file(WaveFile& file)
+{
+    _wav = file;
+}
+
+void scan_for_files()
+{
+    DirectoryIterator dir = g_fs.open_dir("/");
+    FILINFO info;
+
+    while (dir.next(&info))
+    {
+        // Skip directories and hidden or system files.
+        if (info.fattrib & (AM_DIR | AM_HID | AM_SYS))
+        {
+            continue;
+        }
+
+        // Look for '[0-9].wav' files.
+        if (isdigit(info.fname[0]) && info.fname[1] == '.'
+            && toupper(info.fname[2]) == 'W'
+            && toupper(info.fname[3]) == 'A'
+            && toupper(info.fname[4]) == 'V'
+            && info.fsize > 0)
+        {
+            WaveFile wav(info.fname);
+
+            bool inited = wav.parse();
+            printf("Init %s = %d\r\n", info.fname, (int)inited);
+
+            if (inited)
+            {
+                printf("Fs = %d\r\nBits per sample = %d\r\nChannels = %d\r\nFrame bytes = %d\r\n",
+                    wav.get_sample_rate(), wav.get_sample_size(), wav.get_channels(), wav.get_frame_size());
+
+                int channel = info.fname[0] - '0';
+                if (channel >= 1 && channel <= 4)
+                {
+                    g_voice[channel].set_file(wav);
+                }
+            }
+        }
+    }
+}
+
 void init_fs()
 {
+    int res = g_fs.init();
+    printf("fs init = %d\r\n", res);
+
+    scan_for_files();
 }
 
 void init_thread(void * arg)
@@ -295,7 +370,7 @@ void init_thread(void * arg)
 //     init_i2c0();
     init_i2c1();
     init_audio_out();
-//     init_fs();
+    init_fs();
 
 //     PinIrqManager::get().connect(PIN_BTN1_PORT, PIN_BTN1_BIT, button_handler, NULL);
 //     PinIrqManager::get().connect(PIN_BTN2_PORT, PIN_BTN2_BIT, button_handler, NULL);
