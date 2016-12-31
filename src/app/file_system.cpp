@@ -27,7 +27,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "wav_file.h"
+#include "file_system.h"
 #include <string.h>
 #include <assert.h>
 #include <stdlib.h>

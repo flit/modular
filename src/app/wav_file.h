@@ -48,14 +48,23 @@ class WaveFile : public File
 public:
 
     //! @brief Stream of a wav file's audio data.
+    //!
+    //! This class is really just a simple wrapper to make calculations of the audio
+    //! data size and file offset easier.
     class AudioDataStream : public Stream
     {
     public:
+        AudioDataStream() : _file(nullptr) {}
         AudioDataStream(WaveFile * wave) : Stream(), _file(wave) {}
+        AudioDataStream(const AudioDataStream& other)=default;
+        AudioDataStream& operator = (const AudioDataStream& other)=default;
 
         virtual uint32_t read(uint32_t count, void * data) override;
         virtual uint32_t write(uint32_t count, const void * data) override { return 0; }
         virtual bool seek(uint32_t offset) override;
+
+        virtual uint32_t get_size() const override;
+        virtual uint32_t get_offset() const override;
 
     protected:
         WaveFile * _file;
@@ -66,6 +75,8 @@ public:
     virtual ~WaveFile() {}
 
     WaveFile& operator = (const WaveFile& other);
+
+    bool is_valid() const { return _dataSize > 0; }
 
     //! @brief Parse file to read format and find data.
     bool parse();
@@ -128,6 +139,7 @@ protected:
 
     FormatChunk _format;    //!< The file's audio format header.
     uint32_t _dataOffset;   //!< Byte offset of the start of the audio data.
+    uint32_t _dataSize;     //!< Byte count of the audio data chunk.
 
     //! @brief Search for a chunk from the current position.
     bool find_chunk(uint32_t chunkID, ChunkHeader * header);

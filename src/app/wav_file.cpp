@@ -42,13 +42,15 @@ using namespace slab;
 
 WaveFile::WaveFile()
 :   File(),
-    _dataOffset(0)
+    _dataOffset(0),
+    _dataSize(0)
 {
 }
 
 WaveFile::WaveFile(const char * path)
 :   File(path),
-    _dataOffset(0)
+    _dataOffset(0),
+    _dataSize(0)
 {
 }
 
@@ -56,6 +58,8 @@ WaveFile& WaveFile::operator = (const WaveFile& other)
 {
     File::operator = (other);
     _format = other._format;
+    _dataOffset = other._dataOffset;
+    _dataSize = other._dataSize;
     return *this;
 }
 
@@ -120,6 +124,7 @@ bool WaveFile::parse()
 
     // We're now positioned to read audio data.
     _dataOffset = get_offset();
+    _dataSize = chunkHeader.chunkSize;
     return true;
 }
 
@@ -159,14 +164,27 @@ bool WaveFile::find_chunk(uint32_t chunkID, ChunkHeader * header)
 
 uint32_t WaveFile::AudioDataStream::read(uint32_t count, void * data)
 {
+    assert(_file);
     return _file->read(count, data);
 }
 
 bool WaveFile::AudioDataStream::seek(uint32_t offset)
 {
+    assert(_file);
     _file->seek(_file->_dataOffset + offset);
 }
 
+uint32_t WaveFile::AudioDataStream::get_size() const
+{
+    assert(_file);
+    return _file->_dataSize;
+}
+
+uint32_t WaveFile::AudioDataStream::get_offset() const
+{
+    assert(_file);
+    return _file->get_offset() - _file->_dataOffset;
+}
 
 //------------------------------------------------------------------------------
 // EOF

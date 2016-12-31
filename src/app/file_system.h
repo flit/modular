@@ -60,8 +60,8 @@ public:
     virtual uint32_t write(uint32_t count, const void * data) override;
     virtual bool seek(uint32_t offset) override;
 
-    uint32_t get_size() { return f_size(&_fp); }
-    uint32_t get_offset() { return f_tell(&_fp); }
+    virtual uint32_t get_size() const override { return f_size(&_fp); }
+    virtual uint32_t get_offset() const override { return f_tell(&_fp); }
 
 protected:
     char _path[_MAX_LFN + 1];

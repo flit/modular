@@ -51,6 +51,9 @@ public:
     virtual uint32_t write(uint32_t count, const void * data)=0;
     virtual bool seek(uint32_t offset)=0;
 
+    virtual uint32_t get_size() const=0;
+    virtual uint32_t get_offset() const=0;
+
 };
 
 } // namespace slab
