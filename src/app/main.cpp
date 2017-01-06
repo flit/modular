@@ -73,6 +73,9 @@ void init_fs();
 
 void scan_for_files();
 
+void button1_handler(PORT_Type * port, uint32_t pin, void * userData);
+void button2_handler(PORT_Type * port, uint32_t pin, void * userData);
+
 //------------------------------------------------------------------------------
 // Variables
 //------------------------------------------------------------------------------
@@ -493,15 +496,18 @@ void scan_for_files()
     }
 }
 
+void button1_handler(PORT_Type * port, uint32_t pin, void * userData)
+{
+    printf("button1\r\n");
+}
+
+void button2_handler(PORT_Type * port, uint32_t pin, void * userData)
+{
+    printf("button2\r\n");
+}
+
 void init_audio_out()
 {
-    // Init I2C used to communicate with the DA7212.
-    uint32_t i2cSourceClock = CLOCK_GetFreq(kCLOCK_BusClk);
-    i2c_master_config_t i2cConfig = {0};
-    I2C_MasterGetDefaultConfig(&i2cConfig);
-    I2C_MasterInit(I2C1, &i2cConfig, i2cSourceClock);
-    I2C_MasterTransferCreateHandle(I2C1, &g_i2c1Handle, NULL, NULL);
-
     // Configure the audio format.
     sai_transfer_format_t format;
     format.bitWidth = kSAI_WordWidth16bits;
@@ -525,11 +531,6 @@ void init_audio_out()
         buf.data = (uint8_t *)&g_outBuf[i][0];
         g_audioOut.add_buffer(&buf);
     }
-
-    // Configure audio codec.
-    DA7212_InitCodec(BOARD_CODEC_I2C_BASE);
-    DA7212_ChangeFrequency(DA7212_SYS_FS_48K);
-    DA7212_ChangeInput(DA7212_Input_MIC1_Dig);
 }
 
 void init_audio_synth()
@@ -557,6 +558,8 @@ void init_thread(void * arg)
     init_audio_synth();
     init_fs();
 
+    PinIrqManager::get().connect(PIN_BUTTON1_PORT, PIN_BUTTON1_BIT, button1_handler, NULL);
+    PinIrqManager::get().connect(PIN_BUTTON2_PORT, PIN_BUTTON2_BIT, button1_handler, NULL);
 
     g_readerThread.start();
 

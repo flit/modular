@@ -57,8 +57,8 @@ void AudioOutput::init(const sai_transfer_format_t * format)
     // Init SAI module
     sai_config_t saiConfig;
     SAI_TxGetDefaultConfig(&saiConfig);
-    saiConfig.protocol = kSAI_BusI2S; // kSAI_BusLeftJustified;
-    saiConfig.masterSlave = kSAI_Slave; // kSAI_Master;
+    saiConfig.protocol = kSAI_BusLeftJustified;
+    saiConfig.masterSlave = kSAI_Master;
     SAI_TxInit(I2S0, &saiConfig);
     SAI_TransferTxCreateHandleEDMA(I2S0, &m_txHandle, sai_callback, &m_transferDone, &m_dmaHandle);
 
