@@ -31,14 +31,11 @@
 #include "board.h"
 #include "analog_in.h"
 #include "audio_output.h"
-#include "audio_output_converter.h"
-#include "audio_filter.h"
-#include "audio_ramp.h"
-#include "asr_envelope.h"
-#include "rbj_filter.h"
 #include "pin_irq_manager.h"
 #include "file_system.h"
 #include "wav_file.h"
+#include "utility.h"
+#include "simple_queue.h"
 #include "fsl_port.h"
 #include "fsl_gpio.h"
 #include "fsl_i2c.h"
@@ -57,34 +54,19 @@ using namespace slab;
 // Definitions
 //------------------------------------------------------------------------------
 
-#define OVER_SAMPLE_RATE (256) //(384U)
+#define OVER_SAMPLE_RATE (256)
 #define BUFFER_SIZE (256)
 #define CHANNEL_NUM (2)
-#define BUFFER_NUM (2)
-
-template <typename T>
-inline T abs(T a)
-{
-    return (a > 0) ? a : -a;
-}
-
-template <typename T>
-inline T max3(T a, T b, T c)
-{
-    T tmp = (a > b) ? a : b;
-    return (tmp > c) ? tmp : c;
-}
+#define BUFFER_NUM (3)
 
 //------------------------------------------------------------------------------
 // Prototypes
 //------------------------------------------------------------------------------
 
-void pots_thread(void * arg);
-void audio_init_thread(void * arg);
+void cv_thread(void * arg);
+void read_thread(void * arg);
 void init_thread(void * arg);
 
-void init_i2c0();
-void init_i2c1();
 void init_audio_out();
 void init_audio_synth();
 void init_fs();
@@ -95,24 +77,20 @@ void scan_for_files();
 // Variables
 //------------------------------------------------------------------------------
 
-float g_audioBuf[BUFFER_SIZE];
-float g_mixBuf[BUFFER_SIZE];
-int16_t g_outBuf[BUFFER_NUM][BUFFER_SIZE * CHANNEL_NUM];
-
 const float kSampleRate = 48000.0f; // 48kHz
 
+int16_t g_outBuf[BUFFER_NUM][BUFFER_SIZE * CHANNEL_NUM];
+
 AudioOutput g_audioOut;
-AudioOutputConverter g_audioOutConverter;
-// RBJFilter g_filter;
-// DelayLine g_delay;
 i2c_master_handle_t g_i2c1Handle;
 FileSystem g_fs;
 
-Ar::Thread * g_audioInitThread = NULL;
 Ar::Thread * g_initThread = NULL;
+Ar::ThreadWithStack<2048> g_cvThread("cv", cv_thread, 0, 80, kArSuspendThread);
 
-Ar::ThreadWithStack<2048> g_potsThread("pots", pots_thread, 0, 120, kArSuspendThread);
-
+/*!
+ * @brief
+ */
 class ChannelCVGate : public AnalogIn
 {
 public:
@@ -133,6 +111,89 @@ public:
 protected:
     Mode _mode;
 };
+
+/*!
+ * @brief
+ */
+class SamplerSynth : public AudioOutput::Source
+{
+public:
+    SamplerSynth() {}
+    virtual ~SamplerSynth() {}
+
+    virtual void fill_buffer(uint32_t bufferIndex, AudioOutput::Buffer & buffer) override;
+
+protected:
+
+};
+
+/*!
+ * @brief
+ */
+class SamplerVoice
+{
+public:
+    static const uint32_t kBufferCount = 3;
+    static const uint32_t kBufferSize = 2048;
+
+    struct Buffer
+    {
+        SamplerVoice * voice;
+        int16_t * data;
+        uint32_t frameCount;
+        uint32_t readHead;
+    };
+
+    SamplerVoice();
+    ~SamplerVoice() {}
+
+    bool is_valid() const { return _wav.is_valid(); }
+
+    void set_file(WaveFile & file);
+
+    void reset() { _data.seek(0); }
+
+    void prime();
+
+    Buffer * get_current_buffer();
+    Buffer * dequeue_next_buffer();
+    void enqueue_full_buffer(Buffer * buffer);
+
+    WaveFile& get_wave_file() { return _wav; }
+    Stream& get_audio_stream() { return _data; }
+
+protected:
+    WaveFile _wav;
+    WaveFile::AudioDataStream _data;
+    int16_t _bufferData[kBufferCount * kBufferSize];
+    Buffer _buffer[kBufferCount];
+    SimpleQueue<Buffer*, kBufferCount> _fullBuffers;
+    Buffer * _currentBuffer;
+};
+
+class ReaderThread
+{
+public:
+    ReaderThread() : _thread("reader", this, &ReaderThread::reader_thread, 120, kArSuspendThread), _queue("reader") {}
+    ~ReaderThread() {}
+
+    void start() { _thread.resume(); }
+
+    void enqueue(SamplerVoice::Buffer * request) { _queue.send(request, kArNoTimeout); }
+
+    uint32_t get_pending_count() const { return _queue.getCount(); }
+
+protected:
+    Ar::ThreadWithStack<2048> _thread;
+    Ar::StaticQueue<SamplerVoice::Buffer*, 12> _queue;
+
+    void reader_thread();
+};
+
+int16_t g_readBuf[SamplerVoice::kBufferSize * 2];
+SamplerSynth g_sampler;
+SamplerVoice g_voice[4];
+ReaderThread g_readerThread;
 
 //------------------------------------------------------------------------------
 // Code
@@ -175,7 +236,7 @@ uint32_t ChannelCVGate::read()
     return value;
 }
 
-void pots_thread(void * arg)
+void cv_thread(void * arg)
 {
     ChannelCVGate ch1(CH1_CV_ADC, CH1_CV_CHANNEL);
     ChannelCVGate ch2(CH2_CV_ADC, CH2_CV_CHANNEL);
@@ -215,102 +276,168 @@ void pots_thread(void * arg)
     }
 }
 
-// void init_i2c0()
-// {
-//     uint32_t i2cSourceClock = CLOCK_GetFreq(kCLOCK_BusClk);
-//     i2c_master_config_t i2cConfig = {0};
-//     I2C_MasterGetDefaultConfig(&i2cConfig);
-//     I2C_MasterInit(I2C0, &i2cConfig, i2cSourceClock);
-//     I2C_MasterTransferCreateHandle(I2C0, &g_i2cHandle, NULL, NULL);
-// }
-
-void init_i2c1()
+//! Runs on the audio thread.
+void SamplerSynth::fill_buffer(uint32_t bufferIndex, AudioOutput::Buffer & buffer)
 {
-    uint32_t i2cSourceClock = CLOCK_GetFreq(kCLOCK_BusClk);
-    i2c_master_config_t i2cConfig = {0};
-    I2C_MasterGetDefaultConfig(&i2cConfig);
-    I2C_MasterInit(I2C1, &i2cConfig, i2cSourceClock);
-    I2C_MasterTransferCreateHandle(I2C1, &g_i2c1Handle, NULL, NULL);
+    int16_t * out = (int16_t *)buffer.data;
+    int frameCount = buffer.dataSize / sizeof(int16_t) / CHANNEL_NUM;
+
+    SamplerVoice::Buffer * voiceBuffer0 = nullptr;
+    if (g_voice[3].is_valid())
+    {
+        voiceBuffer0 = g_voice[3].get_current_buffer();
+    }
+    SamplerVoice::Buffer * voiceBuffer1 = nullptr;
+    if (g_voice[1].is_valid())
+    {
+        voiceBuffer0 = g_voice[1].get_current_buffer();
+    }
+
+    int i;
+    for (i = 0; i < frameCount; ++i)
+    {
+        int16_t intSample;
+        if (voiceBuffer0 && voiceBuffer0->readHead < voiceBuffer0->frameCount)
+        {
+            intSample = voiceBuffer0->data[voiceBuffer0->readHead++];
+        }
+        else
+        {
+            intSample = 0;
+        }
+        *out++ = intSample;
+
+        if (voiceBuffer1 && voiceBuffer1->readHead < voiceBuffer1->frameCount)
+        {
+            intSample = voiceBuffer1->data[voiceBuffer1->readHead++];
+        }
+        else
+        {
+            intSample = 0;
+        }
+        *out++ = intSample;
+    }
+
+    if (voiceBuffer0 && voiceBuffer0->readHead >= voiceBuffer0->frameCount)
+    {
+        g_readerThread.enqueue(voiceBuffer0);
+        g_voice[3].dequeue_next_buffer();
+    }
+    if (voiceBuffer1 && voiceBuffer1->readHead >= voiceBuffer1->frameCount)
+    {
+        g_readerThread.enqueue(voiceBuffer1);
+        g_voice[1].dequeue_next_buffer();
+    }
 }
-
-void audio_init_thread(void * arg)
-{
-    // Configure the audio format
-    sai_transfer_format_t format;
-    format.bitWidth = kSAI_WordWidth16bits;
-    format.channel = 0U;
-    format.sampleRate_Hz = kSAI_SampleRate48KHz;
-    format.masterClockHz = OVER_SAMPLE_RATE * format.sampleRate_Hz;
-    format.protocol = kSAI_BusI2S;
-    format.stereo = kSAI_Stereo;
-    format.watermark = FSL_FEATURE_SAI_FIFO_COUNT / 2U;
-
-    g_audioOut.init(&format);
-
-    // Configure audio codec
-    DA7212_InitCodec(BOARD_CODEC_I2C_BASE);
-    DA7212_ChangeFrequency(DA7212_SYS_FS_48K);
-    DA7212_ChangeInput(DA7212_Input_MIC1_Dig);
-
-    init_audio_synth();
-
-//     delete g_audioInitThread;
-}
-
-void init_audio_out()
-{
-    g_audioInitThread = new Ar::Thread("auinit", audio_init_thread, 0, NULL, 1500, 200, kArStartThread);
-}
-
-void init_audio_synth()
-{
-    AudioOutput::Buffer buf;
-    buf.dataSize = BUFFER_SIZE * CHANNEL_NUM * sizeof(int16_t);
-    buf.data = (uint8_t *)&g_outBuf[0][0];
-    g_audioOut.add_buffer(&buf);
-    buf.data = (uint8_t *)&g_outBuf[1][0];
-    g_audioOut.add_buffer(&buf);
-
-    g_audioOut.set_source(&g_audioOutConverter);
-    AudioBuffer audioBuf(&g_audioBuf[0], BUFFER_SIZE);
-    g_audioOutConverter.set_buffer(audioBuf);
-//     g_audioOutConverter.set_source(&g_mixer);
-
-//     g_filter.set_sample_rate(kSampleRate);
-//     g_filter.set_frequency(120.0f);
-//     g_filter.set_q(0.4f);
-//     g_filter.recompute_coefficients();
-//     g_filter.set_input(&g_bassGen);
-//
-//     AudioBuffer mixBuf(&g_mixBuf[0], BUFFER_SIZE);
-//     g_mixer.set_buffer(mixBuf);
-//     g_mixer.set_input_count(2);
-//     g_mixer.set_input(0, &g_delay, 0.5f);
-//     g_mixer.set_input(1, &g_bassGen, 0.34f);
-}
-
-class SamplerVoice
-{
-public:
-    SamplerVoice();
-    ~SamplerVoice() {}
-
-    void set_file(WaveFile & file);
-
-protected:
-    WaveFile _wav;
-};
-
-SamplerVoice g_voice[4];
 
 SamplerVoice::SamplerVoice()
-:   _wav()
+:   _wav(),
+    _data(),
+    _fullBuffers()
 {
+    int i;
+    for (i = 0; i < kBufferCount; ++i)
+    {
+        _buffer[i].voice = this;
+        _buffer[i].data = &_bufferData[i * kBufferSize];
+        _buffer[i].frameCount = kBufferSize;
+        _buffer[i].readHead = 0;
+    }
 }
 
 void SamplerVoice::set_file(WaveFile& file)
 {
     _wav = file;
+    _data = _wav.get_audio_data();
+}
+
+void SamplerVoice::prime()
+{
+    int i;
+    for (i = 0; i < kBufferCount; ++i)
+    {
+        g_readerThread.enqueue(&_buffer[i]);
+    }
+}
+
+SamplerVoice::Buffer * SamplerVoice::get_current_buffer()
+{
+    if (!_currentBuffer)
+    {
+        _currentBuffer = dequeue_next_buffer();
+    }
+    return _currentBuffer;
+}
+
+SamplerVoice::Buffer * SamplerVoice::dequeue_next_buffer()
+{
+    Buffer * buffer;
+    if (_fullBuffers.get(buffer))
+    {
+//         if (_currentBuffer)
+//         {
+//             g_readerThread.enqueue(_currentBuffer);
+//         }
+        _currentBuffer = buffer;
+        return buffer;
+    }
+    else
+    {
+        return nullptr;
+    }
+}
+
+void SamplerVoice::enqueue_full_buffer(Buffer * buffer)
+{
+    _fullBuffers.put(buffer);
+}
+
+void ReaderThread::reader_thread()
+{
+    while (true)
+    {
+        SamplerVoice::Buffer * request = _queue.receive();
+        assert(request);
+        assert(request->voice->is_valid());
+
+        Stream& stream = request->voice->get_audio_stream();
+        uint32_t frameSize = request->voice->get_wave_file().get_frame_size();
+        uint32_t channelCount = request->voice->get_wave_file().get_channels();
+        uint32_t bytesToRead = request->frameCount * frameSize;
+
+        // Read mono files directly into the voice buffer, stereo into a temp buffer.
+        void * targetBuffer = request->data;
+        if (channelCount == 2)
+        {
+            targetBuffer = g_readBuf;
+            assert(bytesToRead <= sizeof(g_readBuf));
+        }
+
+        uint32_t bytesRead = stream.read(bytesToRead, targetBuffer);
+        uint32_t framesRead = bytesRead / frameSize;
+
+        // For stereo data copy just the left channel into the voice buffer.
+        if (channelCount == 2)
+        {
+            int i;
+            int16_t * buf = g_readBuf;
+            int16_t * data = request->data;
+            for (i = 0; i < framesRead; ++i)
+            {
+                *data++ = *buf;
+                buf += 2;
+            }
+        }
+
+        if (framesRead < request->frameCount)
+        {
+            memset((uint8_t *)(request->data + framesRead), 0, (request->frameCount - framesRead) * sizeof(int16_t));
+            request->voice->reset();
+        }
+
+        request->readHead = 0;
+        request->voice->enqueue_full_buffer(request);
+    }
 }
 
 void scan_for_files()
@@ -336,21 +463,77 @@ void scan_for_files()
             WaveFile wav(info.fname);
 
             bool inited = wav.parse();
-            printf("Init %s = %d\r\n", info.fname, (int)inited);
 
-            if (inited)
+            if (inited && wav.get_channels() <= 2)
             {
-                printf("Fs = %d\r\nBits per sample = %d\r\nChannels = %d\r\nFrame bytes = %d\r\n",
-                    wav.get_sample_rate(), wav.get_sample_size(), wav.get_channels(), wav.get_frame_size());
-
-                int channel = info.fname[0] - '0';
-                if (channel >= 1 && channel <= 4)
+                int channel = info.fname[0] - '1';
+                if (channel >= 0 && channel <= 3)
                 {
                     g_voice[channel].set_file(wav);
+
+                    uint32_t frameCount =
+                        g_voice[channel].get_audio_stream().get_size() / wav.get_frame_size();
+
+                    printf("%s: %d Hz; %d bits; %d ch; %d bytes/frame; %d frames\r\n",
+                        info.fname,
+                        wav.get_sample_rate(),
+                        wav.get_sample_size(),
+                        wav.get_channels(),
+                        wav.get_frame_size(),
+                        frameCount);
+
+                    g_voice[channel].prime();
                 }
+            }
+            else
+            {
+                printf("Failed to parse %s\r\n", info.fname);
             }
         }
     }
+}
+
+void init_audio_out()
+{
+    // Init I2C used to communicate with the DA7212.
+    uint32_t i2cSourceClock = CLOCK_GetFreq(kCLOCK_BusClk);
+    i2c_master_config_t i2cConfig = {0};
+    I2C_MasterGetDefaultConfig(&i2cConfig);
+    I2C_MasterInit(I2C1, &i2cConfig, i2cSourceClock);
+    I2C_MasterTransferCreateHandle(I2C1, &g_i2c1Handle, NULL, NULL);
+
+    // Configure the audio format.
+    sai_transfer_format_t format;
+    format.bitWidth = kSAI_WordWidth16bits;
+    format.channel = 0U;
+    format.sampleRate_Hz = static_cast<sai_sample_rate_t>(kSampleRate);
+    format.masterClockHz = OVER_SAMPLE_RATE * format.sampleRate_Hz;
+    format.protocol = kSAI_BusI2S;
+    format.stereo = kSAI_Stereo;
+    format.watermark = FSL_FEATURE_SAI_FIFO_COUNT / 2U;
+
+    // Init audio output object.
+    g_audioOut.init(&format);
+    g_audioOut.set_source(&g_sampler);
+
+    // Add buffers to the audio output.
+    AudioOutput::Buffer buf;
+    buf.dataSize = BUFFER_SIZE * CHANNEL_NUM * sizeof(int16_t);
+    int i;
+    for (i = 0; i < BUFFER_NUM; ++i)
+    {
+        buf.data = (uint8_t *)&g_outBuf[i][0];
+        g_audioOut.add_buffer(&buf);
+    }
+
+    // Configure audio codec.
+    DA7212_InitCodec(BOARD_CODEC_I2C_BASE);
+    DA7212_ChangeFrequency(DA7212_SYS_FS_48K);
+    DA7212_ChangeInput(DA7212_Input_MIC1_Dig);
+}
+
+void init_audio_synth()
+{
 }
 
 void init_fs()
@@ -358,29 +541,33 @@ void init_fs()
     int res = g_fs.init();
     printf("fs init = %d\r\n", res);
 
-    scan_for_files();
+    if (res == 0)
+    {
+        scan_for_files();
+    }
 }
 
 void init_thread(void * arg)
 {
     init_board();
 
-    printf("Hello...\r\n");
+    printf("\r\nHello...\r\n");
 
-//     init_i2c0();
-    init_i2c1();
     init_audio_out();
+    init_audio_synth();
     init_fs();
 
-//     PinIrqManager::get().connect(PIN_BTN1_PORT, PIN_BTN1_BIT, button_handler, NULL);
-//     PinIrqManager::get().connect(PIN_BTN2_PORT, PIN_BTN2_BIT, button_handler, NULL);
-//     PinIrqManager::get().connect(PIN_WAKEUP_PORT, PIN_WAKEUP_BIT, button_handler, NULL);
-//
-//     PinIrqManager::get().connect(PIN_ENCA_PORT, PIN_ENCA_BIT, rotary_handler, NULL);
-//     PinIrqManager::get().connect(PIN_ENCB_PORT, PIN_ENCB_BIT, rotary_handler, NULL);
 
-//     g_audioOut.start();
-    g_potsThread.resume();
+    g_readerThread.start();
+
+    // Wait until reader thread has filled all buffers.
+    while (g_readerThread.get_pending_count())
+    {
+        Ar::Thread::sleep(20);
+    }
+
+    g_audioOut.start();
+    g_cvThread.resume();
 
 //     delete g_initThread;
 }
