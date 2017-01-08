@@ -178,6 +178,22 @@
 #define CH4_CV_ADC            (1)
 #define CH4_CV_CHANNEL        (19)
 
+// Channel 1 Pot = PTB2/ADC0_SE12
+#define CH1_POT_ADC            (1)
+#define CH1_POT_CHANNEL        (12)
+
+// Channel 2 Pot = PTB3/ADC0_SE13
+#define CH2_POT_ADC            (1)
+#define CH2_POT_CHANNEL        (13)
+
+// Channel 3 Pot = PTB10/ADC1_SE14
+#define CH3_POT_ADC            (1)
+#define CH3_POT_CHANNEL        (14)
+
+// Channel 4 Pot = PTB11/ADC1_SE15
+#define CH4_POT_ADC            (1)
+#define CH4_POT_CHANNEL        (15)
+
 
 //------------------------------------------------------------------------------
 // Prototypes
