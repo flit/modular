@@ -508,6 +508,9 @@ void button2_handler(PORT_Type * port, uint32_t pin, void * userData)
 
 void init_audio_out()
 {
+    // Reset DAC.
+    GPIO_ClearPinsOutput(PIN_DAC_RESET_GPIO, PIN_DAC_RESET);
+
     // Configure the audio format.
     sai_transfer_format_t format;
     format.bitWidth = kSAI_WordWidth16bits;
@@ -531,6 +534,10 @@ void init_audio_out()
         buf.data = (uint8_t *)&g_outBuf[i][0];
         g_audioOut.add_buffer(&buf);
     }
+
+    // Release DAC from reset after sleeping a bit.
+    Ar::Thread::sleep(10);
+    GPIO_SetPinsOutput(PIN_DAC_RESET_GPIO, PIN_DAC_RESET);
 }
 
 void init_audio_synth()
