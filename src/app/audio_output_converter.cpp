@@ -37,16 +37,10 @@ using namespace slab;
 // Code
 //------------------------------------------------------------------------------
 
-// void AudioOutputConverter::set_buffer(float * buffer, size_t bufferSize)
-// {
-//     m_buffer = buffer;
-//     m_bufferSize = bufferSize;
-// }
-
 void AudioOutputConverter::fill_buffer(uint32_t bufferIndex, AudioOutput::Buffer & buffer)
 {
     assert(m_source);
-    m_source->process(m_buffer); //, m_bufferSize);
+    m_source->process(m_buffer);
 
     int16_t * out = (int16_t *)buffer.data;
     int sampleCount = buffer.dataSize / sizeof(int16_t) / NUM_CHANNELS;
