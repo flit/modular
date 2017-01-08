@@ -7,11 +7,12 @@
 /*---------------------------------------------------------------------------/
 / Freescale adaptation configuration
 /---------------------------------------------------------------------------*/
-#define SD_DISK_ENABLE //SDSPI_DISK_ENABLE
+#define SD_DISK_ENABLE
 /* Available options are:
 /      RAM_DISK_ENABLE
 /      USB_DISK_ENABLE
 /      SD_DISK_ENABLE
+/      SDSPI_DISK_ENABLE
 /      MMC_DISK_ENABLE */
 
 /*---------------------------------------------------------------------------/
@@ -53,7 +54,7 @@
 /* This option switches f_mkfs() function. (0:Disable or 1:Enable) */
 
 
-#define	_USE_FASTSEEK	0
+#define	_USE_FASTSEEK	1
 /* This option switches fast seek feature. (0:Disable or 1:Enable) */
 
 
