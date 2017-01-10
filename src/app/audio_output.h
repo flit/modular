@@ -68,7 +68,7 @@ public:
 protected:
 
     enum {
-        kMaxBufferCount = 2
+        kMaxBufferCount = 3
     };
 
     sai_transfer_format_t m_format;
