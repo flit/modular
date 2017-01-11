@@ -186,6 +186,12 @@ uint32_t WaveFile::AudioDataStream::get_offset() const
     return _file->get_offset() - _file->_dataOffset;
 }
 
+uint32_t WaveFile::AudioDataStream::get_frames() const
+{
+    assert(_file);
+    return _file->_dataSize / _file->_format.wBlockAlign;
+}
+
 //------------------------------------------------------------------------------
 // EOF
 //------------------------------------------------------------------------------

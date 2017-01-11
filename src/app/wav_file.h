@@ -66,6 +66,8 @@ public:
         virtual uint32_t get_size() const override;
         virtual uint32_t get_offset() const override;
 
+        uint32_t get_frames() const;
+
     protected:
         WaveFile * _file;
     };
