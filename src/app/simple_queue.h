@@ -53,6 +53,13 @@ public:
     bool is_full() const { return _count == N; }
     uint32_t get_count() const { return _count; }
 
+    void clear()
+    {
+        _head = 0;
+        _tail = 0;
+        _count = 0;
+    }
+
     T& peek()
     {
         return _queue[_head];
