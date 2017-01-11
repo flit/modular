@@ -66,6 +66,8 @@ void cv_thread(void * arg);
 void read_thread(void * arg);
 void init_thread(void * arg);
 
+void flash_leds();
+
 void init_audio_out();
 void init_audio_synth();
 void init_fs();
@@ -221,6 +223,43 @@ ReaderThread g_readerThread;
 //------------------------------------------------------------------------------
 // Code
 //------------------------------------------------------------------------------
+
+void flash_leds()
+{
+    int which;
+    for (which = 0; which < 4; ++which)
+    {
+        g_channelLeds[which]->on();
+        Ar::Thread::sleep(250);
+        g_channelLeds[which]->off();
+    }
+
+    for (which = 2; which >= 0; --which)
+    {
+        g_channelLeds[which]->on();
+        Ar::Thread::sleep(250);
+        g_channelLeds[which]->off();
+    }
+
+    // sleep 250 ms
+    Ar::Thread::sleep(250);
+
+    // all on
+    for (which = 0; which < 4; ++which)
+    {
+        g_channelLeds[which]->on();
+    }
+
+    // sleep 250 ms
+    Ar::Thread::sleep(250);
+
+    // all off
+    for (which = 0; which < 4; ++which)
+    {
+        g_channelLeds[which]->off();
+    }
+
+}
 
 ChannelCVGate::ChannelCVGate(uint32_t instance, uint32_t channel)
 :   AnalogIn(instance, channel),
@@ -719,6 +758,8 @@ void init_thread(void * arg)
     init_board();
 
     printf("\r\nHello...\r\n");
+
+    flash_leds();
 
     g_voice[0].set_led(&g_ch1Led);
     g_voice[1].set_led(&g_ch2Led);
