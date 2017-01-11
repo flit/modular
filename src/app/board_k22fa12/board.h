@@ -62,26 +62,31 @@
 // LEDs
 #define PIN_CH1_LED_PORT        (PORTA)
 #define PIN_CH1_LED_GPIO        (GPIOA)
+#define PIN_CH1_LED_GPIO_BASE   (GPIOA_BASE)
 #define PIN_CH1_LED_BIT         (17)
 #define PIN_CH1_LED             (1 << PIN_CH1_LED_BIT)
 
 #define PIN_CH2_LED_PORT        (PORTA)
 #define PIN_CH2_LED_GPIO        (GPIOA)
+#define PIN_CH2_LED_GPIO_BASE   (GPIOA_BASE)
 #define PIN_CH2_LED_BIT         (16)
 #define PIN_CH2_LED             (1 << PIN_CH2_LED_BIT)
 
 #define PIN_CH3_LED_PORT        (PORTA)
 #define PIN_CH3_LED_GPIO        (GPIOA)
+#define PIN_CH3_LED_GPIO_BASE   (GPIOA_BASE)
 #define PIN_CH3_LED_BIT         (15)
 #define PIN_CH3_LED             (1 << PIN_CH3_LED_BIT)
 
 #define PIN_CH4_LED_PORT        (PORTA)
 #define PIN_CH4_LED_GPIO        (GPIOA)
+#define PIN_CH4_LED_GPIO_BASE   (GPIOA_BASE)
 #define PIN_CH4_LED_BIT         (14)
 #define PIN_CH4_LED             (1 << PIN_CH4_LED_BIT)
 
 #define PIN_BUTTON1_LED_PORT    (PORTD)
 #define PIN_BUTTON1_LED_GPIO    (GPIOD)
+#define PIN_BUTTON1_LED_GPIO_BASE (GPIOD_BASE)
 #define PIN_BUTTON1_LED_BIT     (3)
 #define PIN_BUTTON1_LED         (1 << PIN_BUTTON1_LED_BIT)
 
