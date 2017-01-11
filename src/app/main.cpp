@@ -38,8 +38,6 @@
 #include "simple_queue.h"
 #include "fsl_port.h"
 #include "fsl_gpio.h"
-#include "fsl_i2c.h"
-#include "Dialog7212.h"
 #include "arm_math.h"
 #include <stdio.h>
 #include <math.h>
@@ -85,7 +83,6 @@ const float kSampleRate = 48000.0f; // 48kHz
 int16_t g_outBuf[BUFFER_NUM][BUFFER_SIZE * CHANNEL_NUM];
 
 AudioOutput g_audioOut;
-i2c_master_handle_t g_i2c1Handle;
 FileSystem g_fs;
 
 Ar::Thread * g_initThread = NULL;
