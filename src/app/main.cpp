@@ -36,6 +36,7 @@
 #include "wav_file.h"
 #include "utility.h"
 #include "simple_queue.h"
+#include "led.h"
 #include "fsl_port.h"
 #include "fsl_gpio.h"
 #include "arm_math.h"
@@ -110,6 +111,9 @@ public:
 
 protected:
     Mode _mode;
+    uint32_t _last;
+    bool _edge;
+    uint32_t _highCount;
 };
 
 /*!
@@ -133,8 +137,9 @@ protected:
 class SamplerVoice
 {
 public:
-    static const uint32_t kBufferCount = 3;
-    static const uint32_t kBufferSize = 2048;
+    static const uint32_t kBufferCount = 4;
+    static const uint32_t kBufferSize = 1024; //!< Number of frames per buffer.
+    static_assert(kBufferSize % BUFFER_SIZE == 0, "sai buffers must fit evenly in voice buffers");
 
     struct Buffer
     {
@@ -147,15 +152,23 @@ public:
     SamplerVoice();
     ~SamplerVoice() {}
 
+    void set_led(LEDBase * led) { _led = led; }
+
     bool is_valid() const { return _wav.is_valid(); }
 
     void set_file(WaveFile & file);
 
-    void reset() { _data.seek(0); }
+    void reset();
 
     void prime();
 
+    void trigger();
+    bool is_playing() { return _isPlaying; }
+
+    void fill(int16_t * data, uint32_t frameCount, uint32_t offset);
+
     Buffer * get_current_buffer();
+    void retire_buffer(Buffer * buffer);
     Buffer * dequeue_next_buffer();
     void enqueue_full_buffer(Buffer * buffer);
 
@@ -163,12 +176,17 @@ public:
     Stream& get_audio_stream() { return _data; }
 
 protected:
+    LEDBase * _led;
     WaveFile _wav;
     WaveFile::AudioDataStream _data;
     int16_t _bufferData[kBufferCount * kBufferSize];
     Buffer _buffer[kBufferCount];
     SimpleQueue<Buffer*, kBufferCount> _fullBuffers;
     Buffer * _currentBuffer;
+    uint32_t _totalSamples;
+    uint32_t _samplesPlayed;
+    bool _isPlaying;
+    bool _turnOnLedNextBuffer;
 };
 
 class ReaderThread
@@ -192,6 +210,11 @@ protected:
 
 int16_t g_readBuf[SamplerVoice::kBufferSize * 2];
 SamplerSynth g_sampler;
+LED<PIN_CH1_LED_GPIO_BASE, PIN_CH1_LED> g_ch1Led;
+LED<PIN_CH2_LED_GPIO_BASE, PIN_CH2_LED> g_ch2Led;
+LED<PIN_CH3_LED_GPIO_BASE, PIN_CH3_LED> g_ch3Led;
+LED<PIN_CH4_LED_GPIO_BASE, PIN_CH4_LED> g_ch4Led;
+LEDBase * g_channelLeds[] = { &g_ch1Led, &g_ch2Led, &g_ch3Led, &g_ch4Led};
 SamplerVoice g_voice[4];
 ReaderThread g_readerThread;
 
@@ -201,7 +224,10 @@ ReaderThread g_readerThread;
 
 ChannelCVGate::ChannelCVGate(uint32_t instance, uint32_t channel)
 :   AnalogIn(instance, channel),
-    _mode(kGate)
+    _mode(kGate),
+    _last(0),
+    _edge(false),
+    _highCount(0)
 {
 }
 
@@ -217,6 +243,7 @@ void ChannelCVGate::set_mode(Mode newMode)
 
 uint32_t ChannelCVGate::read()
 {
+    uint32_t result = 0;
     uint32_t value = AnalogIn::read();
 
     const uint32_t kAdcMax = 65536;
@@ -227,52 +254,84 @@ uint32_t ChannelCVGate::read()
     if (_mode == Mode::kGate)
     {
         const uint32_t kThreshold = kAdcMax - (0.3 * (kAdcMax / 2));
-        return (value > kThreshold) ? 1 : 0;
+        uint32_t state = (value > kThreshold) ? 1 : 0;
+
+        if (state == 0)
+        {
+            _edge = false;
+            _highCount = 0;
+        }
+
+        if (state == 1)
+        {
+            if (_last == 0)
+            {
+                _edge = true;
+                _highCount = 0;
+            }
+
+            ++_highCount;
+
+            if (_highCount == 3)
+            {
+                result = 1;
+            }
+        }
+
+        _last = state;
     }
     else
     {
     }
 
-    return value;
+    return result;
 }
 
 void cv_thread(void * arg)
 {
-    ChannelCVGate ch1(CH1_CV_ADC, CH1_CV_CHANNEL);
-    ChannelCVGate ch2(CH2_CV_ADC, CH2_CV_CHANNEL);
-    ch1.init();
-//     ch1.set_mode(ChannelCVGate::Mode::kCV);
-    ch2.init();
+    ChannelCVGate ch1Gate(CH1_CV_ADC, CH1_CV_CHANNEL);
+    ChannelCVGate ch2Gate(CH2_CV_ADC, CH2_CV_CHANNEL);
+    ChannelCVGate ch3Gate(CH3_CV_ADC, CH3_CV_CHANNEL);
+    ChannelCVGate ch4Gate(CH4_CV_ADC, CH4_CV_CHANNEL);
+    ch1Gate.init();
+    ch2Gate.init();
+    ch3Gate.init();
+    ch4Gate.init();
 
-    uint32_t lastValue1 = ~0;
-    uint32_t lastValue2 = ~0;
+    AnalogIn ch1Pot(CH1_POT_ADC, CH1_POT_CHANNEL);
+    AnalogIn ch2Pot(CH2_POT_ADC, CH2_POT_CHANNEL);
+    AnalogIn ch3Pot(CH3_POT_ADC, CH3_POT_CHANNEL);
+    AnalogIn ch4Pot(CH4_POT_ADC, CH4_POT_CHANNEL);
+    ch1Pot.init();
+    ch2Pot.init();
+    ch3Pot.init();
+    ch4Pot.init();
+
     while (1)
     {
-        uint32_t value2 = ch2.read();
-//         uint32_t value1 = ch1.read();
-
-//         if (value1 != lastValue1)
-//         {
-//             printf("ch1 %s\r\n", (value1 ? "on" : "off"));
-//
-//             lastValue1 = value1;
-//         }
-
-        if (value2 != lastValue2)
+        if (ch1Gate.read())
         {
-//             printf("ch2 %s\r\n", (value2 ? "on" : "off"));
-
-            lastValue2 = value2;
+//             printf("ch1 triggered\r\n");
+            g_voice[0].trigger();
         }
 
-//         if (value1 != lastValue1)
-//         {
-//             printf("ch1 %d\r\n", value1);
-//
-//             lastValue1 = value1;
-//         }
+        if (ch2Gate.read())
+        {
+//             printf("ch2 triggered\r\n");
+            g_voice[1].trigger();
+        }
 
-//         Ar::Thread::sleep(20);
+        if (ch3Gate.read())
+        {
+//             printf("ch3 triggered\r\n");
+            g_voice[2].trigger();
+        }
+
+        if (ch4Gate.read())
+        {
+//             printf("ch4 triggered\r\n");
+            g_voice[3].trigger();
+        }
     }
 }
 
@@ -281,7 +340,7 @@ void cv_thread(void * arg)
 //! Runs on the audio thread.
 void SamplerSynth::fill_buffer(uint32_t bufferIndex, AudioOutput::Buffer & buffer)
 {
-    int16_t * out = (int16_t *)buffer.data;
+    int16_t * data = (int16_t *)buffer.data;;
     int frameCount = buffer.dataSize / sizeof(int16_t) / CHANNEL_NUM;
 
 #if SQUARE_OUT
@@ -300,59 +359,70 @@ void SamplerSynth::fill_buffer(uint32_t bufferIndex, AudioOutput::Buffer & buffe
         }
     }
 #else // SQUARE_OUT
-    SamplerVoice::Buffer * voiceBuffer0 = nullptr;
-    if (g_voice[3].is_valid())
-    {
-        voiceBuffer0 = g_voice[3].get_current_buffer();
-    }
-    SamplerVoice::Buffer * voiceBuffer1 = nullptr;
-    if (g_voice[1].is_valid())
-    {
-        voiceBuffer0 = g_voice[1].get_current_buffer();
-    }
-
-    int i;
-    for (i = 0; i < frameCount; ++i)
-    {
-        int16_t intSample;
-        if (voiceBuffer0 && voiceBuffer0->readHead < voiceBuffer0->frameCount)
-        {
-            intSample = voiceBuffer0->data[voiceBuffer0->readHead++];
-        }
-        else
-        {
-            intSample = 0;
-        }
-        *out++ = intSample;
-
-        if (voiceBuffer1 && voiceBuffer1->readHead < voiceBuffer1->frameCount)
-        {
-            intSample = voiceBuffer1->data[voiceBuffer1->readHead++];
-        }
-        else
-        {
-            intSample = 0;
-        }
-        *out++ = intSample;
-    }
-
-    if (voiceBuffer0 && voiceBuffer0->readHead >= voiceBuffer0->frameCount)
-    {
-        g_readerThread.enqueue(voiceBuffer0);
-        g_voice[3].dequeue_next_buffer();
-    }
-    if (voiceBuffer1 && voiceBuffer1->readHead >= voiceBuffer1->frameCount)
-    {
-        g_readerThread.enqueue(voiceBuffer1);
-        g_voice[1].dequeue_next_buffer();
-    }
+    g_voice[0].fill(data, frameCount, 0);
+    g_voice[1].fill(data, frameCount, 1);
 #endif // SQUARE_OUT
 }
 
+void SamplerVoice::fill(int16_t * data, uint32_t frameCount, uint32_t offset)
+{
+    Buffer * voiceBuffer = nullptr;
+    if (is_valid() && is_playing())
+    {
+        voiceBuffer = get_current_buffer();
+    }
+
+    int i;
+    int16_t * out = data + offset;
+    int16_t intSample;
+    uint32_t readHead;
+    uint32_t bufferFrameCount;
+
+    if (voiceBuffer)
+    {
+        readHead = voiceBuffer->readHead;
+        bufferFrameCount = voiceBuffer->frameCount;
+        for (i = 0; i < frameCount; ++i)
+        {
+            if (readHead < bufferFrameCount)
+            {
+                intSample = voiceBuffer->data[readHead++];
+            }
+            else
+            {
+                intSample = 0;
+            }
+            *out = intSample;
+            out += 2;
+        }
+        voiceBuffer->readHead = readHead;
+
+        // Did we finish this buffer?
+        if (readHead >= bufferFrameCount)
+        {
+            retire_buffer(voiceBuffer);
+        }
+    }
+    else
+    {
+        for (i = 0; i < frameCount; ++i)
+        {
+            *out = 0;
+            out += 2;
+        }
+    }
+}
+
 SamplerVoice::SamplerVoice()
-:   _wav(),
+:   _led(nullptr),
+    _wav(),
     _data(),
-    _fullBuffers()
+    _fullBuffers(),
+    _currentBuffer(nullptr),
+    _totalSamples(0),
+    _samplesPlayed(0),
+    _isPlaying(false),
+    _turnOnLedNextBuffer(false)
 {
     int i;
     for (i = 0; i < kBufferCount; ++i)
@@ -368,14 +438,56 @@ void SamplerVoice::set_file(WaveFile& file)
 {
     _wav = file;
     _data = _wav.get_audio_data();
+    _totalSamples = _data.get_frames();
+    _samplesPlayed = 0;
+    _isPlaying = false;
+
+    // Read file start buffer.
+    g_readerThread.enqueue(&_buffer[0]);
 }
 
 void SamplerVoice::prime()
 {
+    // Clear ready buffers queue.
+    _fullBuffers.clear();
+
+    // Playing will start from the file start buffer.
+    _currentBuffer = &_buffer[0];
+    _buffer[0].readHead = 0;
+
+    // Queue up the rest of the available buffers to be filled.
     int i;
-    for (i = 0; i < kBufferCount; ++i)
+    for (i = 1; i < kBufferCount; ++i)
     {
         g_readerThread.enqueue(&_buffer[i]);
+    }
+}
+
+void SamplerVoice::reset()
+{
+    // Set file read pointer to the start of the second buffer's worth of data.
+    uint32_t frameSize = _wav.get_frame_size();
+    _data.seek(kBufferSize * frameSize);
+}
+
+void SamplerVoice::trigger()
+{
+    // Handle re-triggering while sample is already playing.
+    if (_isPlaying)
+    {
+        // Start playing over from file start.
+        reset();
+        prime();
+
+        _samplesPlayed = 0;
+
+        _led->off();
+        _turnOnLedNextBuffer = true;
+    }
+    else
+    {
+        _isPlaying = true;
+        _led->on();
     }
 }
 
@@ -388,15 +500,42 @@ SamplerVoice::Buffer * SamplerVoice::get_current_buffer()
     return _currentBuffer;
 }
 
+void SamplerVoice::retire_buffer(Buffer * buffer)
+{
+    _samplesPlayed += buffer->frameCount;
+
+    if (_samplesPlayed >= _totalSamples)
+    {
+        _isPlaying = false;
+        _samplesPlayed = 0;
+        _currentBuffer = nullptr;
+        _led->off();
+
+        reset();
+        prime();
+    }
+    else
+    {
+        if (_turnOnLedNextBuffer)
+        {
+            _turnOnLedNextBuffer = false;
+            _led->on();
+        }
+
+        // Don't queue up file start buffer for reading.
+        if (buffer == &_buffer[0])
+        {
+            g_readerThread.enqueue(buffer);
+        }
+        dequeue_next_buffer();
+    }
+}
+
 SamplerVoice::Buffer * SamplerVoice::dequeue_next_buffer()
 {
     Buffer * buffer;
     if (_fullBuffers.get(buffer))
     {
-//         if (_currentBuffer)
-//         {
-//             g_readerThread.enqueue(_currentBuffer);
-//         }
         _currentBuffer = buffer;
         return buffer;
     }
@@ -408,7 +547,10 @@ SamplerVoice::Buffer * SamplerVoice::dequeue_next_buffer()
 
 void SamplerVoice::enqueue_full_buffer(Buffer * buffer)
 {
-    _fullBuffers.put(buffer);
+    if (buffer != &_buffer[0])
+    {
+        _fullBuffers.put(buffer);
+    }
 }
 
 void ReaderThread::reader_thread()
@@ -448,10 +590,11 @@ void ReaderThread::reader_thread()
             }
         }
 
+        // Handle EOF.
         if (framesRead < request->frameCount)
         {
             memset((uint8_t *)(request->data + framesRead), 0, (request->frameCount - framesRead) * sizeof(int16_t));
-            request->voice->reset();
+//             request->voice->reset();
         }
 
         request->readHead = 0;
@@ -533,7 +676,7 @@ void init_audio_out()
     format.channel = 0U;
     format.sampleRate_Hz = static_cast<sai_sample_rate_t>(kSampleRate);
     format.masterClockHz = OVER_SAMPLE_RATE * format.sampleRate_Hz;
-    format.protocol = kSAI_BusI2S;
+    format.protocol = kSAI_BusLeftJustified;
     format.stereo = kSAI_Stereo;
     format.watermark = FSL_FEATURE_SAI_FIFO_COUNT / 2U;
 
@@ -576,6 +719,11 @@ void init_thread(void * arg)
     init_board();
 
     printf("\r\nHello...\r\n");
+
+    g_voice[0].set_led(&g_ch1Led);
+    g_voice[1].set_led(&g_ch2Led);
+    g_voice[2].set_led(&g_ch3Led);
+    g_voice[3].set_led(&g_ch4Led);
 
     init_audio_out();
     init_audio_synth();
