@@ -37,6 +37,7 @@
 #include "utility.h"
 #include "simple_queue.h"
 #include "led.h"
+#include "microseconds.h"
 #include "fsl_port.h"
 #include "fsl_gpio.h"
 #include "arm_math.h"
@@ -121,7 +122,7 @@ protected:
 };
 
 /*!
- * @brief
+ * @brief Audio render source.
  */
 class SamplerSynth : public AudioOutput::Source
 {
@@ -136,12 +137,12 @@ protected:
 };
 
 /*!
- * @brief
+ * @brief Manages playback of a single sample file.
  */
 class SamplerVoice
 {
 public:
-    static const uint32_t kBufferCount = 4;
+    static const uint32_t kBufferCount = 4; //!< Number of buffers available to cycle through sample data. The first one will always be used to hold the first #kBufferSize frames of the sample.
     static const uint32_t kBufferSize = 1024; //!< Number of frames per buffer.
     static_assert(kBufferSize % BUFFER_SIZE == 0, "sai buffers must fit evenly in voice buffers");
 
@@ -193,6 +194,12 @@ protected:
     bool _turnOnLedNextBuffer;
 };
 
+/*!
+ * @brief Thread to fill channel audio buffers with sample file data.
+ *
+ * The reader thread maintains a queue of voices that need a buffer filled. A given voice
+ * may be put in the queue multiple times.
+ */
 class ReaderThread
 {
 public:
@@ -618,6 +625,7 @@ void ReaderThread::reader_thread()
         uint32_t frameSize = request->voice->get_wave_file().get_frame_size();
         uint32_t channelCount = request->voice->get_wave_file().get_channels();
         uint32_t bytesToRead = request->frameCount * frameSize;
+        assert(channelCount <= 2);
 
         // Read mono files directly into the voice buffer, stereo into a temp buffer.
         void * targetBuffer = request->data;
@@ -627,8 +635,14 @@ void ReaderThread::reader_thread()
             assert(bytesToRead <= sizeof(g_readBuf));
         }
 
+        // Read from sample file.
+        uint32_t start = Microseconds::get();
         uint32_t bytesRead = stream.read(bytesToRead, targetBuffer);
+        uint32_t stop = Microseconds::get();
         uint32_t framesRead = bytesRead / frameSize;
+
+        uint32_t delta = stop - start;
+//         printf("%d: read %d bytes: %d µs\r\n", start, bytesRead, delta);
 
         // For stereo data copy just the left channel into the voice buffer.
         if (channelCount == 2)
@@ -643,11 +657,10 @@ void ReaderThread::reader_thread()
             }
         }
 
-        // Handle EOF.
+        // If we hit EOF, fill the remainder of the buffer with zeroes.
         if (framesRead < request->frameCount)
         {
             memset((uint8_t *)(request->data + framesRead), 0, (request->frameCount - framesRead) * sizeof(int16_t));
-//             request->voice->reset();
         }
 
         request->readHead = 0;
@@ -759,19 +772,23 @@ void init_audio_synth()
 void init_fs()
 {
     int res = g_fs.init();
-    printf("fs init = %d\r\n", res);
 
     if (res == 0)
     {
         scan_for_files();
     }
+    else
+    {
+        printf("fs init failed: %d\r\n", res);
+    }
 }
 
 void init_thread(void * arg)
 {
+    Microseconds::init();
     init_board();
 
-    printf("\r\nHello...\r\n");
+    printf("\r\nSAMPLBäR Initializing...\r\n");
 
     flash_leds();
 
@@ -784,7 +801,7 @@ void init_thread(void * arg)
     init_audio_synth();
     init_fs();
 
-//     PinIrqManager::get().connect(PIN_BUTTON1_PORT, PIN_BUTTON1_BIT, button1_handler, NULL);
+    PinIrqManager::get().connect(PIN_BUTTON1_PORT, PIN_BUTTON1_BIT, button1_handler, NULL);
 //     PinIrqManager::get().connect(PIN_BUTTON2_PORT, PIN_BUTTON2_BIT, button1_handler, NULL);
 
     g_readerThread.start();
@@ -797,6 +814,8 @@ void init_thread(void * arg)
 
     g_audioOut.start();
     g_cvThread.resume();
+
+    printf("done.\r\n");
 
 //     delete g_initThread;
 }
