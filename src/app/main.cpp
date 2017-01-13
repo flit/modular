@@ -158,12 +158,9 @@ public:
     ~SamplerVoice() {}
 
     void set_led(LEDBase * led) { _led = led; }
-
-    bool is_valid() const { return _wav.is_valid(); }
-
     void set_file(WaveFile & file);
 
-    void reset();
+    bool is_valid() const { return _wav.is_valid(); }
 
     void prime();
 
@@ -173,8 +170,7 @@ public:
     void fill(int16_t * data, uint32_t frameCount);
 
     Buffer * get_current_buffer();
-    void retire_buffer(Buffer * buffer);
-    Buffer * dequeue_next_buffer();
+    Buffer * get_empty_buffer();
     void enqueue_full_buffer(Buffer * buffer);
 
     WaveFile& get_wave_file() { return _wav; }
@@ -187,11 +183,17 @@ protected:
     int16_t _bufferData[kBufferCount * kBufferSize];
     Buffer _buffer[kBufferCount];
     SimpleQueue<Buffer*, kBufferCount> _fullBuffers;
+    SimpleQueue<Buffer*, kBufferCount> _emptyBuffers;
     Buffer * _currentBuffer;
+    uint32_t _activeBufferCount;
     uint32_t _totalSamples;
     uint32_t _samplesPlayed;
     bool _isPlaying;
     bool _turnOnLedNextBuffer;
+
+    Buffer * dequeue_next_buffer();
+    void retire_buffer(Buffer * buffer);
+
 };
 
 /*!
@@ -208,13 +210,13 @@ public:
 
     void start() { _thread.resume(); }
 
-    void enqueue(SamplerVoice::Buffer * request) { _queue.send(request, kArNoTimeout); }
+    void enqueue(SamplerVoice * request) { _queue.send(request, kArNoTimeout); }
 
     uint32_t get_pending_count() const { return _queue.getCount(); }
 
 protected:
     Ar::ThreadWithStack<2048> _thread;
-    Ar::StaticQueue<SamplerVoice::Buffer*, 12> _queue;
+    Ar::StaticQueue<SamplerVoice*, 12> _queue;
 
     void reader_thread();
 };
@@ -478,6 +480,7 @@ SamplerVoice::SamplerVoice()
     _wav(),
     _data(),
     _fullBuffers(),
+    _emptyBuffers(),
     _currentBuffer(nullptr),
     _totalSamples(0),
     _samplesPlayed(0),
@@ -499,11 +502,13 @@ void SamplerVoice::set_file(WaveFile& file)
     _wav = file;
     _data = _wav.get_audio_data();
     _totalSamples = _data.get_frames();
+    _activeBufferCount = min(round_up_div(_totalSamples, kBufferSize), kBufferCount);
     _samplesPlayed = 0;
     _isPlaying = false;
 
     // Read file start buffer.
-    g_readerThread.enqueue(&_buffer[0]);
+    _emptyBuffers.put(&_buffer[0]);
+    g_readerThread.enqueue(this);
 }
 
 void SamplerVoice::prime()
@@ -515,19 +520,17 @@ void SamplerVoice::prime()
     _currentBuffer = &_buffer[0];
     _buffer[0].readHead = 0;
 
-    // Queue up the rest of the available buffers to be filled.
-    int i;
-    for (i = 1; i < kBufferCount; ++i)
-    {
-        g_readerThread.enqueue(&_buffer[i]);
-    }
-}
-
-void SamplerVoice::reset()
-{
     // Set file read pointer to the start of the second buffer's worth of data.
     uint32_t frameSize = _wav.get_frame_size();
     _data.seek(kBufferSize * frameSize);
+
+    // Queue up the rest of the available buffers to be filled.
+    int i;
+    for (i = 1; i < _activeBufferCount; ++i)
+    {
+        _emptyBuffers.put(&_buffer[i]);
+        g_readerThread.enqueue(this);
+    }
 }
 
 void SamplerVoice::trigger()
@@ -535,8 +538,9 @@ void SamplerVoice::trigger()
     // Handle re-triggering while sample is already playing.
     if (_isPlaying)
     {
+        _emptyBuffers.clear();
+
         // Start playing over from file start.
-        reset();
         prime();
 
         _samplesPlayed = 0;
@@ -560,6 +564,19 @@ SamplerVoice::Buffer * SamplerVoice::get_current_buffer()
     return _currentBuffer;
 }
 
+SamplerVoice::Buffer * SamplerVoice::get_empty_buffer()
+{
+    Buffer * buffer;
+    if (_emptyBuffers.get(buffer))
+    {
+        return buffer;
+    }
+    else
+    {
+        return nullptr;
+    }
+}
+
 void SamplerVoice::retire_buffer(Buffer * buffer)
 {
     _samplesPlayed += buffer->frameCount;
@@ -571,7 +588,6 @@ void SamplerVoice::retire_buffer(Buffer * buffer)
         _currentBuffer = nullptr;
         _led->off();
 
-        reset();
         prime();
     }
     else
@@ -583,9 +599,10 @@ void SamplerVoice::retire_buffer(Buffer * buffer)
         }
 
         // Don't queue up file start buffer for reading.
-        if (buffer == &_buffer[0])
+        if (buffer != &_buffer[0])
         {
-            g_readerThread.enqueue(buffer);
+            _emptyBuffers.put(buffer);
+            g_readerThread.enqueue(this);
         }
         dequeue_next_buffer();
     }
@@ -607,6 +624,7 @@ SamplerVoice::Buffer * SamplerVoice::dequeue_next_buffer()
 
 void SamplerVoice::enqueue_full_buffer(Buffer * buffer)
 {
+    assert(buffer);
     if (buffer != &_buffer[0])
     {
         _fullBuffers.put(buffer);
@@ -617,13 +635,22 @@ void ReaderThread::reader_thread()
 {
     while (true)
     {
-        SamplerVoice::Buffer * request = _queue.receive();
-        assert(request);
-        assert(request->voice->is_valid());
+        // Pull a voice that needs a buffer filled from the queue.
+        SamplerVoice * voice = _queue.receive();
+        assert(voice);
+        assert(voice->is_valid());
 
-        Stream& stream = request->voice->get_audio_stream();
-        uint32_t frameSize = request->voice->get_wave_file().get_frame_size();
-        uint32_t channelCount = request->voice->get_wave_file().get_channels();
+        // Ask the voice for the next buffer to fill. This may return null, which is valid.
+        SamplerVoice::Buffer * request = voice->get_empty_buffer();
+        if (!request)
+        {
+            continue;
+        }
+
+        // Figure out how much data to read.
+        Stream& stream = voice->get_audio_stream();
+        uint32_t frameSize = voice->get_wave_file().get_frame_size();
+        uint32_t channelCount = voice->get_wave_file().get_channels();
         uint32_t bytesToRead = request->frameCount * frameSize;
         assert(channelCount <= 2);
 
@@ -664,7 +691,7 @@ void ReaderThread::reader_thread()
         }
 
         request->readHead = 0;
-        request->voice->enqueue_full_buffer(request);
+        voice->enqueue_full_buffer(request);
     }
 }
 
