@@ -108,11 +108,13 @@ public:
     void init();
 
     void set_mode(Mode newMode);
+    void set_inverted(bool isInverted) { _isInverted = isInverted; }
 
     uint32_t read();
 
 protected:
     Mode _mode;
+    bool _isInverted;
     uint32_t _last;
     bool _edge;
     uint32_t _highCount;
@@ -264,6 +266,7 @@ void flash_leds()
 ChannelCVGate::ChannelCVGate(uint32_t instance, uint32_t channel)
 :   AnalogIn(instance, channel),
     _mode(kGate),
+    _isInverted(false),
     _last(0),
     _edge(false),
     _highCount(0)
@@ -293,7 +296,15 @@ uint32_t ChannelCVGate::read()
     if (_mode == Mode::kGate)
     {
         const uint32_t kThreshold = kAdcMax - (0.3 * (kAdcMax / 2));
-        uint32_t state = (value > kThreshold) ? 1 : 0;
+        uint32_t state;
+        if (_isInverted)
+        {
+            state = (value < (kAdcMax - kThreshold)) ? 1 : 0;
+        }
+        else
+        {
+            state = (value > kThreshold) ? 1 : 0;
+        }
 
         if (state == 0)
         {
@@ -334,8 +345,11 @@ void cv_thread(void * arg)
     ChannelCVGate ch4Gate(CH4_CV_ADC, CH4_CV_CHANNEL);
     ch1Gate.init();
     ch2Gate.init();
+    ch2Gate.set_inverted(true);
     ch3Gate.init();
+    ch3Gate.set_inverted(true);
     ch4Gate.init();
+    ch4Gate.set_inverted(true);
 
     AnalogIn ch1Pot(CH1_POT_ADC, CH1_POT_CHANNEL);
     AnalogIn ch2Pot(CH2_POT_ADC, CH2_POT_CHANNEL);
