@@ -44,10 +44,28 @@ inline T abs(T a)
 }
 
 template <typename T>
+inline T min(T a, T b)
+{
+    return (a < b) ? a : b;
+}
+
+template <typename T>
+inline T max(T a, T b)
+{
+    return (a > b) ? a : b;
+}
+
+template <typename T>
 inline T max3(T a, T b, T c)
 {
     T tmp = (a > b) ? a : b;
     return (tmp > c) ? tmp : c;
+}
+
+template <typename T>
+inline T round_up_div(T a, T b)
+{
+    return (a + b - 1) / b;
 }
 
 } // namespace slab
