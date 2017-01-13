@@ -169,7 +169,7 @@ public:
     void trigger();
     bool is_playing() { return _isPlaying; }
 
-    void fill(int16_t * data, uint32_t frameCount, uint32_t offset);
+    void fill(int16_t * data, uint32_t frameCount);
 
     Buffer * get_current_buffer();
     void retire_buffer(Buffer * buffer);
@@ -412,12 +412,12 @@ void SamplerSynth::fill_buffer(uint32_t bufferIndex, AudioOutput::Buffer & buffe
         }
     }
 #else // SQUARE_OUT
-    g_voice[0].fill(data, frameCount, 0);
-    g_voice[1].fill(data, frameCount, 1);
+    g_voice[0].fill(data, frameCount);
+    g_voice[1].fill(data + 1, frameCount);
 #endif // SQUARE_OUT
 }
 
-void SamplerVoice::fill(int16_t * data, uint32_t frameCount, uint32_t offset)
+void SamplerVoice::fill(int16_t * data, uint32_t frameCount)
 {
     Buffer * voiceBuffer = nullptr;
     if (is_valid() && is_playing())
@@ -426,7 +426,7 @@ void SamplerVoice::fill(int16_t * data, uint32_t frameCount, uint32_t offset)
     }
 
     int i;
-    int16_t * out = data + offset;
+    int16_t * out = data;
     int16_t intSample;
     uint32_t readHead;
     uint32_t bufferFrameCount;
