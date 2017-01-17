@@ -142,6 +142,38 @@ Ar::ThreadWithStack<2048> g_cvThread("cv", cv_thread, 0, 80, kArSuspendThread);
 /*!
  * @brief
  */
+template <typename T, uint32_t N>
+class ProtectedQueue : public SimpleQueue<T, N>
+{
+public:
+    ProtectedQueue() : SimpleQueue<T, N>(), _lock(nullptr) {}
+    ~ProtectedQueue()=default;
+
+    void clear()
+    {
+        Ar::Mutex::Guard guard(_lock);
+        SimpleQueue<T, N>::clear();
+    }
+
+    bool put(const T& value)
+    {
+        Ar::Mutex::Guard guard(_lock);
+        return SimpleQueue<T, N>::put(value);
+    }
+
+    bool get(T& value)
+    {
+        Ar::Mutex::Guard guard(_lock);
+        return SimpleQueue<T, N>::get(value);
+    }
+
+protected:
+    Ar::Mutex _lock;
+};
+
+/*!
+ * @brief
+ */
 class ChannelCVGate : public AnalogIn
 {
 public:
@@ -152,6 +184,7 @@ public:
     };
 
     ChannelCVGate(uint32_t instance, uint32_t channel);
+    ~ChannelCVGate()=default;
 
     void init();
 
@@ -175,7 +208,7 @@ class SamplerSynth : public AudioOutput::Source
 {
 public:
     SamplerSynth() {}
-    virtual ~SamplerSynth() {}
+    virtual ~SamplerSynth()=default;
 
     virtual void fill_buffer(uint32_t bufferIndex, AudioOutput::Buffer & buffer) override;
 
@@ -193,16 +226,32 @@ public:
     static const uint32_t kBufferSize = 1024; //!< Number of frames per buffer.
     static_assert(kBufferSize % BUFFER_SIZE == 0, "sai buffers must fit evenly in voice buffers");
 
+    enum BufferState : uint32_t
+    {
+        kBufferUnused,
+        kBufferStartFile,
+        kBufferPlaying,
+        kBufferReady,
+        kBufferFree,
+        kBufferReading,
+    };
+
     struct Buffer
     {
-        SamplerVoice * voice;
+        uint32_t number;
+        BufferState state;
         int16_t * data;
+        uint32_t startFrame;
         uint32_t frameCount;
         uint32_t readHead;
+        bool reread;
     };
 
     SamplerVoice();
-    ~SamplerVoice() {}
+    ~SamplerVoice()=default;
+
+    void set_number(uint32_t n) { _number = n; }
+    uint32_t get_number() const { return _number; }
 
     void set_led(LEDBase * led) { _led = led; }
     void set_file(WaveFile & file);
@@ -221,23 +270,29 @@ public:
     void enqueue_full_buffer(Buffer * buffer);
 
     WaveFile& get_wave_file() { return _wav; }
-    Stream& get_audio_stream() { return _data; }
+    WaveFile::AudioDataStream& get_audio_stream() { return _data; }
 
 protected:
+    friend class ReaderThread;
+
+    uint32_t _number;
     LEDBase * _led;
     WaveFile _wav;
     WaveFile::AudioDataStream _data;
     int16_t _bufferData[kBufferCount * kBufferSize];
     Buffer _buffer[kBufferCount];
-    SimpleQueue<Buffer*, kBufferCount> _fullBuffers;
-    SimpleQueue<Buffer*, kBufferCount> _emptyBuffers;
+    ProtectedQueue<Buffer*, kBufferCount> _fullBuffers;
+    ProtectedQueue<Buffer*, kBufferCount> _emptyBuffers;
+    Ar::Mutex _primeMutex;
     Buffer * _currentBuffer;
     uint32_t _activeBufferCount;
     uint32_t _totalSamples;
     uint32_t _samplesPlayed;
+    uint32_t _samplesRead;
     bool _isPlaying;
     bool _turnOnLedNextBuffer;
 
+    void queue_buffer_for_read(Buffer * buffer);
     Buffer * dequeue_next_buffer();
     void retire_buffer(Buffer * buffer);
 
@@ -253,7 +308,7 @@ class ReaderThread
 {
 public:
     ReaderThread() : _thread("reader", this, &ReaderThread::reader_thread, 120, kArSuspendThread), _queue("reader") {}
-    ~ReaderThread() {}
+    ~ReaderThread()=default;
 
     void start() { _thread.resume(); }
 
@@ -346,21 +401,16 @@ uint32_t ChannelCVGate::read()
 
     const uint32_t kAdcMax = 65536;
 
-    // Invert value to compensate for inverting opamp config;
-    value = kAdcMax - value;
+    if (!_isInverted)
+    {
+        // Invert value to compensate for inverting opamp config;
+        value = kAdcMax - value;
+    }
 
     if (_mode == Mode::kGate)
     {
         const uint32_t kThreshold = kAdcMax - (0.3 * (kAdcMax / 2));
-        uint32_t state;
-        if (_isInverted)
-        {
-            state = (value < (kAdcMax - kThreshold)) ? 1 : 0;
-        }
-        else
-        {
-            state = (value > kThreshold) ? 1 : 0;
-        }
+        uint32_t state = (value > kThreshold) ? 1 : 0;
 
         if (state == 0)
         {
@@ -528,19 +578,24 @@ SamplerVoice::SamplerVoice()
     _data(),
     _fullBuffers(),
     _emptyBuffers(),
+    _primeMutex("prime"),
     _currentBuffer(nullptr),
     _totalSamples(0),
     _samplesPlayed(0),
+    _samplesRead(0),
     _isPlaying(false),
     _turnOnLedNextBuffer(false)
 {
     int i;
     for (i = 0; i < kBufferCount; ++i)
     {
-        _buffer[i].voice = this;
+        _buffer[i].number = i;
+        _buffer[i].state = kBufferUnused;
         _buffer[i].data = &_bufferData[i * kBufferSize];
+        _buffer[i].startFrame = 0;
         _buffer[i].frameCount = kBufferSize;
         _buffer[i].readHead = 0;
+        _buffer[i].reread = false;
     }
 }
 
@@ -554,30 +609,50 @@ void SamplerVoice::set_file(WaveFile& file)
     _isPlaying = false;
 
     // Read file start buffer.
-    _emptyBuffers.put(&_buffer[0]);
-    g_readerThread.enqueue(this);
+    DEBUG_PRINTF(INIT_MASK, "V%d: set_file: queuing buffer %d for read\r\n", _number, 0);
+    _buffer[0].state = kBufferFree;
+    queue_buffer_for_read(&_buffer[0]);
 }
 
 void SamplerVoice::prime()
 {
-    // Clear ready buffers queue.
+    Ar::Mutex::Guard guard(_primeMutex);
+    DEBUG_PRINTF(QUEUE_MASK, "V%d: start prime\r\n", _number);
+
+    // Reset state.
+    _isPlaying = false;
+    _samplesPlayed = 0;
+    _samplesRead = kBufferSize;
+
+    // Clear buffers queues.
     _fullBuffers.clear();
+    _emptyBuffers.clear();
 
     // Playing will start from the file start buffer.
     _currentBuffer = &_buffer[0];
     _buffer[0].readHead = 0;
 
     // Set file read pointer to the start of the second buffer's worth of data.
-    uint32_t frameSize = _wav.get_frame_size();
-    _data.seek(kBufferSize * frameSize);
+//     uint32_t frameSize = _wav.get_frame_size();
+//     _data.seek(kBufferSize * frameSize);
 
     // Queue up the rest of the available buffers to be filled.
     int i;
     for (i = 1; i < _activeBufferCount; ++i)
     {
-        _emptyBuffers.put(&_buffer[i]);
-        g_readerThread.enqueue(this);
+        if (_buffer[i].state == kBufferReading)
+        {
+            DEBUG_PRINTF(QUEUE_MASK, "V%d: prime: marking b%d for reread\r\n", _number, i);
+            _buffer[i].reread = true;
+        }
+        else
+        {
+            DEBUG_PRINTF(QUEUE_MASK, "V%d: prime: queuing b%d for read\r\n", _number, i);
+            _buffer[i].startFrame = i * kBufferSize;
+            queue_buffer_for_read(&_buffer[i]);
+        }
     }
+    DEBUG_PRINTF(QUEUE_MASK, "V%d: end prime\r\n", _number);
 }
 
 void SamplerVoice::trigger()
@@ -585,21 +660,19 @@ void SamplerVoice::trigger()
     // Handle re-triggering while sample is already playing.
     if (_isPlaying)
     {
-        _emptyBuffers.clear();
+        DEBUG_PRINTF(RETRIG_MASK, "V%d: trigger while playing\r\n", _number);
 
         // Start playing over from file start.
         prime();
-
-        _samplesPlayed = 0;
 
         _led->off();
         _turnOnLedNextBuffer = true;
     }
     else
     {
-        _isPlaying = true;
         _led->on();
     }
+    _isPlaying = true;
 }
 
 SamplerVoice::Buffer * SamplerVoice::get_current_buffer()
@@ -611,11 +684,22 @@ SamplerVoice::Buffer * SamplerVoice::get_current_buffer()
     return _currentBuffer;
 }
 
+void SamplerVoice::queue_buffer_for_read(Buffer * buffer)
+{
+    buffer->reread = false;
+    buffer->state = kBufferFree;
+    _emptyBuffers.put(buffer);
+    g_readerThread.enqueue(this);
+}
+
 SamplerVoice::Buffer * SamplerVoice::get_empty_buffer()
 {
+    Ar::Mutex::Guard guard(_primeMutex);
+
     Buffer * buffer;
     if (_emptyBuffers.get(buffer))
     {
+        buffer->state = kBufferReading;
         return buffer;
     }
     else
@@ -630,15 +714,16 @@ void SamplerVoice::retire_buffer(Buffer * buffer)
 
     if (_samplesPlayed >= _totalSamples)
     {
-        _isPlaying = false;
-        _samplesPlayed = 0;
-        _currentBuffer = nullptr;
+        DEBUG_PRINTF(RETIRE_MASK, "V%d: retiring b%d; played %d (done)\r\n", _number, buffer->number, _samplesPlayed);
+//         _isPlaying = false;
+//         _currentBuffer = nullptr;
         _led->off();
 
         prime();
     }
     else
     {
+        DEBUG_PRINTF(RETIRE_MASK, "V%d: retiring b%d; played %d\r\n", _number, buffer->number, _samplesPlayed);
         if (_turnOnLedNextBuffer)
         {
             _turnOnLedNextBuffer = false;
@@ -648,9 +733,11 @@ void SamplerVoice::retire_buffer(Buffer * buffer)
         // Don't queue up file start buffer for reading.
         if (buffer != &_buffer[0])
         {
-            _emptyBuffers.put(buffer);
-            g_readerThread.enqueue(this);
+            DEBUG_PRINTF(RETIRE_MASK|QUEUE_MASK, "V%d: retire: queue b%d to read @ %d\r\n", _number, buffer->number, _samplesPlayed);
+            buffer->startFrame = _samplesRead;
+            queue_buffer_for_read(buffer);
         }
+
         dequeue_next_buffer();
     }
 }
@@ -660,13 +747,17 @@ SamplerVoice::Buffer * SamplerVoice::dequeue_next_buffer()
     Buffer * buffer;
     if (_fullBuffers.get(buffer))
     {
+        DEBUG_PRINTF(CURBUF_MASK, "V%d: current buffer = %d\r\n", _number, buffer->number);
         _currentBuffer = buffer;
-        return buffer;
     }
     else
     {
-        return nullptr;
+        DEBUG_PRINTF(ERROR_MASK, "V%d: *** NO READY BUFFERS ***\r\n", _number);
+        Ar::_halt();
+        _currentBuffer = nullptr;
     }
+    buffer->state = kBufferPlaying;
+    return _currentBuffer;
 }
 
 void SamplerVoice::enqueue_full_buffer(Buffer * buffer)
@@ -674,7 +765,19 @@ void SamplerVoice::enqueue_full_buffer(Buffer * buffer)
     assert(buffer);
     if (buffer != &_buffer[0])
     {
-        _fullBuffers.put(buffer);
+        if (buffer->reread)
+        {
+            DEBUG_PRINTF(QUEUE_MASK, "V%d: queuing b%d for reread\r\n", _number, buffer->number);
+            queue_buffer_for_read(buffer);
+        }
+        else
+        {
+            _samplesRead += buffer->frameCount;
+
+            buffer->state = kBufferReady;
+            DEBUG_PRINTF(QUEUE_MASK, "V%d: queuing b%d for play\r\n", _number, buffer->number);
+            _fullBuffers.put(buffer);
+        }
     }
 }
 
@@ -693,6 +796,7 @@ void ReaderThread::reader_thread()
         {
             continue;
         }
+        DEBUG_PRINTF(FILL_MASK, "R: filling b%d v%d @ %d\r\n", request->number, voice->get_number(), request->startFrame);
 
         // Figure out how much data to read.
         Stream& stream = voice->get_audio_stream();
@@ -711,6 +815,7 @@ void ReaderThread::reader_thread()
 
         // Read from sample file.
         uint32_t start = Microseconds::get();
+        stream.seek(request->startFrame * frameSize);
         uint32_t bytesRead = stream.read(bytesToRead, targetBuffer);
         uint32_t stop = Microseconds::get();
         uint32_t framesRead = bytesRead / frameSize;
@@ -739,6 +844,10 @@ void ReaderThread::reader_thread()
 
         request->readHead = 0;
         voice->enqueue_full_buffer(request);
+
+        uint32_t stop1 = Microseconds::get();
+        uint32_t delta1 = stop1 - start1;
+        DEBUG_PRINTF(TIME_MASK, "R: %d µs to fill b%d v%d\r\n", delta1, request->number, voice->get_number());
     }
 }
 
@@ -773,8 +882,7 @@ void scan_for_files()
                 {
                     g_voice[channel].set_file(wav);
 
-                    uint32_t frameCount =
-                        g_voice[channel].get_audio_stream().get_size() / wav.get_frame_size();
+                    uint32_t frameCount = g_voice[channel].get_audio_stream().get_frames();
 
                     DEBUG_PRINTF(INIT_MASK, "%s: %d Hz; %d bits; %d ch; %d bytes/frame; %d frames\r\n",
                         info.fname,
@@ -866,9 +974,13 @@ void init_thread(void * arg)
 
     flash_leds();
 
+    g_voice[0].set_number(0);
     g_voice[0].set_led(&g_ch1Led);
+    g_voice[1].set_number(1);
     g_voice[1].set_led(&g_ch2Led);
+    g_voice[2].set_number(2);
     g_voice[2].set_led(&g_ch3Led);
+    g_voice[3].set_number(3);
     g_voice[3].set_led(&g_ch4Led);
 
     init_audio_out();
