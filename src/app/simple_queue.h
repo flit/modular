@@ -47,7 +47,7 @@ public:
         _count(0)
     {
     }
-    ~SimpleQueue() {}
+    ~SimpleQueue()=default;
 
     bool is_empty() const { return _count == 0; }
     bool is_full() const { return _count == N; }
