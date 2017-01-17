@@ -59,6 +59,53 @@ using namespace slab;
 #define CHANNEL_NUM (2)
 #define BUFFER_NUM (3)
 
+#define ERROR_MASK (1<<0)
+#define INIT_MASK (1<<1)
+#define TRIG_MASK (1<<2)
+#define RETRIG_MASK (1<<3)
+#define QUEUE_MASK (1<<4)
+#define RETIRE_MASK (1<<5)
+#define CURBUF_MASK (1<<6)
+#define FILL_MASK (1<<7)
+#define TIME_MASK (1<<8)
+#define BUTTON_MASK (1<<9)
+
+#define ENABLE_DEBUG_PRINTF (1)
+#define DEBUG_PRINTF_MASK (ERROR_MASK|INIT_MASK|BUTTON_MASK|TRIG_MASK|RETRIG_MASK|FILL_MASK|TIME_MASK|QUEUE_MASK)
+
+template <uint32_t N>
+class SimpleString
+{
+public:
+    SimpleString() {}
+    SimpleString(const char * s)
+    {
+        strncpy(_string, s, N);
+    }
+    SimpleString(const SimpleString<N>& other)=default;
+    SimpleString& operator =(const SimpleString<N>& other)=default;
+    ~SimpleString()=default;
+
+    const char* get() const { return _string; }
+
+protected:
+    char _string[N];
+};
+
+#if ENABLE_DEBUG_PRINTF
+#define DEBUG_LOG_SIZE (48)
+char g_debugLogBuffer[DEBUG_LOG_SIZE];
+RingBuffer<SimpleString<DEBUG_LOG_SIZE>, 50> g_debugLog;
+#define DEBUG_PRINTF(f, m, ...) \
+    do { if ((f) & DEBUG_PRINTF_MASK) { \
+        snprintf(g_debugLogBuffer, sizeof(g_debugLogBuffer), "[%d] " m, Microseconds::get(), ##__VA_ARGS__); \
+        SimpleString<DEBUG_LOG_SIZE> _ds(g_debugLogBuffer); \
+        g_debugLog.put(_ds); \
+    } } while (0)
+#else
+#define DEBUG_PRINTF(f, m, ...)
+#endif
+
 //------------------------------------------------------------------------------
 // Prototypes
 //------------------------------------------------------------------------------
@@ -669,7 +716,7 @@ void ReaderThread::reader_thread()
         uint32_t framesRead = bytesRead / frameSize;
 
         uint32_t delta = stop - start;
-//         printf("%d: read %d bytes: %d µs\r\n", start, bytesRead, delta);
+        DEBUG_PRINTF(TIME_MASK, "R: read %d bytes in %d µs\r\n", bytesRead, delta);
 
         // For stereo data copy just the left channel into the voice buffer.
         if (channelCount == 2)
@@ -729,7 +776,7 @@ void scan_for_files()
                     uint32_t frameCount =
                         g_voice[channel].get_audio_stream().get_size() / wav.get_frame_size();
 
-                    printf("%s: %d Hz; %d bits; %d ch; %d bytes/frame; %d frames\r\n",
+                    DEBUG_PRINTF(INIT_MASK, "%s: %d Hz; %d bits; %d ch; %d bytes/frame; %d frames\r\n",
                         info.fname,
                         wav.get_sample_rate(),
                         wav.get_sample_size(),
@@ -742,7 +789,7 @@ void scan_for_files()
             }
             else
             {
-                printf("Failed to parse %s\r\n", info.fname);
+                DEBUG_PRINTF(ERROR_MASK, "Failed to parse %s\r\n", info.fname);
             }
         }
     }
@@ -750,12 +797,12 @@ void scan_for_files()
 
 void button1_handler(PORT_Type * port, uint32_t pin, void * userData)
 {
-    printf("button1\r\n");
+    DEBUG_PRINTF(BUTTON_MASK, "button1\r\n");
 }
 
 void button2_handler(PORT_Type * port, uint32_t pin, void * userData)
 {
-    printf("button2\r\n");
+    DEBUG_PRINTF(BUTTON_MASK, "button2\r\n");
 }
 
 void init_audio_out()
@@ -806,7 +853,7 @@ void init_fs()
     }
     else
     {
-        printf("fs init failed: %d\r\n", res);
+        DEBUG_PRINTF(ERROR_MASK, "fs init failed: %d\r\n", res);
     }
 }
 
@@ -815,7 +862,7 @@ void init_thread(void * arg)
     Microseconds::init();
     init_board();
 
-    printf("\r\nSAMPLBäR Initializing...\r\n");
+    DEBUG_PRINTF(INIT_MASK, "\r\nSAMPLBäR Initializing...\r\n");
 
     flash_leds();
 
@@ -842,7 +889,7 @@ void init_thread(void * arg)
     g_audioOut.start();
     g_cvThread.resume();
 
-    printf("done.\r\n");
+    DEBUG_PRINTF(INIT_MASK, "done.\r\n");
 
 //     delete g_initThread;
 }
