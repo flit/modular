@@ -967,9 +967,6 @@ void init_fs()
 
 void init_thread(void * arg)
 {
-    Microseconds::init();
-    init_board();
-
     DEBUG_PRINTF(INIT_MASK, "\r\nSAMPLBäR Initializing...\r\n");
 
     flash_leds();
@@ -1008,8 +1005,10 @@ void init_thread(void * arg)
 
 int main(void)
 {
-    g_initThread = new Ar::Thread("init", init_thread, 0, NULL, 2500, 60, kArStartThread);
+    Microseconds::init();
+    init_board();
 
+    g_initThread = new Ar::Thread("init", init_thread, 0, NULL, 2500, 60, kArStartThread);
     ar_kernel_run();
 }
 
