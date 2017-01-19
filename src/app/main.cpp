@@ -161,19 +161,19 @@ void flash_leds()
     for (which = 0; which < 4; ++which)
     {
         g_channelLeds[which]->on();
-        Ar::Thread::sleep(250);
+        Ar::Thread::sleep(100);
         g_channelLeds[which]->off();
     }
 
     for (which = 2; which >= 0; --which)
     {
         g_channelLeds[which]->on();
-        Ar::Thread::sleep(250);
+        Ar::Thread::sleep(100);
         g_channelLeds[which]->off();
     }
 
-    // sleep 250 ms
-    Ar::Thread::sleep(250);
+    // sleep 100 ms
+    Ar::Thread::sleep(100);
 
     // all on
     for (which = 0; which < 4; ++which)
@@ -181,8 +181,8 @@ void flash_leds()
         g_channelLeds[which]->on();
     }
 
-    // sleep 250 ms
-    Ar::Thread::sleep(250);
+    // sleep 100 ms
+    Ar::Thread::sleep(100);
 
     // all off
     for (which = 0; which < 4; ++which)
