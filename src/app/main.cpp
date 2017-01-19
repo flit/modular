@@ -610,7 +610,6 @@ void SamplerVoice::set_file(WaveFile& file)
 
     // Read file start buffer.
     DEBUG_PRINTF(INIT_MASK, "V%d: set_file: queuing buffer %d for read\r\n", _number, 0);
-    _buffer[0].state = kBufferFree;
     queue_buffer_for_read(&_buffer[0]);
 }
 
@@ -631,10 +630,6 @@ void SamplerVoice::prime()
     // Playing will start from the file start buffer.
     _currentBuffer = &_buffer[0];
     _buffer[0].readHead = 0;
-
-    // Set file read pointer to the start of the second buffer's worth of data.
-//     uint32_t frameSize = _wav.get_frame_size();
-//     _data.seek(kBufferSize * frameSize);
 
     // Queue up the rest of the available buffers to be filled.
     int i;
@@ -715,8 +710,6 @@ void SamplerVoice::retire_buffer(Buffer * buffer)
     if (_samplesPlayed >= _totalSamples)
     {
         DEBUG_PRINTF(RETIRE_MASK, "V%d: retiring b%d; played %d (done)\r\n", _number, buffer->number, _samplesPlayed);
-//         _isPlaying = false;
-//         _currentBuffer = nullptr;
         _led->off();
 
         prime();
