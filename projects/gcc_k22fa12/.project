@@ -71,16 +71,6 @@
 			<locationURI>PARENT-2-PROJECT_LOC/src/app/analog_in.h</locationURI>
 		</link>
 		<link>
-			<name>app/asr_envelope.cpp</name>
-			<type>1</type>
-			<locationURI>PARENT-2-PROJECT_LOC/src/app/asr_envelope.cpp</locationURI>
-		</link>
-		<link>
-			<name>app/asr_envelope.h</name>
-			<type>1</type>
-			<locationURI>PARENT-2-PROJECT_LOC/src/app/asr_envelope.h</locationURI>
-		</link>
-		<link>
 			<name>app/audio_buffer.cpp</name>
 			<type>1</type>
 			<locationURI>PARENT-2-PROJECT_LOC/src/app/audio_buffer.cpp</locationURI>
@@ -89,26 +79,6 @@
 			<name>app/audio_buffer.h</name>
 			<type>1</type>
 			<locationURI>PARENT-2-PROJECT_LOC/src/app/audio_buffer.h</locationURI>
-		</link>
-		<link>
-			<name>app/audio_filter.cpp</name>
-			<type>1</type>
-			<locationURI>PARENT-2-PROJECT_LOC/src/app/audio_filter.cpp</locationURI>
-		</link>
-		<link>
-			<name>app/audio_filter.h</name>
-			<type>1</type>
-			<locationURI>PARENT-2-PROJECT_LOC/src/app/audio_filter.h</locationURI>
-		</link>
-		<link>
-			<name>app/audio_mixer.cpp</name>
-			<type>1</type>
-			<locationURI>PARENT-2-PROJECT_LOC/src/app/audio_mixer.cpp</locationURI>
-		</link>
-		<link>
-			<name>app/audio_mixer.h</name>
-			<type>1</type>
-			<locationURI>PARENT-2-PROJECT_LOC/src/app/audio_mixer.h</locationURI>
 		</link>
 		<link>
 			<name>app/audio_output.cpp</name>
@@ -121,39 +91,14 @@
 			<locationURI>PARENT-2-PROJECT_LOC/src/app/audio_output.h</locationURI>
 		</link>
 		<link>
-			<name>app/audio_output_converter.cpp</name>
-			<type>1</type>
-			<locationURI>PARENT-2-PROJECT_LOC/src/app/audio_output_converter.cpp</locationURI>
-		</link>
-		<link>
-			<name>app/audio_output_converter.h</name>
-			<type>1</type>
-			<locationURI>PARENT-2-PROJECT_LOC/src/app/audio_output_converter.h</locationURI>
-		</link>
-		<link>
-			<name>app/audio_ramp.cpp</name>
-			<type>1</type>
-			<locationURI>PARENT-2-PROJECT_LOC/src/app/audio_ramp.cpp</locationURI>
-		</link>
-		<link>
-			<name>app/audio_ramp.h</name>
-			<type>1</type>
-			<locationURI>PARENT-2-PROJECT_LOC/src/app/audio_ramp.h</locationURI>
-		</link>
-		<link>
 			<name>app/board_k22fa12</name>
 			<type>2</type>
 			<locationURI>virtual:/virtual</locationURI>
 		</link>
 		<link>
-			<name>app/delay_line.cpp</name>
+			<name>app/debug_log.h</name>
 			<type>1</type>
-			<locationURI>PARENT-2-PROJECT_LOC/src/app/delay_line.cpp</locationURI>
-		</link>
-		<link>
-			<name>app/delay_line.h</name>
-			<type>1</type>
-			<locationURI>PARENT-2-PROJECT_LOC/src/app/delay_line.h</locationURI>
+			<locationURI>PARENT-2-PROJECT_LOC/src/app/debug_log.h</locationURI>
 		</link>
 		<link>
 			<name>app/file_system.cpp</name>
@@ -164,6 +109,11 @@
 			<name>app/file_system.h</name>
 			<type>1</type>
 			<locationURI>PARENT-2-PROJECT_LOC/src/app/file_system.h</locationURI>
+		</link>
+		<link>
+			<name>app/led.h</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/src/app/led.h</locationURI>
 		</link>
 		<link>
 			<name>app/main.cpp</name>
@@ -196,19 +146,54 @@
 			<locationURI>PARENT-2-PROJECT_LOC/src/app/pin_irq_manager.h</locationURI>
 		</link>
 		<link>
-			<name>app/rbj_filter.cpp</name>
+			<name>app/protected_queue.h</name>
 			<type>1</type>
-			<locationURI>PARENT-2-PROJECT_LOC/src/app/rbj_filter.cpp</locationURI>
+			<locationURI>PARENT-2-PROJECT_LOC/src/app/protected_queue.h</locationURI>
 		</link>
 		<link>
-			<name>app/rbj_filter.h</name>
+			<name>app/reader_thread.cpp</name>
 			<type>1</type>
-			<locationURI>PARENT-2-PROJECT_LOC/src/app/rbj_filter.h</locationURI>
+			<locationURI>PARENT-2-PROJECT_LOC/src/app/reader_thread.cpp</locationURI>
 		</link>
 		<link>
-			<name>app/reverb_filter.h</name>
+			<name>app/reader_thread.h</name>
 			<type>1</type>
-			<locationURI>PARENT-2-PROJECT_LOC/src/app/reverb_filter.h</locationURI>
+			<locationURI>PARENT-2-PROJECT_LOC/src/app/reader_thread.h</locationURI>
+		</link>
+		<link>
+			<name>app/ring_buffer.h</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/src/app/ring_buffer.h</locationURI>
+		</link>
+		<link>
+			<name>app/sampler_voice.cpp</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/src/app/sampler_voice.cpp</locationURI>
+		</link>
+		<link>
+			<name>app/sampler_voice.h</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/src/app/sampler_voice.h</locationURI>
+		</link>
+		<link>
+			<name>app/simple_queue.h</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/src/app/simple_queue.h</locationURI>
+		</link>
+		<link>
+			<name>app/simple_string.h</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/src/app/simple_string.h</locationURI>
+		</link>
+		<link>
+			<name>app/stream.h</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/src/app/stream.h</locationURI>
+		</link>
+		<link>
+			<name>app/utility.h</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/src/app/utility.h</locationURI>
 		</link>
 		<link>
 			<name>app/wav_file.cpp</name>
