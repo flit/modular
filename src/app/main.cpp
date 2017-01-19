@@ -333,6 +333,8 @@ LED<PIN_CH4_LED_GPIO_BASE, PIN_CH4_LED> g_ch4Led;
 LEDBase * g_channelLeds[] = { &g_ch1Led, &g_ch2Led, &g_ch3Led, &g_ch4Led};
 SamplerVoice g_voice[4];
 ReaderThread g_readerThread;
+LED<PIN_BUTTON1_LED_GPIO_BASE, PIN_BUTTON1_LED> g_button1Led;
+bool g_button1LedState = false;
 
 //------------------------------------------------------------------------------
 // Code
@@ -906,6 +908,15 @@ void scan_for_files()
 void button1_handler(PORT_Type * port, uint32_t pin, void * userData)
 {
     DEBUG_PRINTF(BUTTON_MASK, "button1\r\n");
+    if (g_button1LedState)
+    {
+        g_button1Led.off();
+    }
+    else
+    {
+        g_button1Led.on();
+    }
+    g_button1LedState = !g_button1LedState;
 }
 
 void button2_handler(PORT_Type * port, uint32_t pin, void * userData)
