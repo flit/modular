@@ -289,6 +289,7 @@ protected:
     uint32_t _totalSamples;
     uint32_t _samplesPlayed;
     uint32_t _samplesRead;
+    uint32_t _samplesQueued;
     bool _isPlaying;
     bool _turnOnLedNextBuffer;
 
@@ -583,6 +584,7 @@ SamplerVoice::SamplerVoice()
     _totalSamples(0),
     _samplesPlayed(0),
     _samplesRead(0),
+    _samplesQueued(0),
     _isPlaying(false),
     _turnOnLedNextBuffer(false)
 {
@@ -622,6 +624,7 @@ void SamplerVoice::prime()
     _isPlaying = false;
     _samplesPlayed = 0;
     _samplesRead = kBufferSize;
+    _samplesQueued = kBufferSize;
 
     // Clear buffers queues.
     _fullBuffers.clear();
@@ -681,8 +684,11 @@ SamplerVoice::Buffer * SamplerVoice::get_current_buffer()
 
 void SamplerVoice::queue_buffer_for_read(Buffer * buffer)
 {
+    _samplesQueued += buffer->frameCount;
+
     buffer->reread = false;
     buffer->state = kBufferFree;
+
     _emptyBuffers.put(buffer);
     g_readerThread.enqueue(this);
 }
@@ -724,10 +730,11 @@ void SamplerVoice::retire_buffer(Buffer * buffer)
         }
 
         // Don't queue up file start buffer for reading.
-        if (buffer != &_buffer[0])
+        if (buffer != &_buffer[0] && _samplesQueued < _totalSamples)
         {
             DEBUG_PRINTF(RETIRE_MASK|QUEUE_MASK, "V%d: retire: queue b%d to read @ %d\r\n", _number, buffer->number, _samplesPlayed);
-            buffer->startFrame = _samplesRead;
+            buffer->startFrame = _samplesQueued;
+            buffer->frameCount = min(kBufferSize, _totalSamples - _samplesQueued);
             queue_buffer_for_read(buffer);
         }
 
