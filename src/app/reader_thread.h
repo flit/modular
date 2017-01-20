@@ -84,6 +84,7 @@ protected:
     void reader_thread();
 
     SamplerVoice * dequeue();
+    void insert_before(QueueNode * node, QueueNode * beforeNode);
     QueueNode * get_free_node();
     void add_free_node(QueueNode * node);
 };

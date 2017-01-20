@@ -75,26 +75,78 @@ void ReaderThread::enqueue(SamplerVoice * request)
 
     node->voice = request;
 
-    if (_first)
+    // Find where to insert. Insert in the earliest voice number sequence that is missing
+    // this voice.
+    uint32_t requestVoiceNumber = request->get_number();
+    uint32_t requestVoiceMask = 1 << requestVoiceNumber;
+    uint32_t thisSequenceVoicesMask = 0;
+    QueueNode * iter = _first;
+    QueueNode * prev = nullptr;
+    while (iter)
     {
-        _last->next = node;
-        node->previous = _last;
-        node->next = nullptr;
-        _last = node;
+        assert(iter->voice);
+        uint32_t iterVoiceNumber = iter->voice->get_number();
+        uint32_t iterVoiceMask = 1 << iterVoiceNumber;
+
+        // Starting a new sequence because we've seen this voice before?
+        if (thisSequenceVoicesMask & iterVoiceMask)
+        {
+            // Was the request voice number present in the previous sequence?
+            if (!(thisSequenceVoicesMask & requestVoiceMask))
+            {
+                // No, so insert the request prior to this node, at the end of the previous sequence.
+                break;
+            }
+
+            thisSequenceVoicesMask = 0;
+        }
+
+        thisSequenceVoicesMask |= iterVoiceMask;
+
+        prev = iter;
+        iter = iter->next;
     }
-    else
-    {
-        // Nothing in the queue.
-        assert(!_last);
-        node->next = nullptr;
-        node->previous = nullptr;
-        _first = node;
-        _last = node;
-    }
+
+    insert_before(node, iter);
 
     // Increment semaphore count to match queue size.
     ++_count;
     _sem.put();
+}
+
+void ReaderThread::insert_before(QueueNode * node, QueueNode * beforeNode)
+{
+    if (beforeNode)
+    {
+        node->next = beforeNode;
+        node->previous = beforeNode->previous;
+        if (beforeNode->previous)
+        {
+            beforeNode->previous->next = node;
+        }
+        beforeNode->previous = node;
+
+        if (beforeNode == _first)
+        {
+            _first = node;
+        }
+    }
+    else
+    {
+        // Insert at end of list, or the list is empty.
+        node->previous = _last;
+        node->next = nullptr;
+
+        if (_last)
+        {
+            _last->next = node;
+        }
+        else
+        {
+            _first = node;
+        }
+        _last = node;
+    }
 }
 
 SamplerVoice * ReaderThread::dequeue()
@@ -155,12 +207,10 @@ void ReaderThread::add_free_node(QueueNode * node)
 
 void ReaderThread::reader_thread()
 {
-    while (true)
+    while (_sem.get() == kArSuccess)
     {
-        _sem.get();
         // Pull a voice that needs a buffer filled from the queue.
-        SamplerVoice * voice;// = _queue.receive();
-        voice = dequeue();
+        SamplerVoice * voice = dequeue();
         uint32_t start1 = Microseconds::get();
         assert(voice);
         assert(voice->is_valid());
