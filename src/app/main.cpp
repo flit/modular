@@ -133,7 +133,7 @@ public:
     SamplerSynth() {}
     virtual ~SamplerSynth()=default;
 
-    virtual void fill_buffer(uint32_t firstChannel, AudioOutput::Buffer & buffer) override;
+    virtual void render(uint32_t firstChannel, AudioOutput::Buffer & buffer) override;
 
 protected:
 };
@@ -315,7 +315,7 @@ void cv_thread(void * arg)
 #define SQUARE_OUT (0)
 
 //! Runs on the audio thread.
-void SamplerSynth::fill_buffer(uint32_t firstChannel, AudioOutput::Buffer & buffer)
+void SamplerSynth::render(uint32_t firstChannel, AudioOutput::Buffer & buffer)
 {
     int16_t * data = (int16_t *)buffer.data;;
     int frameCount = buffer.dataSize / sizeof(int16_t) / CHANNEL_NUM;
@@ -336,8 +336,8 @@ void SamplerSynth::fill_buffer(uint32_t firstChannel, AudioOutput::Buffer & buff
         }
     }
 #else // SQUARE_OUT
-    g_voice[firstChannel].fill(data, frameCount);
-    g_voice[firstChannel + 1].fill(data + 1, frameCount);
+    g_voice[firstChannel].render(data, frameCount);
+    g_voice[firstChannel + 1].render(data + 1, frameCount);
 #endif // SQUARE_OUT
 }
 

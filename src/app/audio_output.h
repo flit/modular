@@ -59,7 +59,7 @@ public:
     class Source
     {
     public:
-        virtual void fill_buffer(uint32_t firstChannel, Buffer & buffer)=0;
+        virtual void render(uint32_t firstChannel, Buffer & buffer)=0;
     };
 
     AudioOutput();

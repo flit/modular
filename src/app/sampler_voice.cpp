@@ -38,7 +38,7 @@ using namespace slab;
 // Code
 //------------------------------------------------------------------------------
 
-void SamplerVoice::fill(int16_t * data, uint32_t frameCount)
+void SamplerVoice::render(int16_t * data, uint32_t frameCount)
 {
     Buffer * voiceBuffer = nullptr;
     if (is_valid() && is_playing())

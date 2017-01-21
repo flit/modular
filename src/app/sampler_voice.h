@@ -89,7 +89,7 @@ public:
     void trigger();
     bool is_playing() { return _isPlaying; }
 
-    void fill(int16_t * data, uint32_t frameCount);
+    void render(int16_t * data, uint32_t frameCount);
 
     Buffer * get_current_buffer();
     Buffer * get_empty_buffer();

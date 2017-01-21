@@ -120,7 +120,7 @@ void AudioOutput::audio_thread()
             m_freeBufferQueue.get(buf);
             assert(buf);
 
-            m_source->fill_buffer(i * kChannelsPerBuffer, *buf);
+            m_source->render(i * kChannelsPerBuffer, *buf);
 
             send(*buf, i);
         }
@@ -145,7 +145,7 @@ void AudioOutput::audio_thread()
             m_freeBufferQueue.get(buf);
             assert(buf);
 
-            m_source->fill_buffer(i * kChannelsPerBuffer, *buf);
+            m_source->render(i * kChannelsPerBuffer, *buf);
 
             send(*buf, i);
         }
