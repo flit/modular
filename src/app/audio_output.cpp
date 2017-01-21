@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015 Immo Software
+ * Copyright (c) 2015-2017 Immo Software
  *
  * Redistribution and use in source and binary forms, with or without modification,
  * are permitted provided that the following conditions are met:
@@ -33,37 +33,60 @@
 
 using namespace slab;
 
+#define EDMA_TRANSFER_ENABLED_MASK 0x80U
+
 //------------------------------------------------------------------------------
 // Code
 //------------------------------------------------------------------------------
+
+AudioOutput::AudioOutput()
+{
+}
 
 void AudioOutput::init(const sai_transfer_format_t * format)
 {
     m_format = *format;
     m_bufferCount = 0;
     m_transferDone.init("txdone", 0);
-    m_source = NULL;
+    m_source = nullptr;
 
-    // Create EDMA handle
+    // Init eDMA.
     edma_config_t dmaConfig = {0};
     EDMA_GetDefaultConfig(&dmaConfig);
     EDMA_Init(DMA0, &dmaConfig);
-    EDMA_CreateHandle(&m_dmaHandle, DMA0, 0);
 
+    // Init DMAMUX and route SAI TX request to the first DMA channel.
     DMAMUX_Init(DMAMUX0);
-    DMAMUX_SetSource(DMAMUX0, 0, kDmaRequestMux0I2S0Tx & 0xff);
-    DMAMUX_EnableChannel(DMAMUX0, 0);
+    DMAMUX_SetSource(DMAMUX0, kFirstDmaChannel, kDmaRequestMux0I2S0Tx & 0xff);
+    DMAMUX_EnableChannel(DMAMUX0, kFirstDmaChannel);
 
-    // Init SAI module
+    // Create DMA queues.
+    int i;
+    for (i = 0; i < kDmaChannelCount; ++i)
+    {
+        DmaQueue * dma = &m_dma[i];
+
+        memset(dma, 0, sizeof(*dma));
+        dma->owner = this;
+        EDMA_CreateHandle(&m_dma[0].handle, DMA0, kFirstDmaChannel + i);
+        EDMA_SetCallback(&m_dma[0].handle, dma_callback_stub, &m_dma[0]);
+        EDMA_InstallTCDMemory(&m_dma[0].handle, &m_dma[0].tcd[0], kDmaQueueSize);
+    }
+
+    // Init SAI module.
     sai_config_t saiConfig;
     SAI_TxGetDefaultConfig(&saiConfig);
     saiConfig.protocol = kSAI_BusLeftJustified;
     saiConfig.masterSlave = kSAI_Master;
     SAI_TxInit(I2S0, &saiConfig);
-    SAI_TransferTxCreateHandleEDMA(I2S0, &m_txHandle, sai_callback, &m_transferDone, &m_dmaHandle);
 
+    // Configure the SAI audio format.
     uint32_t mclkSourceClockHz = CLOCK_GetFreq(kCLOCK_CoreSysClk);
-    SAI_TransferTxSetFormatEDMA(I2S0, &m_txHandle, &m_format, mclkSourceClockHz, m_format.masterClockHz);
+    SAI_TxSetFormat(I2S0, &m_format, mclkSourceClockHz, m_format.masterClockHz);
+
+    // Get the transfer size from format.
+    m_bytesPerSample = m_format.bitWidth / 8;
+    m_minorLoopCount = FSL_FEATURE_SAI_FIFO_COUNT - m_format.watermark;
 
     // Create audio thread.
     m_audioThread.init("audio", this, &AudioOutput::audio_thread, 180, kArSuspendThread);
@@ -71,9 +94,10 @@ void AudioOutput::init(const sai_transfer_format_t * format)
 
 void AudioOutput::add_buffer(Buffer * newBuffer)
 {
+    assert((m_bufferCount + 1) <= kMaxBufferCount);
     m_buffers[m_bufferCount] = *newBuffer;
+    m_freeBufferQueue.put(&m_buffers[m_bufferCount]);
     ++m_bufferCount;
-    assert(m_bufferCount <= kMaxBufferCount);
 }
 
 void AudioOutput::start()
@@ -83,52 +107,248 @@ void AudioOutput::start()
 
 void AudioOutput::audio_thread()
 {
-    sai_transfer_t xfer;
-    uint32_t currentBuffer = 0;
-    Buffer buf;
+    assert(m_source);
 
-    // Pre-fill and queue all buffers.
+    Buffer *buf;
+
+    // Prime all buffers.
     int i;
-    for (i = 0; i < m_bufferCount; i ++)
+    while (!m_freeBufferQueue.is_empty())
     {
-        buf.data = m_buffers[i].data;
-        buf.dataSize = m_buffers[i].dataSize;
-        if (m_source)
+        for (i = 0; i < kDmaChannelCount; ++i)
         {
-            m_source->fill_buffer(i, buf);
-        }
+            m_freeBufferQueue.get(buf);
+            assert(buf);
 
-        xfer.data = buf.data;
-        xfer.dataSize = buf.dataSize;
-        SAI_TransferSendEDMA(I2S0, &m_txHandle, &xfer);
+            m_source->fill_buffer(i * kChannelsPerBuffer, *buf);
+
+            send(*buf, i);
+        }
     }
 
+    // Start DMA transfer.
+    EDMA_StartTransfer(&m_dma[0].handle);
+    EDMA_StartTransfer(&m_dma[1].handle);
+
+    // Enable SAI DMA and TX clock.
+    SAI_TxEnableDMA(I2S0, kSAI_FIFORequestDMAEnable, true);
+    SAI_TxEnable(I2S0, true);
+
     // Wait for buffers to complete, then refill and enqueue them.
-    while (1)
+    while (true)
     {
-        // Block until the semaphore is put by the SAI transfer complete callback.
-        m_transferDone.get();
-
-        buf.data = m_buffers[currentBuffer].data;
-        buf.dataSize = m_buffers[currentBuffer].dataSize;
-        if (m_source)
+        for (i = 0; i < kDmaChannelCount; ++i)
         {
-            m_source->fill_buffer(currentBuffer, buf);
+            // Block until the semaphore is put by the DMA completion callback.
+            m_transferDone.get();
+
+            m_freeBufferQueue.get(buf);
+            assert(buf);
+
+            m_source->fill_buffer(i * kChannelsPerBuffer, *buf);
+
+            send(*buf, i);
         }
-
-        xfer.data = buf.data;
-        xfer.dataSize = buf.dataSize;
-        SAI_TransferSendEDMA(I2S0, &m_txHandle, &xfer);
-
-        currentBuffer = (currentBuffer + 1) % m_bufferCount;
     }
 }
 
-void AudioOutput::sai_callback(I2S_Type *base, sai_edma_handle_t *handle, status_t status, void *userData)
+void AudioOutput::dma_callback(DmaQueue * dmaQueue, bool done, uint32_t tcds)
 {
-    Ar::Semaphore * sem = (Ar::Semaphore *)userData;
-    assert(sem);
-    sem->put();
+    // Put the audio buffer back in the free queue.
+    Buffer * buf;
+    dmaQueue->queuedBuffers.get(buf);
+    m_freeBufferQueue.put(buf);
+
+    // Release the thread.
+    m_transferDone.put();
+}
+
+void AudioOutput::dma_callback_stub(edma_handle_t *handle, void *userData, bool done, uint32_t tcds)
+{
+    DmaQueue * dmaQueue = reinterpret_cast<DmaQueue*>(userData);
+    assert(dmaQueue);
+    assert(dmaQueue->owner);
+    assert(handle == &dmaQueue->handle);
+    dmaQueue->owner->dma_callback(dmaQueue, done, tcds);
+}
+
+void AudioOutput::send(Buffer& buffer, uint32_t txChannel)
+{
+    assert(buffer.data && buffer.dataSize);
+
+    DmaQueue * dmaQueue = &m_dma[txChannel];
+
+    // Place the buffer in the queue of buffers owned by this DMA.
+    dmaQueue->queuedBuffers.put(&buffer);
+
+    // Prepare edma transfer config.
+    edma_transfer_config_t config = {0};
+    uint32_t destAddr = SAI_TxGetDataRegisterAddress(I2S0, txChannel);
+    EDMA_PrepareTransfer(&config,
+        buffer.data,                // source addr
+        m_bytesPerSample,            // source width
+        (void *)destAddr,           // dest addr
+        m_bytesPerSample,            // dest width
+        m_minorLoopCount * m_bytesPerSample,  // bytes per request
+        buffer.dataSize,            // total bytes
+        kEDMA_MemoryToPeripheral);  // mode
+
+    // Fill in TCD.
+    EDMA_TcdReset(&m_sendTcd);
+    EDMA_TcdSetTransferConfig(&m_sendTcd, &config, NULL);
+
+    // Link channel 1 to channel 0.
+    if (txChannel == 0)
+    {
+        EDMA_TcdSetChannelLink(&m_sendTcd, kEDMA_MinorLink, kFirstDmaChannel + 1);
+    }
+
+    // Add TCD to DMA queue.
+    enqueue_tcd(&dmaQueue->handle, &m_sendTcd);
+}
+
+//! This is a modified EDMA_SubmitTransfer() that takes a predefined TCD instead of a
+//! edma_transfer_config_t struct.
+status_t AudioOutput::enqueue_tcd(edma_handle_t *handle, const edma_tcd_t *tcd)
+{
+    assert(handle != NULL);
+
+    volatile edma_tcd_t *tcdRegs = (volatile edma_tcd_t *)&handle->base->TCD[handle->channel];
+
+    uint32_t primask;
+    uint32_t csr;
+    int8_t currentTcdIndex;
+    int8_t previousTcdIndex;
+    int8_t nextTcdIndex;
+    edma_tcd_t * currentTcd;
+    edma_tcd_t * nextTcd;
+    edma_tcd_t * previousTcd;
+
+    /* Check if tcd pool is full. */
+    primask = DisableGlobalIRQ();
+    if (handle->tcdUsed >= handle->tcdSize)
+    {
+        EnableGlobalIRQ(primask);
+
+        return kStatus_EDMA_QueueFull;
+    }
+    currentTcdIndex = handle->tail;
+    handle->tcdUsed++;
+
+    /* Calculate index of next TCD */
+    nextTcdIndex = currentTcdIndex + 1U;
+    if (nextTcdIndex == handle->tcdSize)
+    {
+        nextTcdIndex = 0U;
+    }
+
+    /* Advance queue tail index */
+    handle->tail = nextTcdIndex;
+    EnableGlobalIRQ(primask);
+
+    /* Calculate index of previous TCD */
+    previousTcdIndex = currentTcdIndex ? currentTcdIndex - 1U : handle->tcdSize - 1U;
+
+    currentTcd = &handle->tcdPool[currentTcdIndex];
+    nextTcd = &handle->tcdPool[nextTcdIndex];
+    previousTcd = &handle->tcdPool[previousTcdIndex];
+
+    /* Configure current TCD block. */
+    memcpy(currentTcd, tcd, sizeof(edma_tcd_t));
+
+    /* Enable major interrupt */
+    currentTcd->CSR |= DMA_CSR_INTMAJOR_MASK;
+
+    /* Link current TCD with next TCD for identification of current TCD */
+    currentTcd->DLAST_SGA = (uint32_t)nextTcd;
+
+    /* Chain from previous descriptor unless tcd pool size is 1(this descriptor is its own predecessor). */
+    if (currentTcd != previousTcd)
+    {
+        /* Enable scatter/gather feature in the previous TCD block. */
+        csr = (previousTcd->CSR | DMA_CSR_ESG_MASK) & ~DMA_CSR_DREQ_MASK;
+        previousTcd->CSR = csr;
+
+        /*
+            Check if the TCD blcok in the registers is the previous one (points to current TCD block). It
+            is used to check if the previous TCD linked has been loaded in TCD register. If so, it need to
+            link the TCD register in case link the current TCD with the dead chain when TCD loading occurs
+            before link the previous TCD block.
+        */
+        if (tcdRegs->DLAST_SGA == (uint32_t)currentTcd)
+        {
+            /* Enable scatter/gather also in the TCD registers. */
+            csr = (tcdRegs->CSR | DMA_CSR_ESG_MASK) & ~DMA_CSR_DREQ_MASK;
+
+            /* Must write the CSR register one-time, because the transfer maybe finished anytime. */
+            tcdRegs->CSR = csr;
+
+            /*
+                It is very important to check the ESG bit!
+                Because this hardware design: if DONE bit is set, the ESG bit can not be set. So it can
+                be used to check if the dynamic TCD link operation is successful. If ESG bit is not set
+                and the DLAST_SGA is not the next TCD address(it means the dynamic TCD link succeed and
+                the current TCD block has been loaded into TCD registers), it means transfer finished
+                and TCD link operation fail, so must install TCD content into TCD registers and enable
+                transfer again. And if ESG is set, it means transfer has notfinished, so TCD dynamic
+                link succeed.
+            */
+            if (tcdRegs->CSR & DMA_CSR_ESG_MASK)
+            {
+                return kStatus_Success;
+            }
+
+            /*
+                Check whether the current TCD block is already loaded in the TCD registers. It is another
+                condition when ESG bit is not set: it means the dynamic TCD link succeed and the current
+                TCD block has been loaded into TCD registers.
+            */
+            if (tcdRegs->DLAST_SGA == (uint32_t)nextTcd)
+            {
+                return kStatus_Success;
+            }
+
+            /*
+                If go to this, means the previous transfer finished, and the DONE bit is set.
+                So shall configure TCD registers.
+            */
+        }
+        else if (tcdRegs->DLAST_SGA != 0)
+        {
+            /* The current TCD block has been linked successfully. */
+            return kStatus_Success;
+        }
+        else
+        {
+            /*
+                DLAST_SGA is 0 and it means the first submit transfer, so shall configure
+                TCD registers.
+            */
+        }
+    }
+
+    /* Push tcd into hardware TCD register */
+    tcdRegs->SADDR = currentTcd->SADDR;
+    tcdRegs->SOFF = currentTcd->SOFF;
+    tcdRegs->ATTR = currentTcd->ATTR;
+    tcdRegs->NBYTES = currentTcd->NBYTES;
+    tcdRegs->SLAST = currentTcd->SLAST;
+    tcdRegs->DADDR = currentTcd->DADDR;
+    tcdRegs->DOFF = currentTcd->DOFF;
+    tcdRegs->CITER = currentTcd->CITER;
+    tcdRegs->DLAST_SGA = currentTcd->DLAST_SGA;
+    /* Clear DONE bit first, otherwise ESG cannot be set */
+    tcdRegs->CSR = 0;
+    tcdRegs->CSR = currentTcd->CSR;
+    tcdRegs->BITER = currentTcd->BITER;
+
+    /* Enable channel request again. */
+    if (handle->flags & EDMA_TRANSFER_ENABLED_MASK)
+    {
+        handle->base->SERQ = DMA_SERQ_SERQ(handle->channel);
+    }
+
+    return kStatus_Success;
 }
 
 //------------------------------------------------------------------------------

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016 Chris Reed
+ * Copyright (c) 2016-2017 Chris Reed
  *
  * Redistribution and use in source and binary forms, with or without modification,
  * are permitted provided that the following conditions are met:
@@ -59,7 +59,7 @@ using namespace slab;
 #define OVER_SAMPLE_RATE (256)
 #define BUFFER_SIZE (256)
 #define CHANNEL_NUM (2)
-#define BUFFER_NUM (3)
+#define BUFFER_NUM (6)
 
 //------------------------------------------------------------------------------
 // Prototypes
@@ -133,7 +133,7 @@ public:
     SamplerSynth() {}
     virtual ~SamplerSynth()=default;
 
-    virtual void fill_buffer(uint32_t bufferIndex, AudioOutput::Buffer & buffer) override;
+    virtual void fill_buffer(uint32_t firstChannel, AudioOutput::Buffer & buffer) override;
 
 protected:
 };
@@ -315,7 +315,7 @@ void cv_thread(void * arg)
 #define SQUARE_OUT (0)
 
 //! Runs on the audio thread.
-void SamplerSynth::fill_buffer(uint32_t bufferIndex, AudioOutput::Buffer & buffer)
+void SamplerSynth::fill_buffer(uint32_t firstChannel, AudioOutput::Buffer & buffer)
 {
     int16_t * data = (int16_t *)buffer.data;;
     int frameCount = buffer.dataSize / sizeof(int16_t) / CHANNEL_NUM;
@@ -336,8 +336,8 @@ void SamplerSynth::fill_buffer(uint32_t bufferIndex, AudioOutput::Buffer & buffe
         }
     }
 #else // SQUARE_OUT
-    g_voice[0].fill(data, frameCount);
-    g_voice[1].fill(data + 1, frameCount);
+    g_voice[firstChannel].fill(data, frameCount);
+    g_voice[firstChannel + 1].fill(data + 1, frameCount);
 #endif // SQUARE_OUT
 }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015 Immo Software
+ * Copyright (c) 2015-2017 Immo Software
  *
  * Redistribution and use in source and binary forms, with or without modification,
  * are permitted provided that the following conditions are met:
@@ -30,7 +30,9 @@
 #define _AUDIO_OUT_H_
 
 #include "argon/argon.h"
-#include "fsl_sai_edma.h"
+#include "simple_queue.h"
+#include "fsl_edma.h"
+#include "fsl_sai.h"
 
 //------------------------------------------------------------------------------
 // Definitions
@@ -39,7 +41,11 @@
 namespace slab {
 
 /*!
- * @brief Audio output port.
+ * @brief Quad-channel audio output port.
+ *
+ * Uses two transmit pins on the SAI peripheral to output 4 audio channels. Two
+ * linked DMA channels are used to fill the SAI FIFOs from buffers provided by
+ * the caller. Audio content is rendered on a thread owned by this object.
  */
 class AudioOutput
 {
@@ -53,11 +59,11 @@ public:
     class Source
     {
     public:
-        virtual void fill_buffer(uint32_t bufferIndex, Buffer & buffer)=0;
+        virtual void fill_buffer(uint32_t firstChannel, Buffer & buffer)=0;
     };
 
-    AudioOutput() {}
-    ~AudioOutput() {}
+    AudioOutput();
+    ~AudioOutput()=default;
 
     void init(const sai_transfer_format_t * format);
     void add_buffer(Buffer * newBuffer);
@@ -67,22 +73,43 @@ public:
 
 protected:
 
-    enum {
-        kMaxBufferCount = 3
+    enum : uint32_t {
+        kChannelCount = 4,
+        kChannelsPerBuffer = 2,
+        kDmaChannelCount = kChannelCount / kChannelsPerBuffer,
+        kMaxBufferCount = 6,
+        kDmaQueueSize = 4,
+        kFirstDmaChannel = 0,
     };
 
+    struct DmaQueue {
+        AudioOutput * owner;    //!< Pointer back to the owning object used by the DMA callback.
+        edma_handle_t handle;   //!< DMA channel handle.
+        edma_tcd_t tcd[kDmaQueueSize] __attribute__((aligned(32))); //!< TCD pool for eDMA transfer.
+        SimpleQueue<Buffer*, kMaxBufferCount> queuedBuffers;    //!< Buffers owned by DMA transfers.
+    };
+
+    uint8_t m_bytesPerSample;   //!< Bytes in a sample.
+    uint8_t m_minorLoopCount;   //!< The number of DMA transfers to fill the SAI FIFO.
+    DmaQueue m_dma[kDmaChannelCount];
     sai_transfer_format_t m_format;
-    sai_edma_handle_t m_txHandle;
-    edma_handle_t m_dmaHandle;
     Ar::Semaphore m_transferDone;
     Ar::ThreadWithStack<4096> m_audioThread;
     Buffer m_buffers[kMaxBufferCount];
+    SimpleQueue<Buffer*, kMaxBufferCount> m_freeBufferQueue;
     uint32_t m_bufferCount;
     Source * m_source;
+    edma_tcd_t m_sendTcd __attribute__((aligned(32)));
 
     void audio_thread();
 
-    static void sai_callback(I2S_Type *base, sai_edma_handle_t *handle, status_t status, void *userData);
+    void send(Buffer& buffer, uint32_t txChannel);
+
+    status_t enqueue_tcd(edma_handle_t *handle, const edma_tcd_t *tcd);
+
+    void dma_callback(DmaQueue * dmaQueue, bool done, uint32_t tcds);
+
+    static void dma_callback_stub(edma_handle_t *handle, void *userData, bool done, uint32_t tcds);
 
 };
 
