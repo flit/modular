@@ -82,11 +82,13 @@ protected:
         kFirstDmaChannel = 0,
     };
 
+    typedef SimpleQueue<Buffer*, kMaxBufferCount> BufferQueue;
+
     struct DmaQueue {
         AudioOutput * owner;    //!< Pointer back to the owning object used by the DMA callback.
         edma_handle_t handle;   //!< DMA channel handle.
         edma_tcd_t tcd[kDmaQueueSize] __attribute__((aligned(32))); //!< TCD pool for eDMA transfer.
-        SimpleQueue<Buffer*, kMaxBufferCount> queuedBuffers;    //!< Buffers owned by DMA transfers.
+        BufferQueue queuedBuffers;    //!< Buffers owned by DMA transfers.
     };
 
     uint8_t m_bytesPerSample;   //!< Bytes in a sample.
@@ -96,7 +98,7 @@ protected:
     Ar::Semaphore m_transferDone;
     Ar::ThreadWithStack<4096> m_audioThread;
     Buffer m_buffers[kMaxBufferCount];
-    SimpleQueue<Buffer*, kMaxBufferCount> m_freeBufferQueue;
+    BufferQueue m_freeBufferQueue;
     uint32_t m_bufferCount;
     Source * m_source;
     edma_tcd_t m_sendTcd __attribute__((aligned(32)));

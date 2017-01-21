@@ -65,12 +65,14 @@ void AudioOutput::init(const sai_transfer_format_t * format)
     for (i = 0; i < kDmaChannelCount; ++i)
     {
         DmaQueue * dma = &m_dma[i];
-
-        memset(dma, 0, sizeof(*dma));
         dma->owner = this;
-        EDMA_CreateHandle(&m_dma[0].handle, DMA0, kFirstDmaChannel + i);
-        EDMA_SetCallback(&m_dma[0].handle, dma_callback_stub, &m_dma[0]);
-        EDMA_InstallTCDMemory(&m_dma[0].handle, &m_dma[0].tcd[0], kDmaQueueSize);
+        dma->queuedBuffers = BufferQueue();
+
+        EDMA_CreateHandle(&dma->handle, DMA0, kFirstDmaChannel + i);
+        EDMA_SetCallback(&dma->handle, dma_callback_stub, dma);
+
+        memset(dma->tcd, 0, sizeof(dma->tcd));
+        EDMA_InstallTCDMemory(&dma->handle, &dma->tcd[0], kDmaQueueSize);
     }
 
     // Init SAI module.
