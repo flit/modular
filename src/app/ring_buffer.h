@@ -47,6 +47,8 @@ public:
         _count(0)
     {
     }
+    RingBuffer(const RingBuffer<T,N>& other)=default;
+    RingBuffer<T,N>& operator=(const RingBuffer<T,N>& other)=default;
     ~RingBuffer() {}
 
     bool is_empty() const { return _count == 0; }

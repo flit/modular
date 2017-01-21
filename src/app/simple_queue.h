@@ -47,6 +47,8 @@ public:
         _count(0)
     {
     }
+    SimpleQueue(const SimpleQueue<T,N>& other)=default;
+    SimpleQueue<T,N>& operator=(const SimpleQueue<T,N>& other)=default;
     ~SimpleQueue()=default;
 
     bool is_empty() const { return _count == 0; }

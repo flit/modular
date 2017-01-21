@@ -47,7 +47,7 @@ public:
         strncpy(_string, s, N);
     }
     SimpleString(const SimpleString<N>& other)=default;
-    SimpleString& operator =(const SimpleString<N>& other)=default;
+    SimpleString<N>& operator =(const SimpleString<N>& other)=default;
     ~SimpleString()=default;
 
     const char* get() const { return _string; }
