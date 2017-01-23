@@ -35,6 +35,7 @@
  ******************************************************************************/
 
 #define EDMA_TRANSFER_ENABLED_MASK 0x80U
+#define EDMA_TRANSFER_FIRST_MASK 0x100U
 
 /*******************************************************************************
  * Prototypes
@@ -802,7 +803,7 @@ void EDMA_StopTransfer(edma_handle_t *handle)
 {
     assert(handle != NULL);
 
-    handle->flags &= (~EDMA_TRANSFER_ENABLED_MASK);
+    handle->flags &= (~EDMA_TRANSFER_ENABLED_MASK | EDMA_TRANSFER_FIRST_MASK);
     handle->base->CERQ = DMA_CERQ_CERQ(handle->channel);
 }
 
@@ -844,7 +845,7 @@ void EDMA_HandleIRQ(edma_handle_t *handle)
         /* Get the index of the current transfer TCD blcoks. */
         sga_index = sga / sizeof(edma_tcd_t);
         /* Adjust header positions. */
-        if (transfer_done)
+        if (transfer_done && !(handle->flags & EDMA_TRANSFER_FIRST_MASK))
         {
             /* New header shall point to the next TCD (current one is already finished) */
             new_header = sga_index;
@@ -879,6 +880,7 @@ void EDMA_HandleIRQ(edma_handle_t *handle)
         handle->header = new_header;
         /* Release TCD blocks. */
         handle->tcdUsed -= tcds_done;
+        handle->flags |= EDMA_TRANSFER_FIRST_MASK;
         /* Invoke callback function. */
         if (handle->callback)
         {

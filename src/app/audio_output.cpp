@@ -53,12 +53,15 @@ void AudioOutput::init(const sai_transfer_format_t * format)
     // Init eDMA.
     edma_config_t dmaConfig = {0};
     EDMA_GetDefaultConfig(&dmaConfig);
+    dmaConfig.enableRoundRobinArbitration = true;
+    dmaConfig.enableDebugMode = true;
     EDMA_Init(DMA0, &dmaConfig);
 
     // Init DMAMUX and route SAI TX request to the first DMA channel.
     DMAMUX_Init(DMAMUX0);
     DMAMUX_SetSource(DMAMUX0, kFirstDmaChannel, kDmaRequestMux0I2S0Tx & 0xff);
     DMAMUX_EnableChannel(DMAMUX0, kFirstDmaChannel);
+    DMAMUX_EnableChannel(DMAMUX0, kFirstDmaChannel + 1);
 
     // Create DMA queues.
     int i;
@@ -85,6 +88,9 @@ void AudioOutput::init(const sai_transfer_format_t * format)
     // Configure the SAI audio format.
     uint32_t mclkSourceClockHz = CLOCK_GetFreq(kCLOCK_CoreSysClk);
     SAI_TxSetFormat(I2S0, &m_format, mclkSourceClockHz, m_format.masterClockHz);
+
+    // Enable the second tx channel.
+    I2S0->TCR3 |= I2S_TCR3_TCE(2);
 
     // Get the transfer size from format.
     m_bytesPerSample = m_format.bitWidth / 8;
@@ -129,8 +135,8 @@ void AudioOutput::audio_thread()
     }
 
     // Start DMA transfer.
-    EDMA_StartTransfer(&m_dma[0].handle);
-    EDMA_StartTransfer(&m_dma[1].handle);
+//     EDMA_StartTransfer(&m_dma[0].handle);
+//     EDMA_StartTransfer(&m_dma[1].handle);
 
     // Enable SAI DMA and TX clock.
     SAI_TxEnableDMA(I2S0, kSAI_FIFORequestDMAEnable, true);
@@ -203,10 +209,13 @@ void AudioOutput::send(Buffer& buffer, uint32_t txChannel)
     if (txChannel == 0)
     {
         EDMA_TcdSetChannelLink(&m_sendTcd, kEDMA_MinorLink, kFirstDmaChannel + 1);
+        EDMA_TcdSetChannelLink(&m_sendTcd, kEDMA_MajorLink, kFirstDmaChannel + 1);
     }
 
     // Add TCD to DMA queue.
     enqueue_tcd(&dmaQueue->handle, &m_sendTcd);
+
+    EDMA_StartTransfer(&dmaQueue->handle);
 }
 
 //! This is a modified EDMA_SubmitTransfer() that takes a predefined TCD instead of a
@@ -272,7 +281,7 @@ status_t AudioOutput::enqueue_tcd(edma_handle_t *handle, const edma_tcd_t *tcd)
         previousTcd->CSR = csr;
 
         /*
-            Check if the TCD blcok in the registers is the previous one (points to current TCD block). It
+            Check if the TCD block in the registers is the previous one (points to current TCD block). It
             is used to check if the previous TCD linked has been loaded in TCD register. If so, it need to
             link the TCD register in case link the current TCD with the dead chain when TCD loading occurs
             before link the previous TCD block.
