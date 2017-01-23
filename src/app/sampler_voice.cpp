@@ -38,55 +38,6 @@ using namespace slab;
 // Code
 //------------------------------------------------------------------------------
 
-void SamplerVoice::render(int16_t * data, uint32_t frameCount)
-{
-    Buffer * voiceBuffer = nullptr;
-    if (is_valid() && is_playing())
-    {
-        voiceBuffer = get_current_buffer();
-    }
-
-    int i;
-    int16_t * out = data;
-    int16_t intSample;
-    uint32_t readHead;
-    uint32_t bufferFrameCount;
-
-    if (voiceBuffer)
-    {
-        readHead = voiceBuffer->readHead;
-        bufferFrameCount = voiceBuffer->frameCount;
-        for (i = 0; i < frameCount; ++i)
-        {
-            if (readHead < bufferFrameCount)
-            {
-                intSample = voiceBuffer->data[readHead++];
-            }
-            else
-            {
-                intSample = 0;
-            }
-            *out = intSample;
-            out += 2;
-        }
-        voiceBuffer->readHead = readHead;
-
-        // Did we finish this buffer?
-        if (readHead >= bufferFrameCount)
-        {
-            retire_buffer(voiceBuffer);
-        }
-    }
-    else
-    {
-        for (i = 0; i < frameCount; ++i)
-        {
-            *out = 0;
-            out += 2;
-        }
-    }
-}
-
 SamplerVoice::SamplerVoice()
 :   _led(nullptr),
     _wav(),
@@ -181,6 +132,55 @@ void SamplerVoice::trigger()
         _led->on();
     }
     _isPlaying = true;
+}
+
+void SamplerVoice::render(int16_t * data, uint32_t frameCount)
+{
+    Buffer * voiceBuffer = nullptr;
+    if (is_valid() && is_playing())
+    {
+        voiceBuffer = get_current_buffer();
+    }
+
+    int i;
+    int16_t * out = data;
+    int16_t intSample;
+    uint32_t readHead;
+    uint32_t bufferFrameCount;
+
+    if (voiceBuffer)
+    {
+        readHead = voiceBuffer->readHead;
+        bufferFrameCount = voiceBuffer->frameCount;
+        for (i = 0; i < frameCount; ++i)
+        {
+            if (readHead < bufferFrameCount)
+            {
+                intSample = voiceBuffer->data[readHead++];
+            }
+            else
+            {
+                intSample = 0;
+            }
+            *out = intSample;
+            out += 2;
+        }
+        voiceBuffer->readHead = readHead;
+
+        // Did we finish this buffer?
+        if (readHead >= bufferFrameCount)
+        {
+            retire_buffer(voiceBuffer);
+        }
+    }
+    else
+    {
+        for (i = 0; i < frameCount; ++i)
+        {
+            *out = 0;
+            out += 2;
+        }
+    }
 }
 
 SamplerVoice::Buffer * SamplerVoice::get_current_buffer()
