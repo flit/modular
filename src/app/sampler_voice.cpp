@@ -52,7 +52,8 @@ SamplerVoice::SamplerVoice()
     _samplesQueued(0),
     _readFileStart(false),
     _isPlaying(false),
-    _turnOnLedNextBuffer(false)
+    _turnOnLedNextBuffer(false),
+    _gain(1.0f)
 {
     int i;
     for (i = 0; i < kBufferCount; ++i)
@@ -162,7 +163,7 @@ void SamplerVoice::render(int16_t * data, uint32_t frameCount)
             {
                 intSample = 0;
             }
-            *out = intSample;
+            *out = int16_t(intSample * _gain);
             out += 2;
         }
         voiceBuffer->readHead = readHead;

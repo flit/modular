@@ -89,6 +89,8 @@ public:
     void trigger();
     bool is_playing() { return _isPlaying; }
 
+    void set_gain(float gain) { _gain = gain; }
+
     void render(int16_t * data, uint32_t frameCount);
 
     Buffer * get_current_buffer();
@@ -119,6 +121,7 @@ protected:
     bool _readFileStart;
     bool _isPlaying;
     bool _turnOnLedNextBuffer;
+    float _gain;
 
     void queue_buffer_for_read(Buffer * buffer);
     Buffer * dequeue_next_buffer();

@@ -35,6 +35,7 @@
 #include "file_system.h"
 #include "wav_file.h"
 #include "utility.h"
+#include "ring_buffer.h"
 #include "led.h"
 #include "microseconds.h"
 #include "debug_log.h"
@@ -93,6 +94,37 @@ FileSystem g_fs;
 
 Ar::Thread * g_initThread = NULL;
 Ar::ThreadWithStack<2048> g_cvThread("cv", cv_thread, 0, 80, kArSuspendThread);
+
+/*!
+ * @brief
+ */
+template <uint32_t N>
+class RunningAverage : public RingBuffer<uint32_t, N>
+{
+public:
+    RunningAverage() : RingBuffer<uint32_t, N>(), _sum(0), _average(0) {}
+    ~RunningAverage()=default;
+
+    uint32_t get() const { return _average; }
+
+    uint32_t update(uint32_t value)
+    {
+        if (this->is_full())
+        {
+            uint32_t temp;
+            this->RingBuffer<uint32_t, N>::get(temp);
+            _sum -= temp;
+        }
+        _sum += value;
+        this->put(value);
+        _average = _sum / this->get_count();
+        return _average;
+    }
+
+protected:
+    uint32_t _sum;
+    uint32_t _average;
+};
 
 /*!
  * @brief
@@ -267,6 +299,7 @@ void cv_thread(void * arg)
     ChannelCVGate ch2Gate(CH2_CV_ADC, CH2_CV_CHANNEL);
     ChannelCVGate ch3Gate(CH3_CV_ADC, CH3_CV_CHANNEL);
     ChannelCVGate ch4Gate(CH4_CV_ADC, CH4_CV_CHANNEL);
+    ChannelCVGate * gates[] = { &ch1Gate, &ch2Gate, &ch3Gate, &ch4Gate };
     ch1Gate.init();
     ch2Gate.init();
     ch2Gate.set_inverted(true);
@@ -279,35 +312,35 @@ void cv_thread(void * arg)
     AnalogIn ch2Pot(CH2_POT_ADC, CH2_POT_CHANNEL);
     AnalogIn ch3Pot(CH3_POT_ADC, CH3_POT_CHANNEL);
     AnalogIn ch4Pot(CH4_POT_ADC, CH4_POT_CHANNEL);
+    AnalogIn * pots[] = { &ch1Pot, &ch2Pot, &ch3Pot, &ch4Pot };
     ch1Pot.init();
     ch2Pot.init();
     ch3Pot.init();
     ch4Pot.init();
 
+    RunningAverage<32> avg[4];
+    int i;
     while (1)
     {
-        if (ch1Gate.read())
+        for (i = 0; i < 4; ++i)
         {
-//             printf("ch1 triggered\r\n");
-            g_voice[0].trigger();
-        }
+            // Check if gate is triggered.
+            if (gates[i]->read())
+            {
+                DEBUG_PRINTF(TRIG_MASK, "ch%d triggered\r\n", i + 1);
+                g_voice[i].trigger();
+            }
 
-        if (ch2Gate.read())
-        {
-//             printf("ch2 triggered\r\n");
-            g_voice[1].trigger();
-        }
-
-        if (ch3Gate.read())
-        {
-//             printf("ch3 triggered\r\n");
-            g_voice[2].trigger();
-        }
-
-        if (ch4Gate.read())
-        {
-//             printf("ch4 triggered\r\n");
-            g_voice[3].trigger();
+            // Read gain pot for this channel.
+            uint32_t value = pots[i]->read();
+            if (value <= 65536)
+            {
+                value &= ~0xf;
+                value = avg[i].update(value);
+                float gain = float(value) / 65536.0f;
+//                 printf("ch%d=%d (%g)\r\n", i + 1, value, gain);
+                g_voice[i].set_gain(gain);
+            }
         }
     }
 }
