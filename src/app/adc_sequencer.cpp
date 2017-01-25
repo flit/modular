@@ -123,6 +123,7 @@ void AdcSequencer::init()
 
     EDMA_TcdSetTransferConfig(&_tcds[1], &transfer, NULL);
     EDMA_TcdSetChannelLink(&_tcds[1], kEDMA_MinorLink, _firstDmaChannel);
+    EDMA_TcdSetChannelLink(&_tcds[1], kEDMA_MajorLink, _firstDmaChannel);
     EDMA_TcdEnableInterrupts(&_tcds[1], kEDMA_MajorInterruptEnable);
     _tcds[1].DLAST_SGA = -(channelCount * 4);
 

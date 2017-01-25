@@ -360,25 +360,24 @@ void cv_thread(void * arg)
     g_gates[3].set_inverted(true);
     g_pots[3].n = 3;
 
-    uint32_t results0[4];
+    volatile uint32_t results0[4];
     Ar::Semaphore waitSem0(nullptr, 0);
     g_adc0Sequencer.set_channels(CH2_CV_CHANNEL_MASK | CH3_CV_CHANNEL_MASK | CH1_POT_CHANNEL_MASK | CH2_POT_CHANNEL_MASK);
-    g_adc0Sequencer.set_result_buffer(&results0[0]);
+    g_adc0Sequencer.set_result_buffer((uint32_t *)&results0[0]);
     g_adc0Sequencer.set_semaphore(&waitSem0);
     g_adc0Sequencer.init();
 
-    uint32_t results1[4];
+    volatile uint32_t results1[4];
     Ar::Semaphore waitSem1(nullptr, 0);
     g_adc1Sequencer.set_channels(CH1_CV_CHANNEL_MASK | CH4_CV_CHANNEL_MASK | CH3_POT_CHANNEL_MASK |  CH4_POT_CHANNEL_MASK);
-    g_adc1Sequencer.set_result_buffer(&results1[0]);
+    g_adc1Sequencer.set_result_buffer((uint32_t *)&results1[0]);
     g_adc1Sequencer.set_semaphore(&waitSem1);
     g_adc1Sequencer.init();
 
+    g_adc0Sequencer.start();
+    g_adc1Sequencer.start();
     while (true)
     {
-        g_adc0Sequencer.start();
-        g_adc1Sequencer.start();
-
         waitSem0.get();
         waitSem1.get();
 //         printf("result:[0]=%d; [1]=%d; [2]=%d; [3]=%d\r\n", results0[0], results0[1], results0[2], results0[3]);
@@ -391,17 +390,17 @@ void cv_thread(void * arg)
         if (g_gates[1].process(results0[3]))
         {
             DEBUG_PRINTF(TRIG_MASK, "ch2 triggered\r\n");
-            g_voice[0].trigger();
+            g_voice[1].trigger();
         }
         if (g_gates[2].process(results0[0]))
         {
             DEBUG_PRINTF(TRIG_MASK, "ch3 triggered\r\n");
-            g_voice[0].trigger();
+            g_voice[2].trigger();
         }
         if (g_gates[3].process(results1[3]))
         {
             DEBUG_PRINTF(TRIG_MASK, "ch4 triggered\r\n");
-            g_voice[0].trigger();
+            g_voice[3].trigger();
         }
 
         g_pots[0].process(results0[1]);
