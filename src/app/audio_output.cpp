@@ -50,15 +50,7 @@ void AudioOutput::init(const sai_transfer_format_t * format)
     m_transferDone.init("txdone", 0);
     m_source = nullptr;
 
-    // Init eDMA.
-    edma_config_t dmaConfig = {0};
-    EDMA_GetDefaultConfig(&dmaConfig);
-    dmaConfig.enableRoundRobinArbitration = true;
-    dmaConfig.enableDebugMode = true;
-    EDMA_Init(DMA0, &dmaConfig);
-
-    // Init DMAMUX and route SAI TX request to the first DMA channel.
-    DMAMUX_Init(DMAMUX0);
+    // Route SAI TX request to the first DMA channel.
     DMAMUX_SetSource(DMAMUX0, kFirstDmaChannel, kDmaRequestMux0I2S0Tx & 0xff);
     DMAMUX_EnableChannel(DMAMUX0, kFirstDmaChannel);
     DMAMUX_EnableChannel(DMAMUX0, kFirstDmaChannel + 1);

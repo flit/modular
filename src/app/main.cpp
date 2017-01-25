@@ -42,6 +42,8 @@
 #include "reader_thread.h"
 #include "sampler_voice.h"
 #include "adc_sequencer.h"
+#include "fsl_edma.h"
+#include "fsl_dmamux.h"
 #include "fsl_port.h"
 #include "fsl_gpio.h"
 #include "arm_math.h"
@@ -577,6 +579,14 @@ void init_thread(void * arg)
     g_voice[3].set_number(3);
     g_voice[3].set_led(&g_ch4Led);
 
+    // Init eDMA and DMAMUX.
+    edma_config_t dmaConfig = {0};
+    EDMA_GetDefaultConfig(&dmaConfig);
+    dmaConfig.enableRoundRobinArbitration = true;
+    dmaConfig.enableDebugMode = true;
+    EDMA_Init(DMA0, &dmaConfig);
+    DMAMUX_Init(DMAMUX0);
+
     init_audio_out();
     init_audio_synth();
     init_fs();
@@ -605,7 +615,7 @@ int main(void)
     Microseconds::init();
     init_board();
 
-    g_initThread = new Ar::Thread("init", init_thread, 0, NULL, 2500, 60, kArStartThread);
+    g_initThread = new Ar::Thread("init", init_thread, 0, NULL, 3072, 60, kArStartThread);
     ar_kernel_run();
 }
 
