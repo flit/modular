@@ -339,19 +339,7 @@ status_t AudioOutput::enqueue_tcd(edma_handle_t *handle, const edma_tcd_t *tcd)
     }
 
     /* Push tcd into hardware TCD register */
-    tcdRegs->SADDR = currentTcd->SADDR;
-    tcdRegs->SOFF = currentTcd->SOFF;
-    tcdRegs->ATTR = currentTcd->ATTR;
-    tcdRegs->NBYTES = currentTcd->NBYTES;
-    tcdRegs->SLAST = currentTcd->SLAST;
-    tcdRegs->DADDR = currentTcd->DADDR;
-    tcdRegs->DOFF = currentTcd->DOFF;
-    tcdRegs->CITER = currentTcd->CITER;
-    tcdRegs->DLAST_SGA = currentTcd->DLAST_SGA;
-    /* Clear DONE bit first, otherwise ESG cannot be set */
-    tcdRegs->CSR = 0;
-    tcdRegs->CSR = currentTcd->CSR;
-    tcdRegs->BITER = currentTcd->BITER;
+    EDMA_InstallTCD(handle->base, handle->channel, currentTcd);
 
     /* Enable channel request again. */
     if (handle->flags & EDMA_TRANSFER_ENABLED_MASK)

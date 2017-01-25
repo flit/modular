@@ -636,6 +636,14 @@ void EDMA_TcdEnableInterrupts(edma_tcd_t *tcd, uint32_t mask);
  */
 void EDMA_TcdDisableInterrupts(edma_tcd_t *tcd, uint32_t mask);
 
+/*!
+ * @brief Push content of TCD structure into hardware TCD register.
+ *
+ * @param base EDMA peripheral base address.
+ * @param channel EDMA channel number.
+ * @param tcd Point to TCD structure.
+ */
+void EDMA_InstallTCD(DMA_Type *base, uint32_t channel, edma_tcd_t *tcd);
 /*! @} */
 /*!
  * @name eDMA Channel Transfer Operation

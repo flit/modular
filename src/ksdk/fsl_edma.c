@@ -48,15 +48,6 @@
  */
 static uint32_t EDMA_GetInstance(DMA_Type *base);
 
-/*!
- * @brief Push content of TCD structure into hardware TCD register.
- *
- * @param base EDMA peripheral base address.
- * @param channel EDMA channel number.
- * @param tcd Point to TCD structure.
- */
-static void EDMA_InstallTCD(DMA_Type *base, uint32_t channel, edma_tcd_t *tcd);
-
 /*******************************************************************************
  * Variables
  ******************************************************************************/
@@ -95,7 +86,7 @@ static uint32_t EDMA_GetInstance(DMA_Type *base)
     return instance;
 }
 
-static void EDMA_InstallTCD(DMA_Type *base, uint32_t channel, edma_tcd_t *tcd)
+void EDMA_InstallTCD(DMA_Type *base, uint32_t channel, edma_tcd_t *tcd)
 {
     assert(channel < FSL_FEATURE_EDMA_MODULE_CHANNEL);
     assert(tcd != NULL);
