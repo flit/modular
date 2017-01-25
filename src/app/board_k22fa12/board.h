@@ -166,38 +166,58 @@
 
 
 // ADC inputs
+//
+// ADC0:
+//  3  -> CV3
+//  12 -> Pot1
+//  13 -> Pot2
+//  23 -> CV2
+//
+// ADC1
+//  14 -> Pot3
+//  15 -> Pot4
+//  18 -> CV1
+//  19 -> CV4
 
 // Channel 1 CV/Gate = ADC1_SE18
 #define CH1_CV_ADC            (1)
 #define CH1_CV_CHANNEL        (18)
+#define CH1_CV_CHANNEL_MASK   (1 << CH1_CV_CHANNEL)
 
 // Channel 2 CV/Gate = ADC0_SE23
 #define CH2_CV_ADC            (0)
 #define CH2_CV_CHANNEL        (23)
+#define CH2_CV_CHANNEL_MASK   (1 << CH2_CV_CHANNEL)
 
 // Channel 3 CV/Gate = ADC0_DP3
 #define CH3_CV_ADC            (0)
 #define CH3_CV_CHANNEL        (3)
+#define CH3_CV_CHANNEL_MASK   (1 << CH3_CV_CHANNEL)
 
 // Channel 4 CV/Gate = ADC1_DM0
 #define CH4_CV_ADC            (1)
 #define CH4_CV_CHANNEL        (19)
+#define CH4_CV_CHANNEL_MASK   (1 << CH4_CV_CHANNEL)
 
 // Channel 1 Pot = PTB2/ADC0_SE12
 #define CH1_POT_ADC            (0)
 #define CH1_POT_CHANNEL        (12)
+#define CH1_POT_CHANNEL_MASK   (1 << CH1_POT_CHANNEL)
 
 // Channel 2 Pot = PTB3/ADC0_SE13
 #define CH2_POT_ADC            (0)
 #define CH2_POT_CHANNEL        (13)
+#define CH2_POT_CHANNEL_MASK   (1 << CH2_POT_CHANNEL)
 
 // Channel 3 Pot = PTB10/ADC1_SE14
 #define CH3_POT_ADC            (1)
 #define CH3_POT_CHANNEL        (14)
+#define CH3_POT_CHANNEL_MASK   (1 << CH3_POT_CHANNEL)
 
 // Channel 4 Pot = PTB11/ADC1_SE15
 #define CH4_POT_ADC            (1)
 #define CH4_POT_CHANNEL        (15)
+#define CH4_POT_CHANNEL_MASK   (1 << CH4_POT_CHANNEL)
 
 
 //------------------------------------------------------------------------------

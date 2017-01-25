@@ -41,6 +41,7 @@
 #include "debug_log.h"
 #include "reader_thread.h"
 #include "sampler_voice.h"
+#include "adc_sequencer.h"
 #include "fsl_port.h"
 #include "fsl_gpio.h"
 #include "arm_math.h"
@@ -61,6 +62,11 @@ using namespace slab;
 #define BUFFER_SIZE (256)
 #define CHANNEL_NUM (2)
 #define BUFFER_NUM (6)
+
+const uint32_t kAdcMax = 65536;
+const uint32_t kTriggerThreshold = kAdcMax - (0.3 * (kAdcMax / 2));
+
+const float kSampleRate = 48000.0f; // 48kHz
 
 //------------------------------------------------------------------------------
 // Prototypes
@@ -84,8 +90,6 @@ void button2_handler(PORT_Type * port, uint32_t pin, void * userData);
 //------------------------------------------------------------------------------
 // Variables
 //------------------------------------------------------------------------------
-
-const float kSampleRate = 48000.0f; // 48kHz
 
 int16_t g_outBuf[BUFFER_NUM][BUFFER_SIZE * CHANNEL_NUM];
 
@@ -129,7 +133,7 @@ protected:
 /*!
  * @brief
  */
-class ChannelCVGate : public AnalogIn
+class ChannelCVGate
 {
 public:
     enum Mode
@@ -138,7 +142,7 @@ public:
         kCV
     };
 
-    ChannelCVGate(uint32_t instance, uint32_t channel);
+    ChannelCVGate();
     ~ChannelCVGate()=default;
 
     void init();
@@ -146,7 +150,9 @@ public:
     void set_mode(Mode newMode);
     void set_inverted(bool isInverted) { _isInverted = isInverted; }
 
-    uint32_t read();
+    uint32_t process(uint32_t value);
+
+    uint32_t n;
 
 protected:
     Mode _mode;
@@ -154,6 +160,27 @@ protected:
     uint32_t _last;
     bool _edge;
     uint32_t _highCount;
+    RingBuffer<uint16_t, 128> _history;
+};
+
+
+/*!
+ * @brief
+ */
+class Pot
+{
+public:
+    Pot();
+    ~Pot()=default;
+
+    uint32_t process(uint32_t value);
+
+    uint32_t n;
+
+protected:
+    uint32_t _last;
+    RunningAverage<32> _avg;
+    RingBuffer<uint16_t, 128> _history;
 };
 
 /*!
@@ -170,6 +197,10 @@ public:
 protected:
 };
 
+ChannelCVGate g_gates[4];
+Pot g_pots[4];
+AdcSequencer g_adc0Sequencer(ADC0, 2);
+AdcSequencer g_adc1Sequencer(ADC1, 4);
 SamplerSynth g_sampler;
 LED<PIN_CH1_LED_GPIO_BASE, PIN_CH1_LED> g_ch1Led;
 LED<PIN_CH2_LED_GPIO_BASE, PIN_CH2_LED> g_ch2Led;
@@ -224,9 +255,8 @@ void flash_leds()
 
 }
 
-ChannelCVGate::ChannelCVGate(uint32_t instance, uint32_t channel)
-:   AnalogIn(instance, channel),
-    _mode(kGate),
+ChannelCVGate::ChannelCVGate()
+:   _mode(kGate),
     _isInverted(false),
     _last(0),
     _edge(false),
@@ -236,7 +266,6 @@ ChannelCVGate::ChannelCVGate(uint32_t instance, uint32_t channel)
 
 void ChannelCVGate::init()
 {
-    AnalogIn::init();
 }
 
 void ChannelCVGate::set_mode(Mode newMode)
@@ -244,12 +273,12 @@ void ChannelCVGate::set_mode(Mode newMode)
     _mode = newMode;
 }
 
-uint32_t ChannelCVGate::read()
+uint32_t ChannelCVGate::process(uint32_t value)
 {
-    uint32_t result = 0;
-    uint32_t value = AnalogIn::read();
+    _history.put(value);
 
-    const uint32_t kAdcMax = 65536;
+    uint32_t result = 0;
+    value <<= 4;
 
     if (!_isInverted)
     {
@@ -259,8 +288,7 @@ uint32_t ChannelCVGate::read()
 
     if (_mode == Mode::kGate)
     {
-        const uint32_t kThreshold = kAdcMax - (0.3 * (kAdcMax / 2));
-        uint32_t state = (value > kThreshold) ? 1 : 0;
+        uint32_t state = (value > kTriggerThreshold) ? 1 : 0;
 
         if (state == 0)
         {
@@ -293,55 +321,93 @@ uint32_t ChannelCVGate::read()
     return result;
 }
 
+Pot::Pot()
+:   _last(0)
+{
+}
+
+uint32_t Pot::process(uint32_t value)
+{
+    _history.put(value);
+    value <<= 4;
+
+    // Set gain for this channel.
+    if (value <= kAdcMax)
+    {
+        value = _avg.update(value);
+        float gain = float(value) / float(kAdcMax);
+        if (value != _last)
+        {
+            _last = value;
+            g_voice[n].set_gain(gain);
+        }
+    }
+
+    return 0;
+}
+
 void cv_thread(void * arg)
 {
-    ChannelCVGate ch1Gate(CH1_CV_ADC, CH1_CV_CHANNEL);
-    ChannelCVGate ch2Gate(CH2_CV_ADC, CH2_CV_CHANNEL);
-    ChannelCVGate ch3Gate(CH3_CV_ADC, CH3_CV_CHANNEL);
-    ChannelCVGate ch4Gate(CH4_CV_ADC, CH4_CV_CHANNEL);
-    ChannelCVGate * gates[] = { &ch1Gate, &ch2Gate, &ch3Gate, &ch4Gate };
-    ch1Gate.init();
-    ch2Gate.init();
-    ch2Gate.set_inverted(true);
-    ch3Gate.init();
-    ch3Gate.set_inverted(true);
-    ch4Gate.init();
-    ch4Gate.set_inverted(true);
+    g_gates[0].n = 0;
+    g_pots[0].n = 0;
+    g_gates[1].n = 1;
+    g_gates[1].set_inverted(true);
+    g_pots[1].n = 1;
+    g_gates[2].n = 2;
+    g_gates[2].set_inverted(true);
+    g_pots[2].n = 2;
+    g_gates[3].n = 3;
+    g_gates[3].set_inverted(true);
+    g_pots[3].n = 3;
 
-    AnalogIn ch1Pot(CH1_POT_ADC, CH1_POT_CHANNEL);
-    AnalogIn ch2Pot(CH2_POT_ADC, CH2_POT_CHANNEL);
-    AnalogIn ch3Pot(CH3_POT_ADC, CH3_POT_CHANNEL);
-    AnalogIn ch4Pot(CH4_POT_ADC, CH4_POT_CHANNEL);
-    AnalogIn * pots[] = { &ch1Pot, &ch2Pot, &ch3Pot, &ch4Pot };
-    ch1Pot.init();
-    ch2Pot.init();
-    ch3Pot.init();
-    ch4Pot.init();
+    uint32_t results0[4];
+    Ar::Semaphore waitSem0(nullptr, 0);
+    g_adc0Sequencer.set_channels(CH2_CV_CHANNEL_MASK | CH3_CV_CHANNEL_MASK | CH1_POT_CHANNEL_MASK | CH2_POT_CHANNEL_MASK);
+    g_adc0Sequencer.set_result_buffer(&results0[0]);
+    g_adc0Sequencer.set_semaphore(&waitSem0);
+    g_adc0Sequencer.init();
 
-    RunningAverage<32> avg[4];
-    int i;
-    while (1)
+    uint32_t results1[4];
+    Ar::Semaphore waitSem1(nullptr, 0);
+    g_adc1Sequencer.set_channels(CH1_CV_CHANNEL_MASK | CH4_CV_CHANNEL_MASK | CH3_POT_CHANNEL_MASK |  CH4_POT_CHANNEL_MASK);
+    g_adc1Sequencer.set_result_buffer(&results1[0]);
+    g_adc1Sequencer.set_semaphore(&waitSem1);
+    g_adc1Sequencer.init();
+
+    while (true)
     {
-        for (i = 0; i < 4; ++i)
-        {
-            // Check if gate is triggered.
-            if (gates[i]->read())
-            {
-                DEBUG_PRINTF(TRIG_MASK, "ch%d triggered\r\n", i + 1);
-                g_voice[i].trigger();
-            }
+        g_adc0Sequencer.start();
+        g_adc1Sequencer.start();
 
-            // Read gain pot for this channel.
-            uint32_t value = pots[i]->read();
-            if (value <= 65536)
-            {
-                value &= ~0xf;
-                value = avg[i].update(value);
-                float gain = float(value) / 65536.0f;
-//                 printf("ch%d=%d (%g)\r\n", i + 1, value, gain);
-                g_voice[i].set_gain(gain);
-            }
+        waitSem0.get();
+        waitSem1.get();
+//         printf("result:[0]=%d; [1]=%d; [2]=%d; [3]=%d\r\n", results0[0], results0[1], results0[2], results0[3]);
+
+        if (g_gates[0].process(results1[2]))
+        {
+            DEBUG_PRINTF(TRIG_MASK, "ch1 triggered\r\n");
+            g_voice[0].trigger();
         }
+        if (g_gates[1].process(results0[3]))
+        {
+            DEBUG_PRINTF(TRIG_MASK, "ch2 triggered\r\n");
+            g_voice[0].trigger();
+        }
+        if (g_gates[2].process(results0[0]))
+        {
+            DEBUG_PRINTF(TRIG_MASK, "ch3 triggered\r\n");
+            g_voice[0].trigger();
+        }
+        if (g_gates[3].process(results1[3]))
+        {
+            DEBUG_PRINTF(TRIG_MASK, "ch4 triggered\r\n");
+            g_voice[0].trigger();
+        }
+
+        g_pots[0].process(results0[1]);
+        g_pots[1].process(results0[2]);
+        g_pots[2].process(results1[0]);
+        g_pots[3].process(results1[1]);
     }
 }
 

@@ -61,6 +61,16 @@
 			<locationURI>virtual:/virtual</locationURI>
 		</link>
 		<link>
+			<name>app/adc_sequencer.cpp</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/src/app/adc_sequencer.cpp</locationURI>
+		</link>
+		<link>
+			<name>app/adc_sequencer.h</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/src/app/adc_sequencer.h</locationURI>
+		</link>
+		<link>
 			<name>app/analog_in.cpp</name>
 			<type>1</type>
 			<locationURI>PARENT-2-PROJECT_LOC/src/app/analog_in.cpp</locationURI>
