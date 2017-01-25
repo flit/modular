@@ -597,7 +597,7 @@ void init_thread(void * arg)
 
     DEBUG_PRINTF(INIT_MASK, "done.\r\n");
 
-//     delete g_initThread;
+    delete g_initThread;
 }
 
 int main(void)
