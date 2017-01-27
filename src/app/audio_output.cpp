@@ -86,7 +86,18 @@ void AudioOutput::init(const sai_transfer_format_t * format)
 
     // Get the transfer size from format.
     m_bytesPerSample = m_format.bitWidth / 8;
-    m_minorLoopCount = FSL_FEATURE_SAI_FIFO_COUNT - m_format.watermark;
+
+    // Set the number of transfers per minor loop to half the amount needed to fill the FIFO
+    // from the watermark.
+    //
+    // The SAI DMA request is asserted as long as either channel FIFO is below the watermark. This
+    // causes the first DMA channel to retrigger its minor loop, which then retriggers the second
+    // DMA channel's minor loop. The data from the extra minor loops was being lost because the SAI
+    // FIFOs were already full.
+    //
+    // Setting the minor loops to transfer half as much data solves the issue by taking into account
+    // that two minor loops will execute for each DMA request.
+    m_minorLoopCount = (FSL_FEATURE_SAI_FIFO_COUNT - m_format.watermark) / 2;
 
     // Create audio thread.
     m_audioThread.init("audio", this, &AudioOutput::audio_thread, 180, kArSuspendThread);
