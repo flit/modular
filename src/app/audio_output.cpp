@@ -43,9 +43,8 @@ AudioOutput::AudioOutput()
 {
 }
 
-void AudioOutput::init(const sai_transfer_format_t * format)
+void AudioOutput::init(const Format& format)
 {
-    m_format = *format;
     m_bufferCount = 0;
     m_transferDone.init("txdone", 0);
     m_source = nullptr;
@@ -78,14 +77,22 @@ void AudioOutput::init(const sai_transfer_format_t * format)
     SAI_TxInit(I2S0, &saiConfig);
 
     // Configure the SAI audio format.
+    sai_transfer_format_t saiFormat;
+    saiFormat.bitWidth = static_cast<sai_word_width_t>(format.bitsPerSample);
+    saiFormat.channel = 0U;
+    saiFormat.sampleRate_Hz = static_cast<sai_sample_rate_t>(format.sampleRate_Hz);
+    saiFormat.masterClockHz = format.oversampleRatio * format.sampleRate_Hz;
+    saiFormat.protocol = kSAI_BusLeftJustified;
+    saiFormat.stereo = kSAI_Stereo;
+    saiFormat.watermark = FSL_FEATURE_SAI_FIFO_COUNT / 2;
     uint32_t mclkSourceClockHz = CLOCK_GetFreq(kCLOCK_CoreSysClk);
-    SAI_TxSetFormat(I2S0, &m_format, mclkSourceClockHz, m_format.masterClockHz);
+    SAI_TxSetFormat(I2S0, &saiFormat, mclkSourceClockHz, saiFormat.masterClockHz);
 
     // Enable the second tx channel.
     I2S0->TCR3 |= I2S_TCR3_TCE(2);
 
     // Get the transfer size from format.
-    m_bytesPerSample = m_format.bitWidth / 8;
+    m_bytesPerSample = saiFormat.bitWidth / 8;
 
     // Set the number of transfers per minor loop to half the amount needed to fill the FIFO
     // from the watermark.
@@ -97,7 +104,7 @@ void AudioOutput::init(const sai_transfer_format_t * format)
     //
     // Setting the minor loops to transfer half as much data solves the issue by taking into account
     // that two minor loops will execute for each DMA request.
-    m_minorLoopCount = (FSL_FEATURE_SAI_FIFO_COUNT - m_format.watermark) / 2;
+    m_minorLoopCount = (FSL_FEATURE_SAI_FIFO_COUNT - saiFormat.watermark) / 2;
 
     // Create audio thread.
     m_audioThread.init("audio", this, &AudioOutput::audio_thread, 180, kArSuspendThread);
@@ -138,8 +145,7 @@ void AudioOutput::audio_thread()
     }
 
     // Start DMA transfer.
-//     EDMA_StartTransfer(&m_dma[0].handle);
-//     EDMA_StartTransfer(&m_dma[1].handle);
+    EDMA_StartTransfer(&m_dma[0].handle);
 
     // Enable SAI DMA and TX clock.
     SAI_TxEnableDMA(I2S0, kSAI_FIFORequestDMAEnable, true);
@@ -217,8 +223,6 @@ void AudioOutput::send(Buffer& buffer, uint32_t txChannel)
 
     // Add TCD to DMA queue.
     enqueue_tcd(&dmaQueue->handle, &m_sendTcd);
-
-    EDMA_StartTransfer(&dmaQueue->handle);
 }
 
 //! This is a modified EDMA_SubmitTransfer() that takes a predefined TCD instead of a

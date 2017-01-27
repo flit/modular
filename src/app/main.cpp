@@ -518,17 +518,13 @@ void init_audio_out()
     GPIO_ClearPinsOutput(PIN_DAC_RESET_GPIO, PIN_DAC_RESET);
 
     // Configure the audio format.
-    sai_transfer_format_t format;
-    format.bitWidth = kSAI_WordWidth16bits;
-    format.channel = 0U;
-    format.sampleRate_Hz = static_cast<sai_sample_rate_t>(kSampleRate);
-    format.masterClockHz = OVER_SAMPLE_RATE * format.sampleRate_Hz;
-    format.protocol = kSAI_BusLeftJustified;
-    format.stereo = kSAI_Stereo;
-    format.watermark = FSL_FEATURE_SAI_FIFO_COUNT / 2U;
+    AudioOutput::Format format;
+    format.bitsPerSample = 16;
+    format.sampleRate_Hz = kSampleRate;
+    format.oversampleRatio = OVER_SAMPLE_RATE;
 
     // Init audio output object.
-    g_audioOut.init(&format);
+    g_audioOut.init(format);
     g_audioOut.set_source(&g_sampler);
 
     // Add buffers to the audio output.

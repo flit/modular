@@ -50,6 +50,13 @@ namespace slab {
 class AudioOutput
 {
 public:
+    struct Format
+    {
+        uint32_t bitsPerSample;
+        uint32_t sampleRate_Hz;
+        uint32_t oversampleRatio;
+    };
+
     struct Buffer
     {
         uint8_t * data;
@@ -65,7 +72,7 @@ public:
     AudioOutput();
     ~AudioOutput()=default;
 
-    void init(const sai_transfer_format_t * format);
+    void init(const Format& format);
     void add_buffer(Buffer * newBuffer);
     void set_source(Source * source) { m_source = source; }
 
@@ -94,7 +101,6 @@ protected:
     uint8_t m_bytesPerSample;   //!< Bytes in a sample.
     uint8_t m_minorLoopCount;   //!< The number of DMA transfers to fill the SAI FIFO.
     DmaQueue m_dma[kDmaChannelCount];
-    sai_transfer_format_t m_format;
     Ar::Semaphore m_transferDone;
     Ar::ThreadWithStack<4096> m_audioThread;
     Buffer m_buffers[kMaxBufferCount];
