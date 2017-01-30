@@ -87,6 +87,8 @@ void AudioOutput::init(const Format& format)
     saiFormat.watermark = FSL_FEATURE_SAI_FIFO_COUNT / 2;
     uint32_t mclkSourceClockHz = CLOCK_GetFreq(kCLOCK_CoreSysClk);
     SAI_TxSetFormat(I2S0, &saiFormat, mclkSourceClockHz, saiFormat.masterClockHz);
+    SAI_TxEnableInterrupts(I2S0, kSAI_FIFOErrorInterruptEnable);
+    EnableIRQ(I2S0_Tx_IRQn);
 
     // Enable the second tx channel.
     I2S0->TCR3 |= I2S_TCR3_TCE(2);
@@ -355,6 +357,18 @@ status_t AudioOutput::enqueue_tcd(edma_handle_t *handle, const edma_tcd_t *tcd)
     }
 
     return kStatus_Success;
+}
+
+extern "C" void I2S0_Tx_IRQHandler()
+{
+    // Check for error flag and clear it.
+    if (I2S0->TCSR & I2S_TCSR_FEF_MASK)
+    {
+        // Reset FIFOs.
+        I2S0->TCSR |= I2S_TCSR_FR_MASK;
+        // Clear error flag.
+        I2S0->TCSR |= I2S_TCSR_FEF_MASK;
+    }
 }
 
 //------------------------------------------------------------------------------
