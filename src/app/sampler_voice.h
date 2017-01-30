@@ -33,12 +33,11 @@
 #include "wav_file.h"
 #include "led.h"
 #include "protected_queue.h"
+#include "audio_defs.h"
 
 //------------------------------------------------------------------------------
 // Definitions
 //------------------------------------------------------------------------------
-
-#define BUFFER_SIZE (256)
 
 namespace slab {
 
@@ -50,7 +49,7 @@ class SamplerVoice
 public:
     static const uint32_t kBufferCount = 4; //!< Number of buffers available to cycle through sample data. The first one will always be used to hold the first #kBufferSize frames of the sample.
     static const uint32_t kBufferSize = 1024; //!< Number of frames per buffer.
-    static_assert(kBufferSize % BUFFER_SIZE == 0, "sai buffers must fit evenly in voice buffers");
+    static_assert(kBufferSize % kAudioBufferSize == 0, "sai buffers must fit evenly in voice buffers");
 
     enum BufferState : uint32_t
     {

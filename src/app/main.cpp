@@ -29,6 +29,7 @@
 
 #include "argon/argon.h"
 #include "board.h"
+#include "audio_defs.h"
 #include "analog_in.h"
 #include "audio_output.h"
 #include "pin_irq_manager.h"
@@ -60,15 +61,8 @@ using namespace slab;
 // Definitions
 //------------------------------------------------------------------------------
 
-#define OVER_SAMPLE_RATE (256)
-#define BUFFER_SIZE (256)
-#define CHANNEL_NUM (2)
-#define BUFFER_NUM (6)
-
 const uint32_t kAdcMax = 65536;
 const uint32_t kTriggerThreshold = kAdcMax - (0.3 * (kAdcMax / 2));
-
-const float kSampleRate = 48000.0f; // 48kHz
 
 //------------------------------------------------------------------------------
 // Prototypes
@@ -93,7 +87,7 @@ void button2_handler(PORT_Type * port, uint32_t pin, void * userData);
 // Variables
 //------------------------------------------------------------------------------
 
-int16_t g_outBuf[BUFFER_NUM][BUFFER_SIZE * CHANNEL_NUM];
+int16_t g_outBuf[kAudioBufferCount][kAudioBufferSize * kAudioChannelCount];
 
 AudioOutput g_audioOut;
 FileSystem g_fs;
@@ -418,7 +412,7 @@ void cv_thread(void * arg)
 void SamplerSynth::render(uint32_t firstChannel, AudioOutput::Buffer & buffer)
 {
     int16_t * data = (int16_t *)buffer.data;;
-    int frameCount = buffer.dataSize / sizeof(int16_t) / CHANNEL_NUM;
+    int frameCount = buffer.dataSize / sizeof(int16_t) / kAudioChannelCount;
 
 #if SQUARE_OUT
     // Output a naïve full-scale 440 Hz square wave for testing without the SD card.
@@ -519,9 +513,9 @@ void init_audio_out()
 
     // Configure the audio format.
     AudioOutput::Format format;
-    format.bitsPerSample = 16;
+    format.bitsPerSample = kBitsPerSample;
     format.sampleRate_Hz = kSampleRate;
-    format.oversampleRatio = OVER_SAMPLE_RATE;
+    format.oversampleRatio = kOversampleRatio;
 
     // Init audio output object.
     g_audioOut.init(format);
@@ -529,9 +523,9 @@ void init_audio_out()
 
     // Add buffers to the audio output.
     AudioOutput::Buffer buf;
-    buf.dataSize = BUFFER_SIZE * CHANNEL_NUM * sizeof(int16_t);
+    buf.dataSize = kAudioBufferSize * kAudioChannelCount * sizeof(int16_t);
     int i;
-    for (i = 0; i < BUFFER_NUM; ++i)
+    for (i = 0; i < kAudioBufferCount; ++i)
     {
         buf.data = (uint8_t *)&g_outBuf[i][0];
         g_audioOut.add_buffer(&buf);
