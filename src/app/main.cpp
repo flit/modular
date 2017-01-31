@@ -572,10 +572,23 @@ void init_thread(void * arg)
     // Init eDMA and DMAMUX.
     edma_config_t dmaConfig = {0};
     EDMA_GetDefaultConfig(&dmaConfig);
-    dmaConfig.enableRoundRobinArbitration = true;
+    dmaConfig.enableRoundRobinArbitration = false;
     dmaConfig.enableDebugMode = true;
     EDMA_Init(DMA0, &dmaConfig);
     DMAMUX_Init(DMAMUX0);
+
+    // Set DMA channel priorities. Each DMA channel must have a unique priority. Channels 0 and 1,
+    // used for the SAI, are set to the highest priorities and have preemption enabled. Other
+    // channels have preemption disabled so only the channels used for SAI can preempt.
+    edma_channel_Preemption_config_t priority;
+    int channel;
+    for (channel = 0; channel < 16; ++channel)
+    {
+        priority.channelPriority = 15 - channel;
+        priority.enableChannelPreemption = (channel != 1);
+        priority.enablePreemptAbility = (channel < 2);
+        EDMA_SetChannelPreemptionConfig(DMA0, channel, &priority);
+    }
 
     init_audio_out();
     init_audio_synth();
