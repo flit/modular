@@ -127,7 +127,7 @@ void init_board()
     GPIO_PinInit(PIN_BUTTON2_GPIO, PIN_BUTTON2_BIT, &gpioIn);
 
     PORT_SetPinInterruptConfig(PIN_BUTTON1_PORT, PIN_BUTTON1_BIT, kPORT_InterruptFallingEdge);
-    PORT_SetPinInterruptConfig(PIN_BUTTON2_PORT, PIN_BUTTON2_BIT, kPORT_InterruptFallingEdge);
+//     PORT_SetPinInterruptConfig(PIN_BUTTON2_PORT, PIN_BUTTON2_BIT, kPORT_InterruptFallingEdge);
 
     PORT_EnablePinsDigitalFilter(PIN_BUTTON1_PORT, PIN_BUTTON1_BIT, true);
     PORT_EnablePinsDigitalFilter(PIN_BUTTON2_PORT, PIN_BUTTON2_BIT, true);
