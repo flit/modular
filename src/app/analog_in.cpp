@@ -98,7 +98,7 @@ uint32_t AnalogIn::read()
     {
         result = g_adc0Result.receive();
     }
-    else if (m_instance = 1)
+    else if (m_instance == 1)
     {
         result = g_adc1Result.receive();
     }
