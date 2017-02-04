@@ -172,6 +172,7 @@ bool WaveFile::AudioDataStream::seek(uint32_t offset)
 {
     assert(_file);
     _file->seek(_file->_dataOffset + offset);
+    return true;
 }
 
 uint32_t WaveFile::AudioDataStream::get_size() const

@@ -246,7 +246,9 @@ status_t AudioOutput::enqueue_tcd(edma_handle_t *handle, const edma_tcd_t *tcd)
 
     /* Check if tcd pool is full. */
     primask = DisableGlobalIRQ();
-    if (handle->tcdUsed >= handle->tcdSize)
+    uint32_t tempUsed = handle->tcdUsed;
+    uint32_t tempSize = handle->tcdSize;
+    if (tempUsed >= tempSize)
     {
         EnableGlobalIRQ(primask);
 

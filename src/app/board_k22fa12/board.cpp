@@ -37,9 +37,6 @@
 #include <stdlib.h>
 #include <assert.h>
 
-uint32_t g_xtal0Freq = 12000000U;
-uint32_t g_xtal32Freq = 32768U;
-
 //------------------------------------------------------------------------------
 // Code
 //------------------------------------------------------------------------------
@@ -101,10 +98,10 @@ void init_board()
     PORT_SetPinMux(PIN_CH4_LED_PORT, PIN_CH4_LED_BIT, kPORT_MuxAsGpio);
     PORT_SetPinMux(PIN_BUTTON1_LED_PORT, PIN_BUTTON1_LED_BIT, kPORT_MuxAsGpio);
 
-    const gpio_pin_config_t gpioOut1 = {
-        .pinDirection = kGPIO_DigitalOutput,
-        .outputLogic = 1,
-    };
+//    const gpio_pin_config_t gpioOut1 = {
+//        .pinDirection = kGPIO_DigitalOutput,
+//        .outputLogic = 1,
+//    };
     const gpio_pin_config_t gpioOut0 = {
         .pinDirection = kGPIO_DigitalOutput,
         .outputLogic = 0,

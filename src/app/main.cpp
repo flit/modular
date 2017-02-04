@@ -615,6 +615,9 @@ void init_thread(void * arg)
 
 int main(void)
 {
+    CLOCK_SetXtal0Freq(kXtal0Freq);
+    CLOCK_SetXtal32Freq(kXtal32Freq);
+
     Microseconds::init();
     init_board();
 

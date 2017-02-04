@@ -106,6 +106,7 @@ uint32_t PinIrqManager::portToIndex(PORT_Type * port)
         }
     }
     assert(false && "Invalid port base address");
+    return 0;
 }
 
 extern "C" void PORTA_IRQHandler(void)

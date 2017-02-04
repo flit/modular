@@ -81,7 +81,6 @@ void ReaderThread::enqueue(SamplerVoice * request)
     uint32_t requestVoiceMask = 1 << requestVoiceNumber;
     uint32_t thisSequenceVoicesMask = 0;
     QueueNode * iter = _first;
-    QueueNode * prev = nullptr;
     while (iter)
     {
         assert(iter->voice);
@@ -103,7 +102,6 @@ void ReaderThread::enqueue(SamplerVoice * request)
 
         thisSequenceVoicesMask |= iterVoiceMask;
 
-        prev = iter;
         iter = iter->next;
     }
 
