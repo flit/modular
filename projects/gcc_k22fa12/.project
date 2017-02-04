@@ -71,26 +71,6 @@
 			<locationURI>PARENT-2-PROJECT_LOC/src/app/adc_sequencer.h</locationURI>
 		</link>
 		<link>
-			<name>app/analog_in.cpp</name>
-			<type>1</type>
-			<locationURI>PARENT-2-PROJECT_LOC/src/app/analog_in.cpp</locationURI>
-		</link>
-		<link>
-			<name>app/analog_in.h</name>
-			<type>1</type>
-			<locationURI>PARENT-2-PROJECT_LOC/src/app/analog_in.h</locationURI>
-		</link>
-		<link>
-			<name>app/audio_buffer.cpp</name>
-			<type>1</type>
-			<locationURI>PARENT-2-PROJECT_LOC/src/app/audio_buffer.cpp</locationURI>
-		</link>
-		<link>
-			<name>app/audio_buffer.h</name>
-			<type>1</type>
-			<locationURI>PARENT-2-PROJECT_LOC/src/app/audio_buffer.h</locationURI>
-		</link>
-		<link>
 			<name>app/audio_output.cpp</name>
 			<type>1</type>
 			<locationURI>PARENT-2-PROJECT_LOC/src/app/audio_output.cpp</locationURI>
@@ -251,16 +231,6 @@
 			<locationURI>virtual:/virtual</locationURI>
 		</link>
 		<link>
-			<name>ksdk/Dialog7212.c</name>
-			<type>1</type>
-			<locationURI>PARENT-2-PROJECT_LOC/src/ksdk/Dialog7212.c</locationURI>
-		</link>
-		<link>
-			<name>ksdk/Dialog7212.h</name>
-			<type>1</type>
-			<locationURI>PARENT-2-PROJECT_LOC/src/ksdk/Dialog7212.h</locationURI>
-		</link>
-		<link>
 			<name>ksdk/fsl_adc16.c</name>
 			<type>1</type>
 			<locationURI>PARENT-2-PROJECT_LOC/src/ksdk/fsl_adc16.c</locationURI>
@@ -306,16 +276,6 @@
 			<locationURI>PARENT-2-PROJECT_LOC/src/ksdk/fsl_dmamux.h</locationURI>
 		</link>
 		<link>
-			<name>ksdk/fsl_dspi.c</name>
-			<type>1</type>
-			<locationURI>PARENT-2-PROJECT_LOC/src/ksdk/fsl_dspi.c</locationURI>
-		</link>
-		<link>
-			<name>ksdk/fsl_dspi.h</name>
-			<type>1</type>
-			<locationURI>PARENT-2-PROJECT_LOC/src/ksdk/fsl_dspi.h</locationURI>
-		</link>
-		<link>
 			<name>ksdk/fsl_edma.c</name>
 			<type>1</type>
 			<locationURI>PARENT-2-PROJECT_LOC/src/ksdk/fsl_edma.c</locationURI>
@@ -334,26 +294,6 @@
 			<name>ksdk/fsl_gpio.h</name>
 			<type>1</type>
 			<locationURI>PARENT-2-PROJECT_LOC/src/ksdk/fsl_gpio.h</locationURI>
-		</link>
-		<link>
-			<name>ksdk/fsl_i2c.c</name>
-			<type>1</type>
-			<locationURI>PARENT-2-PROJECT_LOC/src/ksdk/fsl_i2c.c</locationURI>
-		</link>
-		<link>
-			<name>ksdk/fsl_i2c.h</name>
-			<type>1</type>
-			<locationURI>PARENT-2-PROJECT_LOC/src/ksdk/fsl_i2c.h</locationURI>
-		</link>
-		<link>
-			<name>ksdk/fsl_lptmr.c</name>
-			<type>1</type>
-			<locationURI>PARENT-2-PROJECT_LOC/src/ksdk/fsl_lptmr.c</locationURI>
-		</link>
-		<link>
-			<name>ksdk/fsl_lptmr.h</name>
-			<type>1</type>
-			<locationURI>PARENT-2-PROJECT_LOC/src/ksdk/fsl_lptmr.h</locationURI>
 		</link>
 		<link>
 			<name>ksdk/fsl_mmc.c</name>
@@ -384,16 +324,6 @@
 			<name>ksdk/fsl_sai.h</name>
 			<type>1</type>
 			<locationURI>PARENT-2-PROJECT_LOC/src/ksdk/fsl_sai.h</locationURI>
-		</link>
-		<link>
-			<name>ksdk/fsl_sai_edma.c</name>
-			<type>1</type>
-			<locationURI>PARENT-2-PROJECT_LOC/src/ksdk/fsl_sai_edma.c</locationURI>
-		</link>
-		<link>
-			<name>ksdk/fsl_sai_edma.h</name>
-			<type>1</type>
-			<locationURI>PARENT-2-PROJECT_LOC/src/ksdk/fsl_sai_edma.h</locationURI>
 		</link>
 		<link>
 			<name>ksdk/fsl_sbrk.c</name>
