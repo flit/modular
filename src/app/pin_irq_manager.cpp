@@ -92,7 +92,7 @@ void PinIrqManager::handle_irq(PORT_Type * port)
         }
     }
 
-    PORT_ClearPinsInterruptFlags(PORTA, irqMask);
+    PORT_ClearPinsInterruptFlags(port, irqMask);
 }
 
 uint32_t PinIrqManager::portToIndex(PORT_Type * port)
