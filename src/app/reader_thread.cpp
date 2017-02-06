@@ -214,7 +214,8 @@ void ReaderThread::reader_thread()
         assert(voice->is_valid());
 
         // Ask the voice for the next buffer to fill. This may return null, which is valid.
-        SamplerVoice::Buffer * request = voice->get_empty_buffer();
+        SampleBufferManager& manager = voice->get_buffer_manager();
+        SampleBuffer * request = manager.get_empty_buffer();
         if (!request)
         {
             continue;
@@ -266,7 +267,7 @@ void ReaderThread::reader_thread()
         }
 
         request->readHead = 0;
-        voice->enqueue_full_buffer(request);
+        manager.enqueue_full_buffer(request);
 
         uint32_t stop1 = Microseconds::get();
         uint32_t delta1 = stop1 - start1;

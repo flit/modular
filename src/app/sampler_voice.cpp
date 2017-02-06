@@ -38,28 +38,32 @@ using namespace slab;
 // Code
 //------------------------------------------------------------------------------
 
-SamplerVoice::SamplerVoice()
-:   _led(nullptr),
-    _wav(),
-    _data(),
+SampleBufferManager::SampleBufferManager()
+:   _number(0),
     _fullBuffers(),
     _emptyBuffers(),
-    _primeMutex("prime"),
+    _primeMutex(),
     _currentBuffer(nullptr),
+    _activeBufferCount(0),
     _totalSamples(0),
     _samplesPlayed(0),
     _samplesRead(0),
     _samplesQueued(0),
-    _readFileStart(false),
-    _isPlaying(false),
-    _turnOnLedNextBuffer(false),
-    _gain(1.0f)
+    _didReadFileStart(false)
 {
+}
+
+void SampleBufferManager::init(SamplerVoice * voice)
+{
+    _voice = voice;
+    _number = voice->get_number();
+    _primeMutex.init("prime");
+
     int i;
     for (i = 0; i < kBufferCount; ++i)
     {
         _buffer[i].number = i;
-        _buffer[i].state = kBufferUnused;
+        _buffer[i].state = SampleBuffer::State::kUnused;
         _buffer[i].data = &_bufferData[i * kBufferSize];
         _buffer[i].startFrame = 0;
         _buffer[i].frameCount = kBufferSize;
@@ -68,25 +72,55 @@ SamplerVoice::SamplerVoice()
     }
 }
 
+void SampleBufferManager::set_file(uint32_t totalFrames)
+{
+    _totalSamples = totalFrames;
+    _activeBufferCount = min(round_up_div(_totalSamples, kBufferSize), kBufferCount);
+    _samplesPlayed = 0;
+    _samplesRead = 0;
+    _samplesQueued = 0;
+    _didReadFileStart = false;
+}
+
+SamplerVoice::SamplerVoice()
+:   _led(nullptr),
+    _wav(),
+    _data(),
+    _manager(),
+    _isPlaying(false),
+    _turnOnLedNextBuffer(false),
+    _gain(1.0f)
+{
+}
+
+void SamplerVoice::init(uint32_t n)
+{
+    _number = n;
+    _manager.init(this);
+}
+
 void SamplerVoice::set_file(WaveFile& file)
 {
     _wav = file;
     _data = _wav.get_audio_data();
-    _totalSamples = _data.get_frames();
-    _activeBufferCount = min(round_up_div(_totalSamples, kBufferSize), kBufferCount);
-    _samplesPlayed = 0;
     _isPlaying = false;
+    _manager.set_file(_data.get_frames());
 }
 
 void SamplerVoice::prime()
+{
+    _isPlaying = false;
+    _manager.prime();
+}
+
+void SampleBufferManager::prime()
 {
     Ar::Mutex::Guard guard(_primeMutex);
     DEBUG_PRINTF(QUEUE_MASK, "V%d: start prime\r\n", _number);
 
     // Reset state.
-    _isPlaying = false;
     _samplesPlayed = 0;
-    _samplesRead = _readFileStart ? kBufferSize : 0;
+    _samplesRead = _didReadFileStart ? kBufferSize : 0;
     _samplesQueued = _samplesRead;
 
     // Clear buffers queues.
@@ -98,10 +132,10 @@ void SamplerVoice::prime()
     _buffer[0].readHead = 0;
 
     // Queue up the rest of the available buffers to be filled.
-    int i = _readFileStart ? 1 : 0;
+    int i = _didReadFileStart ? 1 : 0;
     for (; i < _activeBufferCount; ++i)
     {
-        if (_buffer[i].state == kBufferReading)
+        if (_buffer[i].state == SampleBuffer::State::kReading)
         {
             DEBUG_PRINTF(QUEUE_MASK, "V%d: prime: marking b%d for reread\r\n", _number, i);
             _buffer[i].reread = true;
@@ -120,10 +154,10 @@ void SamplerVoice::trigger()
     // Handle re-triggering while sample is already playing.
     if (_isPlaying)
     {
-        DEBUG_PRINTF(RETRIG_MASK, "V%d: trigger while playing\r\n", _number);
+        DEBUG_PRINTF(RETRIG_MASK, "V%d: retrigger (@%d)\r\n", _number, _manager.get_samples_played());
 
         // Start playing over from file start.
-        prime();
+        _manager.prime();
 
         _led->off();
         _turnOnLedNextBuffer = true;
@@ -137,22 +171,20 @@ void SamplerVoice::trigger()
 
 void SamplerVoice::render(int16_t * data, uint32_t frameCount)
 {
-    Buffer * voiceBuffer = nullptr;
+    SampleBuffer * voiceBuffer = nullptr;
     if (is_valid() && is_playing())
     {
-        voiceBuffer = get_current_buffer();
+        voiceBuffer = _manager.get_current_buffer();
     }
 
     int i;
     int16_t * out = data;
-    int16_t intSample;
-    uint32_t readHead;
-    uint32_t bufferFrameCount;
 
     if (voiceBuffer)
     {
-        readHead = voiceBuffer->readHead;
-        bufferFrameCount = voiceBuffer->frameCount;
+        int16_t intSample;
+        uint32_t readHead = voiceBuffer->readHead;
+        uint32_t bufferFrameCount = voiceBuffer->frameCount;
         for (i = 0; i < frameCount; ++i)
         {
             if (readHead < bufferFrameCount)
@@ -171,7 +203,17 @@ void SamplerVoice::render(int16_t * data, uint32_t frameCount)
         // Did we finish this buffer?
         if (readHead >= bufferFrameCount)
         {
-            retire_buffer(voiceBuffer);
+            _manager.retire_buffer(voiceBuffer);
+
+            if (_turnOnLedNextBuffer)
+            {
+                _turnOnLedNextBuffer = false;
+                _led->on();
+            }
+            else if (_manager.get_samples_played() >= _manager.get_total_samples())
+            {
+                _led->off();
+            }
         }
     }
     else
@@ -184,7 +226,7 @@ void SamplerVoice::render(int16_t * data, uint32_t frameCount)
     }
 }
 
-SamplerVoice::Buffer * SamplerVoice::get_current_buffer()
+SampleBuffer * SampleBufferManager::get_current_buffer()
 {
     if (!_currentBuffer)
     {
@@ -193,27 +235,27 @@ SamplerVoice::Buffer * SamplerVoice::get_current_buffer()
     return _currentBuffer;
 }
 
-void SamplerVoice::queue_buffer_for_read(Buffer * buffer)
+void SampleBufferManager::queue_buffer_for_read(SampleBuffer * buffer)
 {
     buffer->startFrame = _samplesQueued;
     buffer->frameCount = min(kBufferSize, _totalSamples - _samplesQueued);
     buffer->reread = false;
-    buffer->state = kBufferFree;
+    buffer->state = SampleBuffer::State::kFree;
 
     _emptyBuffers.put(buffer);
-    ReaderThread::get()->enqueue(this);
+    ReaderThread::get()->enqueue(_voice);
 
     _samplesQueued += buffer->frameCount;
 }
 
-SamplerVoice::Buffer * SamplerVoice::get_empty_buffer()
+SampleBuffer * SampleBufferManager::get_empty_buffer()
 {
     Ar::Mutex::Guard guard(_primeMutex);
 
-    Buffer * buffer;
+    SampleBuffer * buffer;
     if (_emptyBuffers.get(buffer))
     {
-        buffer->state = kBufferReading;
+        buffer->state = SampleBuffer::State::kReading;
         return buffer;
     }
     else
@@ -222,25 +264,19 @@ SamplerVoice::Buffer * SamplerVoice::get_empty_buffer()
     }
 }
 
-void SamplerVoice::retire_buffer(Buffer * buffer)
+void SampleBufferManager::retire_buffer(SampleBuffer * buffer)
 {
     _samplesPlayed += buffer->frameCount;
 
     if (_samplesPlayed >= _totalSamples)
     {
         DEBUG_PRINTF(RETIRE_MASK, "V%d: retiring b%d; played %d (done)\r\n", _number, buffer->number, _samplesPlayed);
-        _led->off();
 
         prime();
     }
     else
     {
         DEBUG_PRINTF(RETIRE_MASK, "V%d: retiring b%d; played %d\r\n", _number, buffer->number, _samplesPlayed);
-        if (_turnOnLedNextBuffer)
-        {
-            _turnOnLedNextBuffer = false;
-            _led->on();
-        }
 
         // Don't queue up file start buffer for reading.
         if (buffer != &_buffer[0] && _samplesQueued < _totalSamples)
@@ -253,13 +289,14 @@ void SamplerVoice::retire_buffer(Buffer * buffer)
     }
 }
 
-SamplerVoice::Buffer * SamplerVoice::dequeue_next_buffer()
+SampleBuffer * SampleBufferManager::dequeue_next_buffer()
 {
-    Buffer * buffer;
+    SampleBuffer * buffer;
     if (_fullBuffers.get(buffer))
     {
         DEBUG_PRINTF(CURBUF_MASK, "V%d: current buffer = %d\r\n", _number, buffer->number);
         _currentBuffer = buffer;
+        buffer->state = SampleBuffer::State::kPlaying;
     }
     else
     {
@@ -267,18 +304,17 @@ SamplerVoice::Buffer * SamplerVoice::dequeue_next_buffer()
         Ar::_halt();
         _currentBuffer = nullptr;
     }
-    buffer->state = kBufferPlaying;
     return _currentBuffer;
 }
 
-void SamplerVoice::enqueue_full_buffer(Buffer * buffer)
+void SampleBufferManager::enqueue_full_buffer(SampleBuffer * buffer)
 {
     assert(buffer);
     if (buffer == &_buffer[0])
     {
-        _readFileStart = true;
+        _didReadFileStart = true;
         _samplesRead += buffer->frameCount;
-        buffer->state = kBufferReady;
+        buffer->state = SampleBuffer::State::kReady;
     }
     else
     {
@@ -291,7 +327,7 @@ void SamplerVoice::enqueue_full_buffer(Buffer * buffer)
         {
             _samplesRead += buffer->frameCount;
 
-            buffer->state = kBufferReady;
+            buffer->state = SampleBuffer::State::kReady;
             DEBUG_PRINTF(QUEUE_MASK, "V%d: queuing b%d for play\r\n", _number, buffer->number);
             _fullBuffers.put(buffer);
         }

@@ -63,7 +63,7 @@ protected:
 
     static ReaderThread * s_readerInstance;
 
-    int16_t _readBuf[SamplerVoice::kBufferSize * 2];
+    int16_t _readBuf[SampleBufferManager::kBufferSize * 2];
     Ar::ThreadWithStack<2048> _thread;
     Ar::Semaphore _sem;
     Ar::Mutex _queueLock;

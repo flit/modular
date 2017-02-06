@@ -560,13 +560,13 @@ void init_thread(void * arg)
 
     flash_leds();
 
-    g_voice[0].set_number(0);
+    g_voice[0].init(0);
     g_voice[0].set_led(&g_ch1Led);
-    g_voice[1].set_number(1);
+    g_voice[1].init(1);
     g_voice[1].set_led(&g_ch2Led);
-    g_voice[2].set_number(2);
+    g_voice[2].init(2);
     g_voice[2].set_led(&g_ch3Led);
-    g_voice[3].set_number(3);
+    g_voice[3].init(3);
     g_voice[3].set_led(&g_ch4Led);
 
     // Init eDMA and DMAMUX.

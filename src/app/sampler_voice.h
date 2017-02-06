@@ -41,46 +41,96 @@
 
 namespace slab {
 
+class SamplerVoice;
+
 /*!
- * @brief Manages playback of a single sample file.
+ * @brief A buffer of sample data read from the file.
  */
-class SamplerVoice
+struct SampleBuffer
+{
+    enum State : uint8_t
+    {
+        kUnused,
+        kStartFile,
+        kPlaying,
+        kReady,
+        kFree,
+        kReading,
+    };
+
+    uint8_t number;
+    State state;
+    bool reread;
+    int16_t * data;
+    uint32_t startFrame;
+    uint32_t frameCount;
+    uint32_t readHead;
+};
+
+/*!
+ * @brief Manages the queue of sample data buffers and coordination with the reader thread.
+ */
+class SampleBufferManager
 {
 public:
     static const uint32_t kBufferCount = 4; //!< Number of buffers available to cycle through sample data. The first one will always be used to hold the first #kBufferSize frames of the sample.
     static const uint32_t kBufferSize = 1024; //!< Number of frames per buffer.
     static_assert(kBufferSize % kAudioBufferSize == 0, "sai buffers must fit evenly in voice buffers");
 
-    enum BufferState : uint32_t
-    {
-        kBufferUnused,
-        kBufferStartFile,
-        kBufferPlaying,
-        kBufferReady,
-        kBufferFree,
-        kBufferReading,
-    };
+    SampleBufferManager();
+    ~SampleBufferManager()=default;
 
-    struct Buffer
-    {
-        uint32_t number;
-        BufferState state;
-        int16_t * data;
-        uint32_t startFrame;
-        uint32_t frameCount;
-        uint32_t readHead;
-        bool reread;
-    };
+    void init(SamplerVoice * voice);
+    void set_file(uint32_t totalFrames);
 
+    void prime();
+
+    SampleBuffer * get_current_buffer();
+    SampleBuffer * get_empty_buffer();
+
+    void enqueue_full_buffer(SampleBuffer * buffer);
+    void queue_buffer_for_read(SampleBuffer * buffer);
+    SampleBuffer * dequeue_next_buffer();
+    void retire_buffer(SampleBuffer * buffer);
+
+    uint32_t get_total_samples() const { return _totalSamples; }
+    uint32_t get_samples_played() const { return _samplesPlayed; }
+    uint32_t get_samples_read() const { return _samplesRead; }
+    uint32_t get_samples_queued() const { return _samplesQueued; }
+
+protected:
+    typedef ProtectedQueue<SampleBuffer*, kBufferCount> BufferQueue;
+
+    SamplerVoice * _voice;
+    uint32_t _number;
+    int16_t _bufferData[kBufferCount * kBufferSize];
+    SampleBuffer _buffer[kBufferCount];
+    BufferQueue _fullBuffers;
+    BufferQueue _emptyBuffers;
+    Ar::Mutex _primeMutex;
+    SampleBuffer * _currentBuffer;
+    uint32_t _activeBufferCount;
+    uint32_t _totalSamples;
+    uint32_t _samplesPlayed;
+    uint32_t _samplesRead;
+    uint32_t _samplesQueued;
+    bool _didReadFileStart;
+};
+
+/*!
+ * @brief Manages playback of a single sample file.
+ */
+class SamplerVoice
+{
+public:
     SamplerVoice();
     ~SamplerVoice()=default;
 
-    void set_number(uint32_t n) { _number = n; }
-    uint32_t get_number() const { return _number; }
-
+    void init(uint32_t n);
     void set_led(LEDBase * led) { _led = led; }
     void set_file(WaveFile & file);
 
+    uint32_t get_number() const { return _number; }
     bool is_valid() const { return _wav.is_valid(); }
 
     void prime();
@@ -92,39 +142,20 @@ public:
 
     void render(int16_t * data, uint32_t frameCount);
 
-    Buffer * get_current_buffer();
-    Buffer * get_empty_buffer();
-    void enqueue_full_buffer(Buffer * buffer);
-
     WaveFile& get_wave_file() { return _wav; }
     WaveFile::AudioDataStream& get_audio_stream() { return _data; }
 
-protected:
-    friend class ReaderThread;
+    SampleBufferManager& get_buffer_manager() { return _manager; }
 
+protected:
     uint32_t _number;
     LEDBase * _led;
     WaveFile _wav;
     WaveFile::AudioDataStream _data;
-    int16_t _bufferData[kBufferCount * kBufferSize];
-    Buffer _buffer[kBufferCount];
-    ProtectedQueue<Buffer*, kBufferCount> _fullBuffers;
-    ProtectedQueue<Buffer*, kBufferCount> _emptyBuffers;
-    Ar::Mutex _primeMutex;
-    Buffer * _currentBuffer;
-    uint32_t _activeBufferCount;
-    uint32_t _totalSamples;
-    uint32_t _samplesPlayed;
-    uint32_t _samplesRead;
-    uint32_t _samplesQueued;
-    bool _readFileStart;
+    SampleBufferManager _manager;
     bool _isPlaying;
     bool _turnOnLedNextBuffer;
     float _gain;
-
-    void queue_buffer_for_read(Buffer * buffer);
-    Buffer * dequeue_next_buffer();
-    void retire_buffer(Buffer * buffer);
 
 };
 
