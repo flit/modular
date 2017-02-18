@@ -30,7 +30,6 @@
 #include "argon/argon.h"
 #include "board.h"
 #include "audio_defs.h"
-#include "analog_in.h"
 #include "audio_output.h"
 #include "pin_irq_manager.h"
 #include "file_system.h"
@@ -48,9 +47,7 @@
 #include "fsl_dmamux.h"
 #include "fsl_port.h"
 #include "fsl_gpio.h"
-#include "arm_math.h"
 #include <stdio.h>
-#include <math.h>
 #include <stdlib.h>
 #include <assert.h>
 #include <ctype.h>
@@ -75,8 +72,8 @@ void init_thread(void * arg);
 
 void flash_leds();
 
+void init_dma();
 void init_audio_out();
-void init_audio_synth();
 void init_fs();
 
 void scan_for_files();
@@ -377,7 +374,6 @@ void cv_thread(void * arg)
     {
         waitSem0.get();
         waitSem1.get();
-//         printf("result:[0]=%d; [1]=%d; [2]=%d; [3]=%d\r\n", results0[0], results0[1], results0[2], results0[3]);
 
         if (g_gates[0].process(results1[2]))
         {
@@ -561,10 +557,6 @@ void init_audio_out()
     GPIO_SetPinsOutput(PIN_DAC_RESET_GPIO, PIN_DAC_RESET);
 }
 
-void init_audio_synth()
-{
-}
-
 void init_fs()
 {
     int res = g_fs.init();
@@ -596,7 +588,6 @@ void init_thread(void * arg)
 
     init_dma();
     init_audio_out();
-    init_audio_synth();
     sd_init();
     init_fs();
 
