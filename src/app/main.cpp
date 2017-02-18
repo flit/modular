@@ -612,11 +612,8 @@ void init_thread(void * arg)
 
 int main(void)
 {
-    CLOCK_SetXtal0Freq(kXtal0Freq);
-    CLOCK_SetXtal32Freq(kXtal32Freq);
-
-    Microseconds::init();
     init_board();
+    Microseconds::init();
 
     g_initThread = new Ar::Thread("init", init_thread, 0, NULL, 3072, 60, kArStartThread);
     ar_kernel_run();
