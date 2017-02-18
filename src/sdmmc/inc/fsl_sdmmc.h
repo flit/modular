@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2015, Freescale Semiconductor, Inc.
+ * Copyright 2016 NXP
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without modification,
@@ -12,7 +13,7 @@
  *   list of conditions and the following disclaimer in the documentation and/or
  *   other materials provided with the distribution.
  *
- * o Neither the name of Freescale Semiconductor, Inc. nor the names of its
+ * o Neither the name of the copyright holder nor the names of its
  *   contributors may be used to endorse or promote products derived from this
  *   software without specific prior written permission.
  *
@@ -33,11 +34,6 @@
 
 #include "fsl_card.h"
 
-/*!
- * @addtogroup SDMMC
- * @{
- */
-
 /*******************************************************************************
  * Definitions
  ******************************************************************************/
@@ -48,7 +44,8 @@
 
 /*! @brief Maximum loop count to check the card operation voltage range */
 #define FSL_SDMMC_MAX_VOLTAGE_RETRIES (1000U)
-
+/*! @brief Maximum loop count to send the cmd */
+#define FSL_SDMMC_MAX_CMD_RETRIES (10U)
 /*************************************************************************************************
  * API
  ************************************************************************************************/
@@ -57,94 +54,98 @@ extern "C" {
 #endif
 
 /*!
- * @name SDMMC Function
- * @{
- */
-
-/*!
- * @brief Select the card to put it into transfer state.
+ * @brief Selects the card to put it into transfer state.
  *
- * @param base SDHC peripheral base address.
- * @param transfer SDHC transfer function.
+ * @param base HOST peripheral base address.
+ * @param transfer HOST transfer function.
  * @param relativeAddress Relative address.
  * @param isSelected True to put card into transfer state.
  * @retval kStatus_SDMMC_TransferFailed Transfer failed.
  * @retval kStatus_Success Operate successfully.
  */
-status_t SDMMC_SelectCard(SDHC_Type *base,
-                          sdhc_transfer_function_t transfer,
-                          uint32_t relativeAddress,
-                          bool isSelected);
+status_t SDMMC_SelectCard(HOST_TYPE *base, HOST_TRANSFER_FUNCTION transfer, uint32_t relativeAddress, bool isSelected);
 
 /*!
- * @brief Wait write process complete.
+ * @brief Sends an application command.
  *
- * @param base SDHC peripheral base address.
- * @param transfer SDHC transfer function.
- * @param relativeAddress Card relative address.
- * @retval kStatus_SDMMC_TransferFailed Transfer failed.
- * @retval kStatus_Success Operate successfully.
- */
-status_t SDMMC_WaitWriteComplete(SDHC_Type *base, sdhc_transfer_function_t transfer, uint32_t relativeAddress);
-
-/*!
- * @brief Send application command.
- *
- * @param base SDHC peripheral base address.
- * @param transfer SDHC transfer function.
+ * @param base HOST peripheral base address.
+ * @param transfer HOST transfer function.
  * @param relativeAddress Card relative address.
  * @retval kStatus_SDMMC_TransferFailed Transfer failed.
  * @retval kStatus_SDMMC_CardNotSupport Card doesn't support.
  * @retval kStatus_Success Operate successfully.
  */
-status_t SDMMC_SendApplicationCommand(SDHC_Type *base, sdhc_transfer_function_t transfer, uint32_t relativeAddress);
+status_t SDMMC_SendApplicationCommand(HOST_TYPE *base, HOST_TRANSFER_FUNCTION transfer, uint32_t relativeAddress);
 
 /*!
- * @brief Set block count.
+ * @brief Sets the block count.
  *
- * @param base SDHC peripheral base address.
- * @param transfer SDHC transfer function.
+ * @param base HOST peripheral base address.
+ * @param transfer HOST transfer function.
  * @param blockCount Block count.
  * @retval kStatus_SDMMC_TransferFailed Transfer failed.
  * @retval kStatus_Success Operate successfully.
  */
-status_t SDMMC_SetBlockCount(SDHC_Type *base, sdhc_transfer_function_t transfer, uint32_t blockCount);
+status_t SDMMC_SetBlockCount(HOST_TYPE *base, HOST_TRANSFER_FUNCTION transfer, uint32_t blockCount);
 
 /*!
- * @brief Set the card to be idle state.
+ * @brief Sets the card to be idle state.
  *
- * @param base SDHC peripheral base address.
- * @param transfer SDHC transfer function.
+ * @param base HOST peripheral base address.
+ * @param transfer HOST transfer function.
  * @retval kStatus_SDMMC_TransferFailed Transfer failed.
  * @retval kStatus_Success Operate successfully.
  */
-status_t SDMMC_GoIdle(SDHC_Type *base, sdhc_transfer_function_t transfer);
+status_t SDMMC_GoIdle(HOST_TYPE *base, HOST_TRANSFER_FUNCTION transfer);
 
 /*!
- * @brief Stop transfer in multiple block read/write transaction.
+ * @brief Sets data block size.
  *
- * @param base SDHC peripheral base address.
- * @param transfer SDHC transfer function.
- * @retval kStatus_SDMMC_TransferFailed Transfer failed.
- * @retval kStatus_Success Operate successfully.
- */
-status_t SDMMC_StopTransmission(SDHC_Type *base, sdhc_transfer_function_t transfer);
-
-/*!
- * @brief Set data block size.
- *
- * @param base SDHC peripheral base address.
- * @param transfer SDHC transfer function.
+ * @param base HOST peripheral base address.
+ * @param transfer HOST transfer function.
  * @param blockSize Block size.
  * @retval kStatus_SDMMC_TransferFailed Transfer failed.
  * @retval kStatus_Success Operate successfully.
  */
-status_t SDMMC_SetBlockSize(SDHC_Type *base, sdhc_transfer_function_t transfer, uint32_t blockSize);
+status_t SDMMC_SetBlockSize(HOST_TYPE *base, HOST_TRANSFER_FUNCTION transfer, uint32_t blockSize);
 
-/* @} */
+/*!
+ * @brief Sets card to inactive status
+ *
+ * @param base HOST peripheral base address.
+ * @param transfer HOST transfer function.
+ * @retval kStatus_SDMMC_TransferFailed Transfer failed.
+ * @retval kStatus_Success Operate successfully.
+ */
+status_t SDMMC_SetCardInactive(HOST_TYPE *base, HOST_TRANSFER_FUNCTION transfer);
+
+/*!
+ * @brief provide a simple delay function for sdmmc
+ *
+ * @param num Delay num*10000.
+ */
+void SDMMC_Delay(uint32_t num);
+
+/*!
+ * @brief provide a voltage switch function for SD/SDIO card
+ *
+ * @param base HOST peripheral base address.
+ * @param transfer HOST transfer function.
+ */
+status_t SDMMC_SwitchVoltage(HOST_TYPE *base, HOST_TRANSFER_FUNCTION transfer);
+
+/*!
+ * @brief excute tuning
+ *
+ * @param base HOST peripheral base address.
+ * @param transfer Host transfer function
+ * @param tuningCmd Tuning cmd
+ * @param blockSize Tuning block size
+ */
+status_t SDMMC_ExecuteTuning(HOST_TYPE *base, HOST_TRANSFER_FUNCTION transfer, uint32_t tuningCmd, uint32_t blockSize);
+
 #if defined(__cplusplus)
 }
 #endif
-/*! @} */
 
 #endif /* _FSL_SDMMC_H_ */

@@ -35,8 +35,10 @@
 // Definitions
 //------------------------------------------------------------------------------
 
+#if __cplusplus
 const uint32_t kXtal0Freq = 12000000;
 const uint32_t kXtal32Freq = 32768;
+#endif
 
 // SDHC base address, clock and card detection pin
 #define BOARD_SDHC_BASEADDR SDHC

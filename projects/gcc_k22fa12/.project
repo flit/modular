@@ -56,6 +56,11 @@
 			<locationURI>virtual:/virtual</locationURI>
 		</link>
 		<link>
+			<name>sdmmc</name>
+			<type>2</type>
+			<locationURI>virtual:/virtual</locationURI>
+		</link>
+		<link>
 			<name>CMSIS/Include</name>
 			<type>2</type>
 			<locationURI>virtual:/virtual</locationURI>
@@ -241,11 +246,6 @@
 			<locationURI>PARENT-2-PROJECT_LOC/src/ksdk/fsl_adc16.h</locationURI>
 		</link>
 		<link>
-			<name>ksdk/fsl_card.h</name>
-			<type>1</type>
-			<locationURI>PARENT-2-PROJECT_LOC/src/ksdk/fsl_card.h</locationURI>
-		</link>
-		<link>
 			<name>ksdk/fsl_common.c</name>
 			<type>1</type>
 			<locationURI>PARENT-2-PROJECT_LOC/src/ksdk/fsl_common.c</locationURI>
@@ -296,11 +296,6 @@
 			<locationURI>PARENT-2-PROJECT_LOC/src/ksdk/fsl_gpio.h</locationURI>
 		</link>
 		<link>
-			<name>ksdk/fsl_mmc.c</name>
-			<type>1</type>
-			<locationURI>PARENT-5-ECLIPSE_HOME/_personal/modular/src/ksdk/fsl_mmc.c</locationURI>
-		</link>
-		<link>
 			<name>ksdk/fsl_pit.c</name>
 			<type>1</type>
 			<locationURI>PARENT-2-PROJECT_LOC/src/ksdk/fsl_pit.c</locationURI>
@@ -331,29 +326,14 @@
 			<locationURI>PARENT-2-PROJECT_LOC/src/ksdk/fsl_sbrk.c</locationURI>
 		</link>
 		<link>
-			<name>ksdk/fsl_sd.c</name>
-			<type>1</type>
-			<locationURI>PARENT-5-ECLIPSE_HOME/_personal/modular/src/ksdk/fsl_sd.c</locationURI>
-		</link>
-		<link>
 			<name>ksdk/fsl_sdhc.c</name>
 			<type>1</type>
-			<locationURI>PARENT-5-ECLIPSE_HOME/_personal/modular/src/ksdk/fsl_sdhc.c</locationURI>
+			<locationURI>PARENT-2-PROJECT_LOC/src/ksdk/fsl_sdhc.c</locationURI>
 		</link>
 		<link>
 			<name>ksdk/fsl_sdhc.h</name>
 			<type>1</type>
-			<locationURI>PARENT-5-ECLIPSE_HOME/_personal/modular/src/ksdk/fsl_sdhc.h</locationURI>
-		</link>
-		<link>
-			<name>ksdk/fsl_sdmmc.c</name>
-			<type>1</type>
-			<locationURI>PARENT-5-ECLIPSE_HOME/_personal/modular/src/ksdk/fsl_sdmmc.c</locationURI>
-		</link>
-		<link>
-			<name>ksdk/fsl_sdmmc.h</name>
-			<type>1</type>
-			<locationURI>PARENT-5-ECLIPSE_HOME/_personal/modular/src/ksdk/fsl_sdmmc.h</locationURI>
+			<locationURI>PARENT-2-PROJECT_LOC/src/ksdk/fsl_sdhc.h</locationURI>
 		</link>
 		<link>
 			<name>ksdk/fsl_sim.c</name>
@@ -376,11 +356,6 @@
 			<locationURI>PARENT-2-PROJECT_LOC/src/ksdk/fsl_smc.h</locationURI>
 		</link>
 		<link>
-			<name>ksdk/fsl_specification.h</name>
-			<type>1</type>
-			<locationURI>PARENT-2-PROJECT_LOC/src/ksdk/fsl_specification.h</locationURI>
-		</link>
-		<link>
 			<name>ksdk/fsl_uart.c</name>
 			<type>1</type>
 			<locationURI>PARENT-2-PROJECT_LOC/src/ksdk/fsl_uart.c</locationURI>
@@ -389,6 +364,21 @@
 			<name>ksdk/fsl_uart.h</name>
 			<type>1</type>
 			<locationURI>PARENT-2-PROJECT_LOC/src/ksdk/fsl_uart.h</locationURI>
+		</link>
+		<link>
+			<name>sdmmc/inc</name>
+			<type>2</type>
+			<locationURI>virtual:/virtual</locationURI>
+		</link>
+		<link>
+			<name>sdmmc/port</name>
+			<type>2</type>
+			<locationURI>virtual:/virtual</locationURI>
+		</link>
+		<link>
+			<name>sdmmc/src</name>
+			<type>2</type>
+			<locationURI>virtual:/virtual</locationURI>
 		</link>
 		<link>
 			<name>CMSIS/Include/arm_common_tables.h</name>
@@ -601,16 +591,6 @@
 			<locationURI>PARENT-2-PROJECT_LOC/src/fatfs/src/diskio.h</locationURI>
 		</link>
 		<link>
-			<name>fatfs/src/event.c</name>
-			<type>1</type>
-			<locationURI>PARENT-2-PROJECT_LOC/src/fatfs/src/event.c</locationURI>
-		</link>
-		<link>
-			<name>fatfs/src/event.h</name>
-			<type>1</type>
-			<locationURI>PARENT-2-PROJECT_LOC/src/fatfs/src/event.h</locationURI>
-		</link>
-		<link>
 			<name>fatfs/src/ff.c</name>
 			<type>1</type>
 			<locationURI>PARENT-2-PROJECT_LOC/src/fatfs/src/ff.c</locationURI>
@@ -628,12 +608,12 @@
 		<link>
 			<name>fatfs/src/fsl_sd_disk.c</name>
 			<type>1</type>
-			<locationURI>PARENT-5-ECLIPSE_HOME/_personal/modular/src/fatfs/src/fsl_sd_disk/fsl_sd_disk.c</locationURI>
+			<locationURI>PARENT-2-PROJECT_LOC/src/fatfs/src/fsl_sd_disk/fsl_sd_disk.c</locationURI>
 		</link>
 		<link>
 			<name>fatfs/src/fsl_sd_disk.h</name>
 			<type>1</type>
-			<locationURI>PARENT-5-ECLIPSE_HOME/_personal/modular/src/fatfs/src/fsl_sd_disk/fsl_sd_disk.h</locationURI>
+			<locationURI>PARENT-2-PROJECT_LOC/src/fatfs/src/fsl_sd_disk/fsl_sd_disk.h</locationURI>
 		</link>
 		<link>
 			<name>fatfs/src/integer.h</name>
@@ -644,6 +624,51 @@
 			<name>fatfs/src/option</name>
 			<type>2</type>
 			<locationURI>virtual:/virtual</locationURI>
+		</link>
+		<link>
+			<name>sdmmc/inc/fsl_card.h</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/src/sdmmc/inc/fsl_card.h</locationURI>
+		</link>
+		<link>
+			<name>sdmmc/inc/fsl_host.h</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/src/sdmmc/inc/fsl_host.h</locationURI>
+		</link>
+		<link>
+			<name>sdmmc/inc/fsl_sdmmc.h</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/src/sdmmc/inc/fsl_sdmmc.h</locationURI>
+		</link>
+		<link>
+			<name>sdmmc/inc/fsl_specification.h</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/src/sdmmc/inc/fsl_specification.h</locationURI>
+		</link>
+		<link>
+			<name>sdmmc/port/event.h</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/src/sdmmc/port/event.h</locationURI>
+		</link>
+		<link>
+			<name>sdmmc/port/sdhc</name>
+			<type>2</type>
+			<locationURI>virtual:/virtual</locationURI>
+		</link>
+		<link>
+			<name>sdmmc/src/fsl_mmc.c</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/src/sdmmc/src/fsl_mmc.c</locationURI>
+		</link>
+		<link>
+			<name>sdmmc/src/fsl_sd.c</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/src/sdmmc/src/fsl_sd.c</locationURI>
+		</link>
+		<link>
+			<name>sdmmc/src/fsl_sdmmc.c</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/src/sdmmc/src/fsl_sdmmc.c</locationURI>
 		</link>
 		<link>
 			<name>devices/MK22FA12/gcc/MK22FX512Axxx12_flash.ld</name>
@@ -659,6 +684,21 @@
 			<name>fatfs/src/option/unicode.c</name>
 			<type>1</type>
 			<locationURI>PARENT-2-PROJECT_LOC/src/fatfs/src/option/unicode.c</locationURI>
+		</link>
+		<link>
+			<name>sdmmc/port/sdhc/argon</name>
+			<type>2</type>
+			<locationURI>virtual:/virtual</locationURI>
+		</link>
+		<link>
+			<name>sdmmc/port/sdhc/argon/event.c</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/src/sdmmc/port/sdhc/argon/event.c</locationURI>
+		</link>
+		<link>
+			<name>sdmmc/port/sdhc/argon/fsl_host.c</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/src/sdmmc/port/sdhc/argon/fsl_host.c</locationURI>
 		</link>
 	</linkedResources>
 </projectDescription>

@@ -43,6 +43,7 @@
 #include "reader_thread.h"
 #include "sampler_voice.h"
 #include "adc_sequencer.h"
+#include "fsl_sd_disk.h"
 #include "fsl_edma.h"
 #include "fsl_dmamux.h"
 #include "fsl_port.h"
@@ -596,6 +597,7 @@ void init_thread(void * arg)
     init_dma();
     init_audio_out();
     init_audio_synth();
+    sd_init();
     init_fs();
 
     PinIrqManager::get().connect(PIN_BUTTON1_PORT, PIN_BUTTON1_BIT, button1_handler, NULL);

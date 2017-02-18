@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2015, Freescale Semiconductor, Inc.
+ * Copyright 2016 NXP
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without modification,
@@ -12,7 +13,7 @@
  *   list of conditions and the following disclaimer in the documentation and/or
  *   other materials provided with the distribution.
  *
- * o Neither the name of Freescale Semiconductor, Inc. nor the names of its
+ * o Neither the name of the copyright holder nor the names of its
  *   contributors may be used to endorse or promote products derived from this
  *   software without specific prior written permission.
  *
@@ -38,7 +39,7 @@
  * Definitions
  *****************************************************************************/
 /*! @brief Driver version. */
-#define FSL_SDSPI_DRIVER_VERSION (MAKE_VERSION(2U, 0U, 0U)) /*2.0.0*/
+#define FSL_SDSPI_DRIVER_VERSION (MAKE_VERSION(2U, 1U, 1U)) /*2.1.1*/
 
 /*! @brief Default block size */
 #define FSL_SDSPI_DEFAULT_BLOCK_SIZE (512U)
@@ -49,7 +50,7 @@
  */
 
 /*! @brief SDSPI API status */
-typedef enum _sdspi_status
+enum _sdspi_status
 {
     kStatus_SDSPI_SetFrequencyFailed = MAKE_STATUS(kStatusGroup_SDSPI, 0U), /*!< Set frequency failed */
     kStatus_SDSPI_ExchangeFailed = MAKE_STATUS(kStatusGroup_SDSPI, 1U),     /*!< Exchange data on SPI bus failed */
@@ -71,7 +72,16 @@ typedef enum _sdspi_status
     kStatus_SDSPI_StopTransmissionFailed = MAKE_STATUS(kStatusGroup_SDSPI, 15U), /*!< Stop transmission failed */
     kStatus_SDSPI_SendApplicationCommandFailed =
         MAKE_STATUS(kStatusGroup_SDSPI, 16U), /*!< Send application command failed */
-} sdspi_status_t;
+};
+
+/*! @brief SDSPI card flag */
+enum _sdspi_card_flag
+{
+    kSDSPI_SupportHighCapacityFlag = (1U << 0U), /*!< Card is high capacity */
+    kSDSPI_SupportSdhcFlag = (1U << 1U),         /*!< Card is SDHC */
+    kSDSPI_SupportSdxcFlag = (1U << 2U),         /*!< Card is SDXC */
+    kSDSPI_SupportSdscFlag = (1U << 3U),         /*!< Card is SDSC */
+};
 
 /*! @brief SDSPI response type */
 typedef enum _sdspi_response_type
@@ -82,15 +92,6 @@ typedef enum _sdspi_response_type
     kSDSPI_ResponseTypeR3 = 3U,  /*!< Response 3 */
     kSDSPI_ResponseTypeR7 = 4U,  /*!< Response 7 */
 } sdspi_response_type_t;
-
-/*! @brief SDSPI card flag */
-typedef enum _sdspi_card_flag
-{
-    kSDSPI_SupportHighCapacityFlag = (1U << 0U), /*!< Card is high capacity */
-    kSDSPI_SupportSdhcFlag = (1U << 1U),         /*!< Card is SDHC */
-    kSDSPI_SupportSdxcFlag = (1U << 2U),         /*!< Card is SDXC */
-    kSDSPI_SupportSdscFlag = (1U << 3U),         /*!< Card is SDSC */
-} sdspi_card_flag_t;
 
 /*! @brief SDSPI command */
 typedef struct _sdspi_command
@@ -120,7 +121,7 @@ typedef struct _sdspi_card
 {
     sdspi_host_t *host;       /*!< Host state information */
     uint32_t relativeAddress; /*!< Relative address of the card */
-    uint32_t flags;           /*!< Flags defined in sdspi_card_flag_t. */
+    uint32_t flags;           /*!< Flags defined in _sdspi_card_flag. */
     uint8_t rawCid[16U];      /*!< Raw CID content */
     uint8_t rawCsd[16U];      /*!< Raw CSD content */
     uint8_t rawScr[8U];       /*!< Raw SCR content */
@@ -145,7 +146,7 @@ extern "C" {
  */
 
 /*!
- * @brief Initialize the card on a specific SPI instance.
+ * @brief Initializes the card on a specific SPI instance.
  *
  * This function initializes the card on a specific SPI instance.
  *
@@ -165,7 +166,7 @@ extern "C" {
 status_t SDSPI_Init(sdspi_card_t *card);
 
 /*!
- * @brief Deinitialize the card.
+ * @brief Deinitializes the card.
  *
  * This function deinitializes the specific card.
  *
@@ -174,7 +175,7 @@ status_t SDSPI_Init(sdspi_card_t *card);
 void SDSPI_Deinit(sdspi_card_t *card);
 
 /*!
- * @brief Check whether the card is write-protected.
+ * @brief Checks whether the card is write-protected.
  *
  * This function checks if the card is write-protected via CSD register.
  *
@@ -185,7 +186,7 @@ void SDSPI_Deinit(sdspi_card_t *card);
 bool SDSPI_CheckReadOnly(sdspi_card_t *card);
 
 /*!
- * @brief Read blocks from the specific card.
+ * @brief Reads blocks from the specific card.
  *
  * This function reads blocks from specific card.
  *
@@ -201,7 +202,7 @@ bool SDSPI_CheckReadOnly(sdspi_card_t *card);
 status_t SDSPI_ReadBlocks(sdspi_card_t *card, uint8_t *buffer, uint32_t startBlock, uint32_t blockCount);
 
 /*!
- * @brief Write blocks of data to the specific card.
+ * @brief Writes blocks of data to the specific card.
  *
  * This function writes blocks to specific card
  *

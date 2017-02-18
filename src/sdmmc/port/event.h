@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2015, Freescale Semiconductor, Inc.
+ * Copyright (c) 2016, Freescale Semiconductor, Inc.
+ * Copyright 2016 NXP
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without modification,
@@ -12,7 +13,7 @@
  *   list of conditions and the following disclaimer in the documentation and/or
  *   other materials provided with the distribution.
  *
- * o Neither the name of Freescale Semiconductor, Inc. nor the names of its
+ * o Neither the name of the copyright holder nor the names of its
  *   contributors may be used to endorse or promote products derived from this
  *   software without specific prior written permission.
  *
@@ -27,48 +28,19 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+#ifndef _EVENT_H_
+#define _EVENT_H_
 
-#ifndef _SDHC_CONFIG_H_
-#define _SDHC_CONFIG_H_
-
-#include <stdbool.h>
-#include <stdint.h>
-#include "fsl_sdhc.h"
-#include "board.h"
-
-/*!
- * @addtogroup SDHC Configure
- * @{
- */
+#include "fsl_common.h"
 
 /*******************************************************************************
  * Definitions
  ******************************************************************************/
-/* Endian mode. */
-#define SDHC_ENDIAN_MODE kSDHC_EndianModeLittle
-
-/* DMA mode */
-#define SDHC_DMA_MODE kSDHC_DmaModeAdma2
-
-/* Read/write watermark level. The bigger value indicates DMA has higher read/write performance. */
-#define SDHC_READ_WATERMARK_LEVEL (0x80U)
-#define SDHC_WRITE_WATERMARK_LEVEL (0x80U)
-
-/* ADMA table length united as word.
- *
- * SD card driver can't support ADMA1 transfer mode currently.
- * One ADMA2 table item occupy two words which can transfer maximum 0xFFFFU bytes one time.
- * The more data to be transferred in one time, the bigger value of SDHC_ADMA_TABLE_WORDS need to be set.
- */
-#define SDHC_ADMA_TABLE_WORDS (8U)
-
-/*! The maximum timeout time for the transfer complete event */
-#define EVENT_TIMEOUT_TRANSFER_COMPLETE (1000U)
-
 /*! @brief Event type  */
 typedef enum _event
 {
     kEVENT_TransferComplete = 0U, /*!< Transfer complete event */
+    kEVENT_CardDetect = 1U,       /*!< Card detect event */
 } event_t;
 
 /*******************************************************************************
@@ -79,12 +51,12 @@ extern "C" {
 #endif
 
 /*!
- * @name SDHC Event Function
+ * @name Event Function
  * @{
  */
 
 /*!
- * @brief Initialize timer to implement timeout detection for EVENT_Wait function.
+ * @brief Initialize timer to implement wait event timeout.
  */
 void EVENT_InitTimer(void);
 
@@ -128,4 +100,4 @@ void EVENT_Delete(event_t eventType);
 }
 #endif
 
-#endif /* _SDHC_CONFIG_H_ */
+#endif /* _EVENT_H_*/
