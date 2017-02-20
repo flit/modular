@@ -54,6 +54,10 @@
 #define ENABLE_DEBUG_PRINTF (1)
 #endif
 
+#if !defined(DEBUG_PRINTF_TO_UART)
+#define DEBUG_PRINTF_TO_UART (0)
+#endif
+
 #if !defined(DEBUG_PRINTF_MASK)
 #define DEBUG_PRINTF_MASK (ERROR_MASK|INIT_MASK|BUTTON_MASK|TRIG_MASK|RETRIG_MASK|FILL_MASK|TIME_MASK|QUEUE_MASK)
 #endif
@@ -61,7 +65,7 @@
 #define DEBUG_LOG_MSG_SIZE (48)
 #define DEBUG_LOG_ENTRY_COUNT (50)
 
-#if ENABLE_DEBUG_PRINTF
+#if ENABLE_DEBUG_PRINTF && !DEBUG_PRINTF_TO_UART
 
 extern char g_debugLogBuffer[DEBUG_LOG_MSG_SIZE];
 extern slab::RingBuffer<slab::SimpleString<DEBUG_LOG_MSG_SIZE>, DEBUG_LOG_ENTRY_COUNT> g_debugLog;
@@ -77,12 +81,19 @@ extern slab::RingBuffer<slab::SimpleString<DEBUG_LOG_MSG_SIZE>, DEBUG_LOG_ENTRY_
     char g_debugLogBuffer[DEBUG_LOG_MSG_SIZE]; \
     RingBuffer<SimpleString<DEBUG_LOG_MSG_SIZE>, DEBUG_LOG_ENTRY_COUNT> g_debugLog;
 
-#else // ENABLE_DEBUG_PRINTF
+#elif ENABLE_DEBUG_PRINTF && DEBUG_PRINTF_TO_UART
+
+#define DEBUG_PRINTF(f, m, ...) do { if ((f) & DEBUG_PRINTF_MASK) { \
+        printf("[%d] " m, Microseconds::get(), ##__VA_ARGS__); \
+    } } while (0)
+#define DEFINE_DEBUG_LOG
+
+#else // !ENABLE_DEBUG_PRINTF
 
 #define DEBUG_PRINTF(f, m, ...)
 #define DEFINE_DEBUG_LOG
 
-#endif // ENABLE_DEBUG_PRINTF
+#endif // !ENABLE_DEBUG_PRINTF
 
 #endif // _DEBUG_LOG_H_
 //------------------------------------------------------------------------------

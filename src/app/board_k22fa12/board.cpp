@@ -57,8 +57,11 @@ void init_board()
     CLOCK_SetXtal32Freq(kXtal32Freq);
 
     // Disable MPU.
-    MPU->CESR = 0;
-    SIM->SCGC7 &= ~SIM_SCGC7_MPU_MASK;
+    if (SIM->SCGC7 & SIM_SCGC7_MPU_MASK)
+    {
+        MPU->CESR = 0;
+        SIM->SCGC7 &= ~SIM_SCGC7_MPU_MASK;
+    }
 
     BOARD_BootClockRUN();
 

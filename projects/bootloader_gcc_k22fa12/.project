@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <projectDescription>
-	<name>sampler_k22fa12</name>
+	<name>bootloader_gcc_k22fa12</name>
 	<comment></comment>
 	<projects>
 	</projects>
@@ -41,6 +41,11 @@
 			<locationURI>virtual:/virtual</locationURI>
 		</link>
 		<link>
+			<name>bootloader</name>
+			<type>2</type>
+			<locationURI>virtual:/virtual</locationURI>
+		</link>
+		<link>
 			<name>devices</name>
 			<type>2</type>
 			<locationURI>virtual:/virtual</locationURI>
@@ -64,26 +69,6 @@
 			<name>CMSIS/Include</name>
 			<type>2</type>
 			<locationURI>virtual:/virtual</locationURI>
-		</link>
-		<link>
-			<name>app/adc_sequencer.cpp</name>
-			<type>1</type>
-			<locationURI>PARENT-2-PROJECT_LOC/src/app/adc_sequencer.cpp</locationURI>
-		</link>
-		<link>
-			<name>app/adc_sequencer.h</name>
-			<type>1</type>
-			<locationURI>PARENT-2-PROJECT_LOC/src/app/adc_sequencer.h</locationURI>
-		</link>
-		<link>
-			<name>app/audio_output.cpp</name>
-			<type>1</type>
-			<locationURI>PARENT-2-PROJECT_LOC/src/app/audio_output.cpp</locationURI>
-		</link>
-		<link>
-			<name>app/audio_output.h</name>
-			<type>1</type>
-			<locationURI>PARENT-2-PROJECT_LOC/src/app/audio_output.h</locationURI>
 		</link>
 		<link>
 			<name>app/board_k22fa12</name>
@@ -111,11 +96,6 @@
 			<locationURI>PARENT-2-PROJECT_LOC/src/app/led.h</locationURI>
 		</link>
 		<link>
-			<name>app/main.cpp</name>
-			<type>1</type>
-			<locationURI>PARENT-2-PROJECT_LOC/src/app/main.cpp</locationURI>
-		</link>
-		<link>
 			<name>app/microseconds.cpp</name>
 			<type>1</type>
 			<locationURI>PARENT-2-PROJECT_LOC/src/app/microseconds.cpp</locationURI>
@@ -131,49 +111,9 @@
 			<locationURI>PARENT-2-PROJECT_LOC/src/app/nanolib_stubs.c</locationURI>
 		</link>
 		<link>
-			<name>app/pin_irq_manager.cpp</name>
-			<type>1</type>
-			<locationURI>PARENT-2-PROJECT_LOC/src/app/pin_irq_manager.cpp</locationURI>
-		</link>
-		<link>
-			<name>app/pin_irq_manager.h</name>
-			<type>1</type>
-			<locationURI>PARENT-2-PROJECT_LOC/src/app/pin_irq_manager.h</locationURI>
-		</link>
-		<link>
-			<name>app/protected_queue.h</name>
-			<type>1</type>
-			<locationURI>PARENT-2-PROJECT_LOC/src/app/protected_queue.h</locationURI>
-		</link>
-		<link>
-			<name>app/reader_thread.cpp</name>
-			<type>1</type>
-			<locationURI>PARENT-2-PROJECT_LOC/src/app/reader_thread.cpp</locationURI>
-		</link>
-		<link>
-			<name>app/reader_thread.h</name>
-			<type>1</type>
-			<locationURI>PARENT-2-PROJECT_LOC/src/app/reader_thread.h</locationURI>
-		</link>
-		<link>
 			<name>app/ring_buffer.h</name>
 			<type>1</type>
 			<locationURI>PARENT-2-PROJECT_LOC/src/app/ring_buffer.h</locationURI>
-		</link>
-		<link>
-			<name>app/sampler_voice.cpp</name>
-			<type>1</type>
-			<locationURI>PARENT-2-PROJECT_LOC/src/app/sampler_voice.cpp</locationURI>
-		</link>
-		<link>
-			<name>app/sampler_voice.h</name>
-			<type>1</type>
-			<locationURI>PARENT-2-PROJECT_LOC/src/app/sampler_voice.h</locationURI>
-		</link>
-		<link>
-			<name>app/simple_queue.h</name>
-			<type>1</type>
-			<locationURI>PARENT-2-PROJECT_LOC/src/app/simple_queue.h</locationURI>
 		</link>
 		<link>
 			<name>app/simple_string.h</name>
@@ -189,16 +129,6 @@
 			<name>app/utility.h</name>
 			<type>1</type>
 			<locationURI>PARENT-2-PROJECT_LOC/src/app/utility.h</locationURI>
-		</link>
-		<link>
-			<name>app/wav_file.cpp</name>
-			<type>1</type>
-			<locationURI>PARENT-2-PROJECT_LOC/src/app/wav_file.cpp</locationURI>
-		</link>
-		<link>
-			<name>app/wav_file.h</name>
-			<type>1</type>
-			<locationURI>PARENT-2-PROJECT_LOC/src/app/wav_file.h</locationURI>
 		</link>
 		<link>
 			<name>argon/ar_classes.h</name>
@@ -226,24 +156,29 @@
 			<locationURI>virtual:/virtual</locationURI>
 		</link>
 		<link>
+			<name>bootloader/bootloader.cpp</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/src/bootloader/bootloader.cpp</locationURI>
+		</link>
+		<link>
+			<name>devices/.DS_Store</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/src/devices/.DS_Store</locationURI>
+		</link>
+		<link>
 			<name>devices/MK22FA12</name>
 			<type>2</type>
 			<locationURI>virtual:/virtual</locationURI>
 		</link>
 		<link>
+			<name>fatfs/.DS_Store</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/src/fatfs/.DS_Store</locationURI>
+		</link>
+		<link>
 			<name>fatfs/src</name>
 			<type>2</type>
 			<locationURI>virtual:/virtual</locationURI>
-		</link>
-		<link>
-			<name>ksdk/fsl_adc16.c</name>
-			<type>1</type>
-			<locationURI>PARENT-2-PROJECT_LOC/src/ksdk/fsl_adc16.c</locationURI>
-		</link>
-		<link>
-			<name>ksdk/fsl_adc16.h</name>
-			<type>1</type>
-			<locationURI>PARENT-2-PROJECT_LOC/src/ksdk/fsl_adc16.h</locationURI>
 		</link>
 		<link>
 			<name>ksdk/fsl_common.c</name>
@@ -266,24 +201,14 @@
 			<locationURI>PARENT-2-PROJECT_LOC/src/ksdk/fsl_debug_console.h</locationURI>
 		</link>
 		<link>
-			<name>ksdk/fsl_dmamux.c</name>
+			<name>ksdk/fsl_flash.c</name>
 			<type>1</type>
-			<locationURI>PARENT-2-PROJECT_LOC/src/ksdk/fsl_dmamux.c</locationURI>
+			<locationURI>PARENT-2-PROJECT_LOC/src/ksdk/fsl_flash.c</locationURI>
 		</link>
 		<link>
-			<name>ksdk/fsl_dmamux.h</name>
+			<name>ksdk/fsl_flash.h</name>
 			<type>1</type>
-			<locationURI>PARENT-2-PROJECT_LOC/src/ksdk/fsl_dmamux.h</locationURI>
-		</link>
-		<link>
-			<name>ksdk/fsl_edma.c</name>
-			<type>1</type>
-			<locationURI>PARENT-2-PROJECT_LOC/src/ksdk/fsl_edma.c</locationURI>
-		</link>
-		<link>
-			<name>ksdk/fsl_edma.h</name>
-			<type>1</type>
-			<locationURI>PARENT-2-PROJECT_LOC/src/ksdk/fsl_edma.h</locationURI>
+			<locationURI>PARENT-2-PROJECT_LOC/src/ksdk/fsl_flash.h</locationURI>
 		</link>
 		<link>
 			<name>ksdk/fsl_gpio.c</name>
@@ -311,16 +236,6 @@
 			<locationURI>PARENT-2-PROJECT_LOC/src/ksdk/fsl_port.h</locationURI>
 		</link>
 		<link>
-			<name>ksdk/fsl_sai.c</name>
-			<type>1</type>
-			<locationURI>PARENT-2-PROJECT_LOC/src/ksdk/fsl_sai.c</locationURI>
-		</link>
-		<link>
-			<name>ksdk/fsl_sai.h</name>
-			<type>1</type>
-			<locationURI>PARENT-2-PROJECT_LOC/src/ksdk/fsl_sai.h</locationURI>
-		</link>
-		<link>
 			<name>ksdk/fsl_sbrk.c</name>
 			<type>1</type>
 			<locationURI>PARENT-2-PROJECT_LOC/src/ksdk/fsl_sbrk.c</locationURI>
@@ -334,26 +249,6 @@
 			<name>ksdk/fsl_sdhc.h</name>
 			<type>1</type>
 			<locationURI>PARENT-2-PROJECT_LOC/src/ksdk/fsl_sdhc.h</locationURI>
-		</link>
-		<link>
-			<name>ksdk/fsl_sim.c</name>
-			<type>1</type>
-			<locationURI>PARENT-2-PROJECT_LOC/src/ksdk/fsl_sim.c</locationURI>
-		</link>
-		<link>
-			<name>ksdk/fsl_sim.h</name>
-			<type>1</type>
-			<locationURI>PARENT-2-PROJECT_LOC/src/ksdk/fsl_sim.h</locationURI>
-		</link>
-		<link>
-			<name>ksdk/fsl_smc.c</name>
-			<type>1</type>
-			<locationURI>PARENT-2-PROJECT_LOC/src/ksdk/fsl_smc.c</locationURI>
-		</link>
-		<link>
-			<name>ksdk/fsl_smc.h</name>
-			<type>1</type>
-			<locationURI>PARENT-2-PROJECT_LOC/src/ksdk/fsl_smc.h</locationURI>
 		</link>
 		<link>
 			<name>ksdk/fsl_uart.c</name>
@@ -381,29 +276,9 @@
 			<locationURI>virtual:/virtual</locationURI>
 		</link>
 		<link>
-			<name>CMSIS/Include/arm_common_tables.h</name>
-			<type>1</type>
-			<locationURI>PARENT-2-PROJECT_LOC/src/CMSIS/Include/arm_common_tables.h</locationURI>
-		</link>
-		<link>
-			<name>CMSIS/Include/arm_const_structs.h</name>
-			<type>1</type>
-			<locationURI>PARENT-2-PROJECT_LOC/src/CMSIS/Include/arm_const_structs.h</locationURI>
-		</link>
-		<link>
-			<name>CMSIS/Include/arm_math.h</name>
-			<type>1</type>
-			<locationURI>PARENT-2-PROJECT_LOC/src/CMSIS/Include/arm_math.h</locationURI>
-		</link>
-		<link>
 			<name>CMSIS/Include/cmsis_gcc.h</name>
 			<type>1</type>
 			<locationURI>PARENT-2-PROJECT_LOC/src/CMSIS/Include/cmsis_gcc.h</locationURI>
-		</link>
-		<link>
-			<name>CMSIS/Include/core_cm0plus.h</name>
-			<type>1</type>
-			<locationURI>PARENT-2-PROJECT_LOC/src/CMSIS/Include/core_cm0plus.h</locationURI>
 		</link>
 		<link>
 			<name>CMSIS/Include/core_cm4.h</name>
@@ -451,11 +326,6 @@
 			<locationURI>PARENT-2-PROJECT_LOC/src/argon/cortex_m/ar_asm_macros.h</locationURI>
 		</link>
 		<link>
-			<name>argon/cortex_m/ar_atomics.h</name>
-			<type>1</type>
-			<locationURI>PARENT-2-PROJECT_LOC/src/argon/cortex_m/ar_atomics.h</locationURI>
-		</link>
-		<link>
 			<name>argon/cortex_m/ar_atomics_cm4.S</name>
 			<type>1</type>
 			<locationURI>PARENT-2-PROJECT_LOC/src/argon/cortex_m/ar_atomics_cm4.S</locationURI>
@@ -464,11 +334,6 @@
 			<name>argon/cortex_m/ar_handlers_cm4.S</name>
 			<type>1</type>
 			<locationURI>PARENT-2-PROJECT_LOC/src/argon/cortex_m/ar_handlers_cm4.S</locationURI>
-		</link>
-		<link>
-			<name>argon/cortex_m/ar_main_thread.cpp</name>
-			<type>1</type>
-			<locationURI>PARENT-2-PROJECT_LOC/src/argon/cortex_m/ar_main_thread.cpp</locationURI>
 		</link>
 		<link>
 			<name>argon/cortex_m/ar_port.cpp</name>
@@ -536,11 +401,6 @@
 			<locationURI>PARENT-2-PROJECT_LOC/src/devices/MK22FA12/MK22FA12.h</locationURI>
 		</link>
 		<link>
-			<name>devices/MK22FA12/MK22FA12.xml</name>
-			<type>1</type>
-			<locationURI>PARENT-2-PROJECT_LOC/src/devices/MK22FA12/MK22FA12.xml</locationURI>
-		</link>
-		<link>
 			<name>devices/MK22FA12/MK22FA12_features.h</name>
 			<type>1</type>
 			<locationURI>PARENT-2-PROJECT_LOC/src/devices/MK22FA12/MK22FA12_features.h</locationURI>
@@ -606,14 +466,9 @@
 			<locationURI>PARENT-2-PROJECT_LOC/src/fatfs/src/ffconf.h</locationURI>
 		</link>
 		<link>
-			<name>fatfs/src/fsl_sd_disk.c</name>
-			<type>1</type>
-			<locationURI>PARENT-2-PROJECT_LOC/src/fatfs/src/fsl_sd_disk/fsl_sd_disk.c</locationURI>
-		</link>
-		<link>
-			<name>fatfs/src/fsl_sd_disk.h</name>
-			<type>1</type>
-			<locationURI>PARENT-2-PROJECT_LOC/src/fatfs/src/fsl_sd_disk/fsl_sd_disk.h</locationURI>
+			<name>fatfs/src/fsl_sd_disk</name>
+			<type>2</type>
+			<locationURI>virtual:/virtual</locationURI>
 		</link>
 		<link>
 			<name>fatfs/src/integer.h</name>
@@ -639,6 +494,11 @@
 			<name>sdmmc/inc/fsl_sdmmc.h</name>
 			<type>1</type>
 			<locationURI>PARENT-2-PROJECT_LOC/src/sdmmc/inc/fsl_sdmmc.h</locationURI>
+		</link>
+		<link>
+			<name>sdmmc/inc/fsl_sdspi.h</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/src/sdmmc/inc/fsl_sdspi.h</locationURI>
 		</link>
 		<link>
 			<name>sdmmc/inc/fsl_specification.h</name>
@@ -671,19 +531,39 @@
 			<locationURI>PARENT-2-PROJECT_LOC/src/sdmmc/src/fsl_sdmmc.c</locationURI>
 		</link>
 		<link>
+			<name>devices/MK22FA12/gcc/MK22FN1M0Axxx12_flash.ld</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/src/devices/MK22FA12/gcc/MK22FN1M0Axxx12_flash.ld</locationURI>
+		</link>
+		<link>
+			<name>devices/MK22FA12/gcc/MK22FN1M0Axxx12_ram.ld</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/src/devices/MK22FA12/gcc/MK22FN1M0Axxx12_ram.ld</locationURI>
+		</link>
+		<link>
 			<name>devices/MK22FA12/gcc/MK22FX512Axxx12_flash.ld</name>
 			<type>1</type>
 			<locationURI>PARENT-2-PROJECT_LOC/src/devices/MK22FA12/gcc/MK22FX512Axxx12_flash.ld</locationURI>
 		</link>
 		<link>
-			<name>devices/MK22FA12/gcc/MK22FX512Axxx12_flash_app.ld</name>
+			<name>devices/MK22FA12/gcc/MK22FX512Axxx12_ram.ld</name>
 			<type>1</type>
-			<locationURI>PARENT-2-PROJECT_LOC/src/devices/MK22FA12/gcc/MK22FX512Axxx12_flash_app.ld</locationURI>
+			<locationURI>PARENT-2-PROJECT_LOC/src/devices/MK22FA12/gcc/MK22FX512Axxx12_ram.ld</locationURI>
 		</link>
 		<link>
 			<name>devices/MK22FA12/gcc/startup_MK22FA12.S</name>
 			<type>1</type>
 			<locationURI>PARENT-2-PROJECT_LOC/src/devices/MK22FA12/gcc/startup_MK22FA12.S</locationURI>
+		</link>
+		<link>
+			<name>fatfs/src/fsl_sd_disk/fsl_sd_disk.c</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/src/fatfs/src/fsl_sd_disk/fsl_sd_disk.c</locationURI>
+		</link>
+		<link>
+			<name>fatfs/src/fsl_sd_disk/fsl_sd_disk.h</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/src/fatfs/src/fsl_sd_disk/fsl_sd_disk.h</locationURI>
 		</link>
 		<link>
 			<name>fatfs/src/option/unicode.c</name>

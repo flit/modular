@@ -101,7 +101,6 @@ File::~File()
 File& File::operator = (const File& other)
 {
     strncpy(_path, other._path, sizeof(_path));
-//     memcpy(&_fp, &other._fp, sizeof(_fp));
     _fp = other._fp;
     _isOpen = other._isOpen;
     return *this;
@@ -141,6 +140,13 @@ void File::close()
         f_close(&_fp);
         _isOpen = false;
     }
+}
+
+bool File::remove()
+{
+    close();
+    FRESULT result = f_unlink(_path);
+    return result == FR_OK;
 }
 
 uint32_t File::read(uint32_t count, void * data)

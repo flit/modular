@@ -63,6 +63,8 @@ public:
     virtual uint32_t get_size() const override { return f_size(&_fp); }
     virtual uint32_t get_offset() const override { return f_tell(&_fp); }
 
+    virtual bool remove();
+
 protected:
     char _path[_MAX_LFN + 1];
     FIL _fp;
