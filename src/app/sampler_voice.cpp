@@ -59,7 +59,7 @@ void SampleBufferManager::init(SamplerVoice * voice)
     _number = voice->get_number();
     _primeMutex.init("prime");
 
-    int i;
+    uint32_t i;
     for (i = 0; i < kBufferCount; ++i)
     {
         _buffer[i].number = i;
@@ -116,7 +116,7 @@ void SamplerVoice::prime()
 void SampleBufferManager::prime()
 {
     Ar::Mutex::Guard guard(_primeMutex);
-    DEBUG_PRINTF(QUEUE_MASK, "V%d: start prime\r\n", _number);
+    DEBUG_PRINTF(QUEUE_MASK, "V%lu: start prime\r\n", _number);
 
     // Reset state.
     _samplesPlayed = 0;
@@ -132,21 +132,21 @@ void SampleBufferManager::prime()
     _buffer[0].readHead = 0;
 
     // Queue up the rest of the available buffers to be filled.
-    int i = _didReadFileStart ? 1 : 0;
+    uint32_t i = _didReadFileStart ? 1 : 0;
     for (; i < _activeBufferCount; ++i)
     {
         if (_buffer[i].state == SampleBuffer::State::kReading)
         {
-            DEBUG_PRINTF(QUEUE_MASK, "V%d: prime: marking b%d for reread\r\n", _number, i);
+            DEBUG_PRINTF(QUEUE_MASK, "V%lu: prime: marking b%lu for reread\r\n", _number, i);
             _buffer[i].reread = true;
         }
         else
         {
-            DEBUG_PRINTF(QUEUE_MASK, "V%d: prime: queuing b%d for read\r\n", _number, i);
+            DEBUG_PRINTF(QUEUE_MASK, "V%lu: prime: queuing b%lu for read\r\n", _number, i);
             queue_buffer_for_read(&_buffer[i]);
         }
     }
-    DEBUG_PRINTF(QUEUE_MASK, "V%d: end prime\r\n", _number);
+    DEBUG_PRINTF(QUEUE_MASK, "V%lu: end prime\r\n", _number);
 }
 
 void SamplerVoice::trigger()
@@ -154,7 +154,7 @@ void SamplerVoice::trigger()
     // Handle re-triggering while sample is already playing.
     if (_isPlaying)
     {
-        DEBUG_PRINTF(RETRIG_MASK, "V%d: retrigger (@%d)\r\n", _number, _manager.get_samples_played());
+        DEBUG_PRINTF(RETRIG_MASK, "V%lu: retrigger (@%lu)\r\n", _number, _manager.get_samples_played());
 
         // Start playing over from file start.
         _manager.prime();
@@ -177,7 +177,7 @@ void SamplerVoice::render(int16_t * data, uint32_t frameCount)
         voiceBuffer = _manager.get_current_buffer();
     }
 
-    int i;
+    uint32_t i;
     int16_t * out = data;
 
     if (voiceBuffer)
@@ -270,18 +270,18 @@ void SampleBufferManager::retire_buffer(SampleBuffer * buffer)
 
     if (_samplesPlayed >= _totalSamples)
     {
-        DEBUG_PRINTF(RETIRE_MASK, "V%d: retiring b%d; played %d (done)\r\n", _number, buffer->number, _samplesPlayed);
+        DEBUG_PRINTF(RETIRE_MASK, "V%lu: retiring b%d; played %lu (done)\r\n", _number, buffer->number, _samplesPlayed);
 
         prime();
     }
     else
     {
-        DEBUG_PRINTF(RETIRE_MASK, "V%d: retiring b%d; played %d\r\n", _number, buffer->number, _samplesPlayed);
+        DEBUG_PRINTF(RETIRE_MASK, "V%lu: retiring b%d; played %lu\r\n", _number, buffer->number, _samplesPlayed);
 
         // Don't queue up file start buffer for reading.
         if (buffer != &_buffer[0] && _samplesQueued < _totalSamples)
         {
-            DEBUG_PRINTF(RETIRE_MASK|QUEUE_MASK, "V%d: retire: queue b%d to read @ %d\r\n", _number, buffer->number, _samplesPlayed);
+            DEBUG_PRINTF(RETIRE_MASK|QUEUE_MASK, "V%lu: retire: queue b%d to read @ %lu\r\n", _number, buffer->number, _samplesPlayed);
             queue_buffer_for_read(buffer);
         }
 
@@ -294,13 +294,13 @@ SampleBuffer * SampleBufferManager::dequeue_next_buffer()
     SampleBuffer * buffer;
     if (_fullBuffers.get(buffer))
     {
-        DEBUG_PRINTF(CURBUF_MASK, "V%d: current buffer = %d\r\n", _number, buffer->number);
+        DEBUG_PRINTF(CURBUF_MASK, "V%lu: current buffer = %d\r\n", _number, buffer->number);
         _currentBuffer = buffer;
         buffer->state = SampleBuffer::State::kPlaying;
     }
     else
     {
-        DEBUG_PRINTF(ERROR_MASK, "V%d: *** NO READY BUFFERS ***\r\n", _number);
+        DEBUG_PRINTF(ERROR_MASK, "V%lu: *** NO READY BUFFERS ***\r\n", _number);
         Ar::_halt();
         _currentBuffer = nullptr;
     }
@@ -320,7 +320,7 @@ void SampleBufferManager::enqueue_full_buffer(SampleBuffer * buffer)
     {
         if (buffer->reread)
         {
-            DEBUG_PRINTF(QUEUE_MASK, "V%d: queuing b%d for reread\r\n", _number, buffer->number);
+            DEBUG_PRINTF(QUEUE_MASK, "V%lu: queuing b%d for reread\r\n", _number, buffer->number);
             queue_buffer_for_read(buffer);
         }
         else
@@ -328,7 +328,7 @@ void SampleBufferManager::enqueue_full_buffer(SampleBuffer * buffer)
             _samplesRead += buffer->frameCount;
 
             buffer->state = SampleBuffer::State::kReady;
-            DEBUG_PRINTF(QUEUE_MASK, "V%d: queuing b%d for play\r\n", _number, buffer->number);
+            DEBUG_PRINTF(QUEUE_MASK, "V%lu: queuing b%d for play\r\n", _number, buffer->number);
             _fullBuffers.put(buffer);
         }
     }

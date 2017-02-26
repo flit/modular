@@ -465,7 +465,7 @@ void scan_for_files()
 
                     uint32_t frameCount = g_voice[channel].get_audio_stream().get_frames();
 
-                    DEBUG_PRINTF(INIT_MASK, "%s: %d Hz; %d bits; %d ch; %d bytes/frame; %d frames\r\n",
+                    DEBUG_PRINTF(INIT_MASK, "%s: %lu Hz; %lu bits; %lu ch; %lu bytes/frame; %lu frames\r\n",
                         info.fname,
                         wav.get_sample_rate(),
                         wav.get_sample_size(),
@@ -545,7 +545,7 @@ void init_audio_out()
     // Add buffers to the audio output.
     AudioOutput::Buffer buf;
     buf.dataSize = kAudioBufferSize * kAudioChannelCount * sizeof(int16_t);
-    int i;
+    uint32_t i;
     for (i = 0; i < kAudioBufferCount; ++i)
     {
         buf.data = (uint8_t *)&g_outBuf[i][0];
@@ -617,6 +617,7 @@ int main(void)
 
     g_initThread = new Ar::Thread("init", init_thread, 0, NULL, 3072, 60, kArStartThread);
     ar_kernel_run();
+    return 0;
 }
 
 //------------------------------------------------------------------------------

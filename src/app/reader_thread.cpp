@@ -52,7 +52,7 @@ ReaderThread::ReaderThread()
     _count(0)
 {
     // Put all queue nodes on the free list.
-    int i;
+    uint32_t i;
     for (i=0; i < kQueueSize; ++i)
     {
         add_free_node(&_nodes[i]);
@@ -220,7 +220,7 @@ void ReaderThread::reader_thread()
         {
             continue;
         }
-        DEBUG_PRINTF(FILL_MASK, "R: filling b%d v%d @ %d\r\n", request->number, voice->get_number(), request->startFrame);
+        DEBUG_PRINTF(FILL_MASK, "R: filling b%i v%lu @ %lu\r\n", request->number, voice->get_number(), request->startFrame);
 
         // Figure out how much data to read.
         Stream& stream = voice->get_audio_stream();
@@ -245,12 +245,12 @@ void ReaderThread::reader_thread()
         uint32_t framesRead = bytesRead / frameSize;
 
         uint32_t delta = stop - start;
-        DEBUG_PRINTF(TIME_MASK, "R: read %d bytes in %d µs\r\n", bytesRead, delta);
+        DEBUG_PRINTF(TIME_MASK, "R: read %lu bytes in %lu µs\r\n", bytesRead, delta);
 
         // For stereo data copy just the left channel into the voice buffer.
         if (channelCount == 2)
         {
-            int i;
+            uint32_t i;
             int16_t * buf = _readBuf;
             int16_t * data = request->data;
             for (i = 0; i < framesRead; ++i)
@@ -271,7 +271,7 @@ void ReaderThread::reader_thread()
 
         uint32_t stop1 = Microseconds::get();
         uint32_t delta1 = stop1 - start1;
-        DEBUG_PRINTF(TIME_MASK, "R: %d µs to fill b%d v%d\r\n", delta1, request->number, voice->get_number());
+        DEBUG_PRINTF(TIME_MASK, "R: %lu µs to fill b%i v%lu\r\n", delta1, request->number, voice->get_number());
     }
 }
 

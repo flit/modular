@@ -40,6 +40,13 @@ using namespace slab;
 //------------------------------------------------------------------------------
 
 AudioOutput::AudioOutput()
+:   m_bytesPerSample(0),
+    m_minorLoopCount(0),
+    m_transferDone(),
+    m_audioThread(),
+    m_freeBufferQueue(),
+    m_bufferCount(0),
+    m_source(nullptr)
 {
 }
 
@@ -55,7 +62,7 @@ void AudioOutput::init(const Format& format)
     DMAMUX_EnableChannel(DMAMUX0, kFirstDmaChannel + 1);
 
     // Create DMA queues.
-    int i;
+    uint32_t i;
     for (i = 0; i < kDmaChannelCount; ++i)
     {
         DmaQueue * dma = &m_dma[i];
@@ -132,7 +139,7 @@ void AudioOutput::audio_thread()
     Buffer *buf;
 
     // Prime all buffers.
-    int i;
+    uint32_t i;
     while (!m_freeBufferQueue.is_empty())
     {
         for (i = 0; i < kDmaChannelCount; ++i)
