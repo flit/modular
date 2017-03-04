@@ -186,6 +186,16 @@
 			<locationURI>PARENT-2-PROJECT_LOC/src/app/stream.h</locationURI>
 		</link>
 		<link>
+			<name>app/ui.cpp</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/src/app/ui.cpp</locationURI>
+		</link>
+		<link>
+			<name>app/ui.h</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/src/app/ui.h</locationURI>
+		</link>
+		<link>
 			<name>app/utility.h</name>
 			<type>1</type>
 			<locationURI>PARENT-2-PROJECT_LOC/src/app/utility.h</locationURI>

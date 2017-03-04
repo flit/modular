@@ -26,11 +26,11 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#if !defined(_LED_H_)
-#define _LED_H_
+#if !defined(_UI_H_)
+#define _UI_H_
 
-#include <stdint.h>
-#include "fsl_gpio.h"
+#include "argon/argon.h"
+#include "led.h"
 
 //------------------------------------------------------------------------------
 // Definitions
@@ -38,52 +38,100 @@
 
 namespace slab {
 
-/*!
- * @brief Abstract LED base class.
- */
-class LEDBase
+enum UIMode : uint32_t
 {
-public:
+    kPlayMode,
+    kEditMode,
+};
 
-    virtual void on()=0;
-    virtual void off()=0;
-    virtual bool is_on()=0;
+enum UIEventType : uint32_t
+{
+    kButtonDown,
+    kButtonUp,
+};
 
+enum UIEventSource : uint32_t
+{
+    kButton1,
+    kButton2,
+};
+
+struct UIEvent
+{
+    UIEventType event;
+    UIEventSource source;
+    uint32_t value;
 };
 
 /*!
  * @brief
  */
-template <uint32_t gpio, uint32_t mask>
-class LED : public LEDBase
+class Button
 {
 public:
-    LED() : _state(false) {}
+    Button(PORT_Type * port, GPIO_Type * gpio, uint32_t pin, UIEventSource source);
+    ~Button()=default;
 
-    virtual void on() override
-    {
-        GPIO_SetPinsOutput((GPIO_Type *)gpio, mask);
-        _state = true;
-    }
+    void init();
 
-    virtual void off() override
-    {
-        GPIO_ClearPinsOutput((GPIO_Type *)gpio, mask);
-        _state = false;
-    }
-
-    virtual bool is_on()
-    {
-        return _state;
-    }
+    bool read();
 
 protected:
+    UIEventSource _source;
+    PORT_Type * _port;
+    GPIO_Type * _gpio;
+    uint32_t _pin;
     bool _state;
+    Ar::Timer _timer;
+
+    void handle_irq();
+    void handle_timer();
+
+    static void irq_handler_stub(PORT_Type * port, uint32_t pin, void * userData);
+    static void timer_cb_stub(Ar::Timer * timer, void * param);
+};
+
+/*!
+ * @brief
+ */
+class UI
+{
+public:
+    static UI & get() { return *s_ui; }
+
+    UI();
+    ~UI()=default;
+
+    void init();
+    void set_leds(LEDBase ** channelLeds, LEDBase * button1Led);
+
+    void start();
+
+    void send_event(const UIEvent& event) { _eventQueue.send(event); }
+
+    Ar::RunLoop * get_runloop() { return &_runloop; }
+
+protected:
+    static const uint32_t kMaxEvents = 20;
+
+    static UI * s_ui;
+
+    Ar::ThreadWithStack<2048> _thread;
+    Ar::RunLoop _runloop;
+    Ar::StaticQueue<UIEvent, kMaxEvents> _eventQueue;
+    Ar::Timer _ledTimer;
+    LEDBase ** _channelLeds;
+    LEDBase * _button1Led;
+    Button _button1;
+    Button _button2;
+    UIMode _mode;
+
+    void ui_thread();
 };
 
 } // namespace slab
 
-#endif // _LED_H_
+#endif // _UI_H_
 //------------------------------------------------------------------------------
 // EOF
 //------------------------------------------------------------------------------

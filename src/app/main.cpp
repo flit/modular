@@ -42,6 +42,7 @@
 #include "reader_thread.h"
 #include "sampler_voice.h"
 #include "adc_sequencer.h"
+#include "ui.h"
 #include "fsl_sd_disk.h"
 #include "fsl_edma.h"
 #include "fsl_dmamux.h"
@@ -78,8 +79,6 @@ void init_fs();
 
 void scan_for_files();
 
-void button1_handler(PORT_Type * port, uint32_t pin, void * userData);
-void button2_handler(PORT_Type * port, uint32_t pin, void * userData);
 
 //------------------------------------------------------------------------------
 // Variables
@@ -204,7 +203,7 @@ LEDBase * g_channelLeds[] = { &g_ch1Led, &g_ch2Led, &g_ch3Led, &g_ch4Led};
 SamplerVoice g_voice[4];
 ReaderThread g_readerThread;
 LED<PIN_BUTTON1_LED_GPIO_BASE, PIN_BUTTON1_LED> g_button1Led;
-bool g_button1LedState = false;
+UI g_ui;
 
 DEFINE_DEBUG_LOG
 
@@ -484,25 +483,6 @@ void scan_for_files()
     }
 }
 
-void button1_handler(PORT_Type * port, uint32_t pin, void * userData)
-{
-    DEBUG_PRINTF(BUTTON_MASK, "button1\r\n");
-    if (g_button1LedState)
-    {
-        g_button1Led.off();
-    }
-    else
-    {
-        g_button1Led.on();
-    }
-    g_button1LedState = !g_button1LedState;
-}
-
-void button2_handler(PORT_Type * port, uint32_t pin, void * userData)
-{
-    DEBUG_PRINTF(BUTTON_MASK, "button2\r\n");
-}
-
 void init_dma()
 {
     // Init eDMA and DMAMUX.
@@ -586,13 +566,14 @@ void init_thread(void * arg)
     g_voice[3].init(3);
     g_voice[3].set_led(&g_ch4Led);
 
+    g_ui.set_leds(g_channelLeds, &g_button1Led);
+    g_ui.init();
+
     init_dma();
     init_audio_out();
     sd_init();
     init_fs();
 
-    PinIrqManager::get().connect(PIN_BUTTON1_PORT, PIN_BUTTON1_BIT, button1_handler, NULL);
-//     PinIrqManager::get().connect(PIN_BUTTON2_PORT, PIN_BUTTON2_BIT, button1_handler, NULL);
 
     g_readerThread.start();
 
@@ -602,6 +583,7 @@ void init_thread(void * arg)
         Ar::Thread::sleep(20);
     }
 
+    g_ui.start();
     g_audioOut.start();
     g_cvThread.resume();
 
