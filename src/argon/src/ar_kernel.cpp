@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2007-2016 Immo Software
+ * Copyright (c) 2007-2017 Immo Software
  *
  * Redistribution and use in source and binary forms, with or without modification,
  * are permitted provided that the following conditions are met:
@@ -819,6 +819,12 @@ void _ar_list::check()
 }
 #endif // AR_ENABLE_LIST_CHECKS
 
+//! @brief Function to make it clear what happened.
+void DEFERRED_ACTION_QUEUE_OVERFLOW_DETECTED()
+{
+    _halt();
+}
+
 int32_t _ar_deferred_action_queue::insert(int32_t entryCount)
 {
     // Increment queue entry count.
@@ -829,7 +835,7 @@ int32_t _ar_deferred_action_queue::insert(int32_t entryCount)
         // Check if queue is full.
         if (count + entryCount > AR_DEFERRED_ACTION_QUEUE_SIZE)
         {
-            assert(false);
+            DEFERRED_ACTION_QUEUE_OVERFLOW_DETECTED();
             return -1;
         }
     } while (!ar_atomic_cas(&m_count, count, count + entryCount));
