@@ -1,0 +1,4 @@
+[submodule "src/argon"]
+	path = src/argon
+	url = https://flit@github.com/flit/argon-rtos.git
+	branch = dev_directory_restructure
