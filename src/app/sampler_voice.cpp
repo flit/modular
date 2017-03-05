@@ -169,6 +169,11 @@ void SamplerVoice::trigger()
     _isPlaying = true;
 }
 
+void SamplerVoice::playing_did_finish()
+{
+    prime();
+}
+
 void SamplerVoice::render(int16_t * data, uint32_t frameCount)
 {
     SampleBuffer * voiceBuffer = nullptr;
@@ -272,7 +277,7 @@ void SampleBufferManager::retire_buffer(SampleBuffer * buffer)
     {
         DEBUG_PRINTF(RETIRE_MASK, "V%lu: retiring b%d; played %lu (done)\r\n", _number, buffer->number, _samplesPlayed);
 
-        prime();
+        _voice->playing_did_finish();
     }
     else
     {

@@ -138,6 +138,8 @@ public:
     void trigger();
     bool is_playing() { return _isPlaying; }
 
+    void playing_did_finish();
+
     void set_gain(float gain) { _gain = gain; }
 
     void render(int16_t * data, uint32_t frameCount);
