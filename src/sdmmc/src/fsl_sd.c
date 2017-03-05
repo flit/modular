@@ -1419,7 +1419,7 @@ status_t SD_Init(sd_card_t *card)
 status_t SD_InitCard(sd_card_t *card)
 {
     uint32_t applicationCommand41Argument = 0U;
-    status_t error = kStatus_Success;
+//    status_t error = kStatus_Success;
     card_operation_voltage_t tempVoltage;
 
     HOST_Reset(card->host.base);

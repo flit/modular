@@ -102,7 +102,7 @@
 #endif /* HUGE_VAL */
 
 #if SCANF_FLOAT_ENABLE
-static double fnum = 0.0;
+//static double fnum = 0.0;
 #endif /* SCANF_FLOAT_ENABLE */
 
 /*! @brief Operation functions definitions for debug console. */
