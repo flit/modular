@@ -166,6 +166,11 @@
 			<locationURI>PARENT-2-PROJECT_LOC/src/app/ring_buffer.h</locationURI>
 		</link>
 		<link>
+			<name>app/running_average.h</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/src/app/running_average.h</locationURI>
+		</link>
+		<link>
 			<name>app/sampler_voice.cpp</name>
 			<type>1</type>
 			<locationURI>PARENT-2-PROJECT_LOC/src/app/sampler_voice.cpp</locationURI>

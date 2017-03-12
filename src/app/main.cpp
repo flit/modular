@@ -92,36 +92,6 @@ FileSystem g_fs;
 Ar::Thread * g_initThread = NULL;
 Ar::ThreadWithStack<2048> g_cvThread("cv", cv_thread, 0, 80, kArSuspendThread);
 
-/*!
- * @brief
- */
-template <uint32_t N>
-class RunningAverage : public RingBuffer<uint32_t, N>
-{
-public:
-    RunningAverage() : RingBuffer<uint32_t, N>(), _sum(0), _average(0) {}
-    ~RunningAverage()=default;
-
-    uint32_t get() const { return _average; }
-
-    uint32_t update(uint32_t value)
-    {
-        if (this->is_full())
-        {
-            uint32_t temp;
-            this->RingBuffer<uint32_t, N>::get(temp);
-            _sum -= temp;
-        }
-        _sum += value;
-        this->put(value);
-        _average = _sum / this->get_count();
-        return _average;
-    }
-
-protected:
-    uint32_t _sum;
-    uint32_t _average;
-};
 
 /*!
  * @brief
