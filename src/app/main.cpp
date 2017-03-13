@@ -85,6 +85,8 @@ void scan_for_files();
 // Variables
 //------------------------------------------------------------------------------
 
+namespace slab {
+
 int16_t g_outBuf[kAudioBufferCount][kAudioBufferSize * kAudioChannelCount];
 
 AudioOutput g_audioOut;
@@ -175,6 +177,8 @@ SamplerVoice g_voice[4];
 ReaderThread g_readerThread;
 LED<PIN_BUTTON1_LED_GPIO_BASE, PIN_BUTTON1_LED> g_button1Led;
 UI g_ui;
+
+} // namespace slab
 
 DEFINE_DEBUG_LOG
 
