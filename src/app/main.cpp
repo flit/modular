@@ -564,6 +564,14 @@ void init_thread(void * arg)
 
 int main(void)
 {
+#if DEBUG
+    // Disable write buffer to make bus faults precise.
+    SCnSCB->ACTLR = SCnSCB_ACTLR_DISDEFWBUF_Msk;
+#endif
+
+    // Enable configurable faults.
+    SCB->SHCSR |= SCB_SHCSR_USGFAULTENA_Msk | SCB_SHCSR_BUSFAULTENA_Msk | SCB_SHCSR_MEMFAULTENA_Msk;
+
     init_board();
     Microseconds::init();
 

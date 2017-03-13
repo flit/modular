@@ -430,6 +430,33 @@ HardFault_Handler:
 
     .align 1
     .thumb_func
+    .weak MemManage_Handler
+    .type MemManage_Handler, %function
+MemManage_Handler:
+    ldr   r0,=MemManage_Handler
+    bx    r0
+    .size MemManage_Handler, . - MemManage_Handler
+
+    .align 1
+    .thumb_func
+    .weak BusFault_Handler
+    .type BusFault_Handler, %function
+BusFault_Handler:
+    ldr   r0,=BusFault_Handler
+    bx    r0
+    .size BusFault_Handler, . - BusFault_Handler
+
+    .align 1
+    .thumb_func
+    .weak UsageFault_Handler
+    .type UsageFault_Handler, %function
+UsageFault_Handler:
+    ldr   r0,=UsageFault_Handler
+    bx    r0
+    .size UsageFault_Handler, . - UsageFault_Handler
+
+    .align 1
+    .thumb_func
     .weak SVC_Handler
     .type SVC_Handler, %function
 SVC_Handler:
@@ -861,9 +888,6 @@ SDHC_IRQHandler:
     .endm
 
 /* Exception Handlers */
-    def_irq_handler    MemManage_Handler
-    def_irq_handler    BusFault_Handler
-    def_irq_handler    UsageFault_Handler
     def_irq_handler    DebugMon_Handler
     def_irq_handler    DMA0_DriverIRQHandler
     def_irq_handler    DMA1_DriverIRQHandler
