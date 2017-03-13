@@ -47,6 +47,7 @@ public:
 
     virtual void on()=0;
     virtual void off()=0;
+    void set(bool state) { state ? on() : off(); }
     virtual bool is_on()=0;
 
 };
@@ -72,7 +73,7 @@ public:
         _state = false;
     }
 
-    virtual bool is_on()
+    virtual bool is_on() override
     {
         return _state;
     }

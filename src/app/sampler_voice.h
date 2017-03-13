@@ -31,7 +31,6 @@
 
 #include "argon/argon.h"
 #include "wav_file.h"
-#include "led.h"
 #include "protected_queue.h"
 #include "audio_defs.h"
 
@@ -127,7 +126,6 @@ public:
     ~SamplerVoice()=default;
 
     void init(uint32_t n);
-    void set_led(LEDBase * led) { _led = led; }
     void set_file(WaveFile & file);
 
     uint32_t get_number() const { return _number; }
@@ -151,7 +149,6 @@ public:
 
 protected:
     uint32_t _number;
-    LEDBase * _led;
     WaveFile _wav;
     WaveFile::AudioDataStream _data;
     SampleBufferManager _manager;

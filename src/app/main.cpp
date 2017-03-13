@@ -428,8 +428,8 @@ void scan_for_files()
 
             if (inited && wav.get_channels() <= 2)
             {
-                int channel = info.fname[0] - '1';
-                if (channel >= 0 && channel <= 3)
+                uint32_t channel = info.fname[0] - '1';
+                if (channel >= 0 && channel < kVoiceCount)
                 {
                     g_voice[channel].set_file(wav);
 
@@ -529,13 +529,9 @@ void init_thread(void * arg)
     flash_leds();
 
     g_voice[0].init(0);
-    g_voice[0].set_led(&g_ch1Led);
     g_voice[1].init(1);
-    g_voice[1].set_led(&g_ch2Led);
     g_voice[2].init(2);
-    g_voice[2].set_led(&g_ch3Led);
     g_voice[3].init(3);
-    g_voice[3].set_led(&g_ch4Led);
 
     g_ui.set_leds(g_channelLeds, &g_button1Led);
     g_ui.init();

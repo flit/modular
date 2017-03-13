@@ -43,6 +43,7 @@ enum : uint32_t {
     kAudioChannelCount = 2,
     kAudioBufferCount = 6,
     kBitsPerSample = 16,
+    kVoiceCount = 4,
 };
 
 const float kSampleRate = 48000.0f; // 48kHz

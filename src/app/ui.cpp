@@ -165,6 +165,17 @@ void UI::ui_thread()
     }
 }
 
+void UI::set_voice_playing(uint32_t voice, bool state)
+{
+    assert(voice < kVoiceCount);
+
+    _voiceStates[voice] = state;
+    if (_mode == kPlayMode)
+    {
+        _channelLeds[voice]->set(state);
+    }
+}
+
 //------------------------------------------------------------------------------
 // EOF
 //------------------------------------------------------------------------------

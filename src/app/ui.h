@@ -109,6 +109,8 @@ public:
 
     void send_event(const UIEvent& event) { _eventQueue.send(event); }
 
+    void set_voice_playing(uint32_t voice, bool state);
+
     Ar::RunLoop * get_runloop() { return &_runloop; }
 
 protected:
@@ -125,6 +127,7 @@ protected:
     Button _button1;
     Button _button2;
     UIMode _mode;
+    bool _voiceStates[kVoiceCount];
 
     void ui_thread();
 };

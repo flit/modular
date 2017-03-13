@@ -29,6 +29,7 @@
 
 #include "sampler_voice.h"
 #include "reader_thread.h"
+#include "ui.h"
 #include "debug_log.h"
 #include "utility.h"
 
@@ -83,8 +84,7 @@ void SampleBufferManager::set_file(uint32_t totalFrames)
 }
 
 SamplerVoice::SamplerVoice()
-:   _led(nullptr),
-    _wav(),
+:   _wav(),
     _data(),
     _manager(),
     _isPlaying(false),
@@ -159,12 +159,12 @@ void SamplerVoice::trigger()
         // Start playing over from file start.
         _manager.prime();
 
-        _led->off();
+        UI::get().set_voice_playing(_number, false);
         _turnOnLedNextBuffer = true;
     }
     else
     {
-        _led->on();
+        UI::get().set_voice_playing(_number, true);
     }
     _isPlaying = true;
 }
@@ -213,11 +213,11 @@ void SamplerVoice::render(int16_t * data, uint32_t frameCount)
             if (_turnOnLedNextBuffer)
             {
                 _turnOnLedNextBuffer = false;
-                _led->on();
+                UI::get().set_voice_playing(_number, true);
             }
             else if (_manager.get_samples_played() >= _manager.get_total_samples())
             {
-                _led->off();
+                UI::get().set_voice_playing(_number, false);
             }
         }
     }
