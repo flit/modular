@@ -28,6 +28,7 @@
  */
 
 #include "argon/argon.h"
+#include "main.h"
 #include "board.h"
 #include "audio_defs.h"
 #include "audio_output.h"
@@ -90,7 +91,7 @@ AudioOutput g_audioOut;
 FileSystem g_fs;
 
 Ar::Thread * g_initThread = NULL;
-Ar::ThreadWithStack<2048> g_cvThread("cv", cv_thread, 0, 80, kArSuspendThread);
+Ar::ThreadWithStack<2048> g_cvThread("cv", cv_thread, 0, kCVThreadPriority, kArSuspendThread);
 
 
 /*!
@@ -541,6 +542,7 @@ void init_thread(void * arg)
 
     init_dma();
     init_audio_out();
+    g_readerThread.init();
     sd_init();
     init_fs();
 
@@ -575,7 +577,7 @@ int main(void)
     init_board();
     Microseconds::init();
 
-    g_initThread = new Ar::Thread("init", init_thread, 0, NULL, 3072, 60, kArStartThread);
+    g_initThread = new Ar::Thread("init", init_thread, 0, NULL, 3072, kInitThreadPriority, kArStartThread);
     ar_kernel_run();
     return 0;
 }

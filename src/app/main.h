@@ -26,11 +26,11 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#if !defined(_READER_THREAD_H_)
-#define _READER_THREAD_H_
+#if !defined(_MAIN_H_)
+#define _MAIN_H_
 
-#include "argon/argon.h"
 #include "sampler_voice.h"
+#include "audio_defs.h"
 
 //------------------------------------------------------------------------------
 // Definitions
@@ -38,61 +38,20 @@
 
 namespace slab {
 
-/*!
- * @brief Thread to fill channel audio buffers with sample file data.
- *
- * The reader thread maintains a queue of voices that need a buffer filled. A given voice
- * may be put in the queue multiple times.
- */
-class ReaderThread
+enum thread_priorties : uint8_t
 {
-public:
-    static ReaderThread * get() { return s_readerInstance; }
-
-    ReaderThread();
-    ~ReaderThread()=default;
-
-    void init();
-    void start() { _thread.resume(); }
-
-    void enqueue(SamplerVoice * request);
-
-    uint32_t get_pending_count() const { return _count; }
-
-protected:
-    static const uint32_t kQueueSize = 16;
-
-    static ReaderThread * s_readerInstance;
-
-    int16_t _readBuf[SampleBufferManager::kBufferSize * 2];
-    Ar::ThreadWithStack<2048> _thread;
-    Ar::Semaphore _sem;
-    Ar::Mutex _queueLock;
-
-    struct QueueNode
-    {
-        SamplerVoice * voice;
-        QueueNode * next;
-        QueueNode * previous;
-    };
-
-    QueueNode _nodes[kQueueSize];
-    QueueNode * _first;
-    QueueNode * _last;
-    QueueNode * _free;
-    uint32_t _count;
-
-    void reader_thread();
-
-    SamplerVoice * dequeue();
-    void insert_before(QueueNode * node, QueueNode * beforeNode);
-    QueueNode * get_free_node();
-    void add_free_node(QueueNode * node);
+    kAudioThreadPriority = 180,
+    kReaderThreadPriority = 120,
+    kCVThreadPriority = 80,
+    kUIThreadPriority = 60,
+    kInitThreadPriority = 40,
 };
 
-} // namespace slab
+extern SamplerVoice g_voice[kVoiceCount];
 
-#endif // _READER_THREAD_H_
+}
+
+#endif // _MAIN_H_
 //------------------------------------------------------------------------------
 // EOF
 //------------------------------------------------------------------------------

@@ -28,6 +28,7 @@
  */
 
 #include "audio_output.h"
+#include "main.h"
 #include "fsl_dmamux.h"
 #include <stdio.h>
 
@@ -116,7 +117,7 @@ void AudioOutput::init(const Format& format)
     m_minorLoopCount = (FSL_FEATURE_SAI_FIFO_COUNT - saiFormat.watermark) / 2;
 
     // Create audio thread.
-    m_audioThread.init("audio", this, &AudioOutput::audio_thread, 180, kArSuspendThread);
+    m_audioThread.init("audio", this, &AudioOutput::audio_thread, kAudioThreadPriority, kArSuspendThread);
 }
 
 void AudioOutput::add_buffer(Buffer * newBuffer)

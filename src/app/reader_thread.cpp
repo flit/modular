@@ -28,6 +28,7 @@
  */
 
 #include "reader_thread.h"
+#include "main.h"
 #include "debug_log.h"
 
 using namespace slab;
@@ -43,14 +44,22 @@ ReaderThread * ReaderThread::s_readerInstance = nullptr;
 //------------------------------------------------------------------------------
 
 ReaderThread::ReaderThread()
-:   _thread("reader", this, &ReaderThread::reader_thread, 120, kArSuspendThread),
-    _sem("reader", 0),
-    _queueLock("reader"),
+:   _thread(),
+    _sem(),
+    _queueLock(),
     _first(nullptr),
     _last(nullptr),
     _free(nullptr),
     _count(0)
 {
+}
+
+void ReaderThread::init()
+{
+    _thread.init("reader", this, &ReaderThread::reader_thread, kReaderThreadPriority, kArSuspendThread);
+    _sem.init("reader", 0);
+    _queueLock.init("reader");
+
     // Put all queue nodes on the free list.
     uint32_t i;
     for (i=0; i < kQueueSize; ++i)

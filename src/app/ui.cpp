@@ -30,6 +30,7 @@
 #include "ui.h"
 #include "debug_log.h"
 #include "pin_irq_manager.h"
+#include "main.h"
 #include "board.h"
 #include "fsl_gpio.h"
 #include "fsl_port.h"
@@ -119,7 +120,7 @@ void UI::init()
 {
     s_ui = this;
 
-    _thread.init("ui", this, &UI::ui_thread, 60, kArSuspendThread);
+    _thread.init("ui", this, &UI::ui_thread, kUIThreadPriority, kArSuspendThread);
     _runloop.init("ui", &_thread);
     _eventQueue.init("events");
     _runloop.addQueue(&_eventQueue, NULL, NULL);
