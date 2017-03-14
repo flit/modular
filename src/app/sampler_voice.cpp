@@ -171,6 +171,7 @@ void SamplerVoice::trigger()
 
 void SamplerVoice::playing_did_finish()
 {
+    UI::get().set_voice_playing(_number, false);
     prime();
 }
 
@@ -214,10 +215,6 @@ void SamplerVoice::render(int16_t * data, uint32_t frameCount)
             {
                 _turnOnLedNextBuffer = false;
                 UI::get().set_voice_playing(_number, true);
-            }
-            else if (_manager.get_samples_played() >= _manager.get_total_samples())
-            {
-                UI::get().set_voice_playing(_number, false);
             }
         }
     }
