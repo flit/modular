@@ -31,6 +31,9 @@
 
 #include "argon/argon.h"
 #include "led.h"
+#include "audio_defs.h"
+#include "moving_average.h"
+#include "callback.h"
 
 //------------------------------------------------------------------------------
 // Definitions
@@ -48,19 +51,33 @@ enum UIEventType : uint32_t
 {
     kButtonDown,
     kButtonUp,
+    kPotAdjusted,
+    kPotStopped,
 };
 
 enum UIEventSource : uint32_t
 {
     kButton1,
     kButton2,
+    kPot1,
+    kPot2,
+    kPot3,
+    kPot4
 };
 
 struct UIEvent
 {
     UIEventType event;
     UIEventSource source;
-    uint32_t value;
+    float value;
+
+    UIEvent() {}
+    UIEvent(UIEventType theEvent, UIEventSource theSource, float theValue=0)
+    :   event(theEvent),
+        source(theSource),
+        value(theValue)
+    {
+    }
 };
 
 /*!
@@ -82,13 +99,35 @@ protected:
     GPIO_Type * _gpio;
     uint32_t _pin;
     bool _state;
-    Ar::Timer _timer;
+    Ar::TimerWithMemberCallback<Button> _timer;
 
     void handle_irq();
-    void handle_timer();
+    void handle_timer(Ar::Timer * timer);
 
     static void irq_handler_stub(PORT_Type * port, uint32_t pin, void * userData);
-    static void timer_cb_stub(Ar::Timer * timer, void * param);
+};
+
+/*!
+ * @brief
+ */
+class Pot
+{
+public:
+    Pot();
+    ~Pot()=default;
+
+    void set_hysteresis(uint32_t percent);
+
+    uint32_t process(uint32_t value);
+
+    uint32_t n;
+
+protected:
+    uint32_t _number;
+    uint32_t _last;
+    MovingAverage<32> _avg;
+    RingBuffer<uint16_t, 128> _history;
+    uint32_t _hysteresis;
 };
 
 /*!
@@ -97,19 +136,24 @@ protected:
 class UI
 {
 public:
-    static UI & get() { return *s_ui; }
+    static UI& get() { return *s_ui; }
 
     UI();
     ~UI()=default;
 
     void init();
     void set_leds(LEDBase ** channelLeds, LEDBase * button1Led);
+    void set_pots(Pot * channelPots) { _channelPots = channelPots; }
 
     void start();
 
     void send_event(const UIEvent& event) { _eventQueue.send(event); }
 
     void set_voice_playing(uint32_t voice, bool state);
+
+    void pot_did_change(Pot& pot, uint32_t value);
+
+    UIMode get_mode() const { return _mode; }
 
     Ar::RunLoop * get_runloop() { return &_runloop; }
 
@@ -121,15 +165,24 @@ protected:
     Ar::ThreadWithStack<2048> _thread;
     Ar::RunLoop _runloop;
     Ar::StaticQueue<UIEvent, kMaxEvents> _eventQueue;
-    Ar::Timer _ledTimer;
+    Ar::TimerWithMemberCallback<UI> _ledTimer;
+    Ar::TimerWithMemberCallback<UI> _potReleaseTimer;
     LEDBase ** _channelLeds;
     LEDBase * _button1Led;
+    Pot * _channelPots;
     Button _button1;
     Button _button2;
     UIMode _mode;
     bool _voiceStates[kVoiceCount];
 
     void ui_thread();
+
+    template <UIMode mode>
+    void set_mode();
+
+    void handle_led_timer(Ar::Timer * timer);
+    void handle_pot_release_timer(Ar::Timer * timer);
+
 };
 
 } // namespace slab

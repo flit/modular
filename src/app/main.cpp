@@ -129,26 +129,6 @@ protected:
     RingBuffer<uint16_t, 128> _history;
 };
 
-
-/*!
- * @brief
- */
-class Pot
-{
-public:
-    Pot();
-    ~Pot()=default;
-
-    uint32_t process(uint32_t value);
-
-    uint32_t n;
-
-protected:
-    uint32_t _last;
-    RunningAverage<32> _avg;
-    RingBuffer<uint16_t, 128> _history;
-};
-
 /*!
  * @brief Audio render source.
  */
@@ -287,31 +267,6 @@ uint32_t ChannelCVGate::process(uint32_t value)
     }
 
     return result;
-}
-
-Pot::Pot()
-:   _last(0)
-{
-}
-
-uint32_t Pot::process(uint32_t value)
-{
-    _history.put(value);
-    value <<= 4;
-
-    // Set gain for this channel.
-    if (value <= kAdcMax)
-    {
-        value = _avg.update(value);
-        float gain = float(value) / float(kAdcMax);
-        if (value != _last)
-        {
-            _last = value;
-            g_voice[n].set_gain(gain);
-        }
-    }
-
-    return 0;
 }
 
 void cv_thread(void * arg)
@@ -538,6 +493,7 @@ void init_thread(void * arg)
     g_voice[3].init(3);
 
     g_ui.set_leds(g_channelLeds, &g_button1Led);
+    g_ui.set_pots(g_pots);
     g_ui.init();
 
     init_dma();

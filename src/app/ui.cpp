@@ -32,6 +32,7 @@
 #include "pin_irq_manager.h"
 #include "main.h"
 #include "board.h"
+#include "utility.h"
 #include "fsl_gpio.h"
 #include "fsl_port.h"
 #include <assert.h>
@@ -39,9 +40,17 @@
 using namespace slab;
 
 //------------------------------------------------------------------------------
+// Definitions
+//------------------------------------------------------------------------------
+
+const uint32_t kAdcMax = 65536;
+const uint32_t kPotEditHysteresisPercent = 20;
+
+//------------------------------------------------------------------------------
 // Variables
 //------------------------------------------------------------------------------
 
+//! Pointer to singleton UI instance.
 UI * UI::s_ui = NULL;
 
 //------------------------------------------------------------------------------
@@ -60,7 +69,7 @@ Button::Button(PORT_Type * port, GPIO_Type * gpio, uint32_t pin, UIEventSource s
 
 void Button::init()
 {
-    _timer.init("debounce", timer_cb_stub, this, kArOneShotTimer, 20);
+    _timer.init("debounce", this, &Button::handle_timer, kArOneShotTimer, 20);
     UI::get().get_runloop()->addTimer(&_timer);
 
     PinIrqManager::get().connect(_port, _pin, irq_handler_stub, this);
@@ -82,7 +91,7 @@ void Button::handle_irq()
     }
 }
 
-void Button::handle_timer()
+void Button::handle_timer(Ar::Timer * timer)
 {
     bool value = read();
 
@@ -102,11 +111,40 @@ void Button::irq_handler_stub(PORT_Type * port, uint32_t pin, void * userData)
     _this->handle_irq();
 }
 
-void Button::timer_cb_stub(Ar::Timer * timer, void * param)
+Pot::Pot()
+:   _last(0),
+    _hysteresis(0)
 {
-    Button * _this = reinterpret_cast<Button *>(param);
-    assert(_this);
-    _this->handle_timer();
+}
+
+void Pot::set_hysteresis(uint32_t percent)
+{
+    _hysteresis = kAdcMax * percent / 100;
+}
+
+uint32_t Pot::process(uint32_t value)
+{
+    _history.put(value);
+    value <<= 4; // 12-bit to 16-bit
+
+    // Set gain for this channel.
+    if (value <= kAdcMax)
+    {
+        value = _avg.update(value);
+
+        uint32_t hysLow = max(_last - _hysteresis / 2, 0UL);
+        uint32_t hysHigh = min(_last + _hysteresis / 2, kAdcMax);
+
+        if (value < hysLow || value > hysHigh)
+        {
+            _last = value;
+            _hysteresis = 0;
+
+            UI::get().pot_did_change(*this, value);
+        }
+    }
+
+    return 0;
 }
 
 UI::UI()
@@ -124,6 +162,8 @@ void UI::init()
     _runloop.init("ui", &_thread);
     _eventQueue.init("events");
     _runloop.addQueue(&_eventQueue, NULL, NULL);
+    _ledTimer.init("led", this, &UI::handle_led_timer, kArPeriodicTimer, 20);
+    _potReleaseTimer.init("pot-release", this, &UI::handle_pot_release_timer, kArOneShotTimer, 20);
 
     _button1.init();
 }
@@ -139,6 +179,43 @@ void UI::start()
     _thread.resume();
 }
 
+template <UIMode mode>
+void UI::set_mode()
+{
+    uint32_t n;
+
+    _mode = mode;
+
+    // Switch to edit mode.
+    if (mode == kEditMode)
+    {
+        _button1Led->on();
+
+        // Turn off all LEDs.
+        for (n = 0; n < kVoiceCount; ++n)
+        {
+            _channelLeds[n]->off();
+        }
+    }
+    // Switch to play mode.
+    else
+    {
+        _button1Led->off();
+
+        // Restore channel LEDs to play state.
+        for (n = 0; n < kVoiceCount; ++n)
+        {
+            _channelLeds[n]->set(_voiceStates[n]);
+        }
+    }
+
+    // Set hysteresis on all pots.
+    for (n = 0; n < kVoiceCount; ++n)
+    {
+        _channelPots[n].set_hysteresis(kPotEditHysteresisPercent);
+    }
+}
+
 void UI::ui_thread()
 {
     while (true)
@@ -150,15 +227,38 @@ void UI::ui_thread()
             assert(object == static_cast<ar_queue_t *>(&_eventQueue));
 
             UIEvent event = _eventQueue.receive();
+//             uint32_t n;
             switch (event.event)
             {
                 case kButtonDown:
-//                     value = _button1.read();
-//                     value ? _button1Led->off() : _button1Led->on();
                     break;
 
                 case kButtonUp:
-                    _button1Led->is_on() ? _button1Led->off() : _button1Led->on();
+                    switch (event.source)
+                    {
+                        case kButton1:
+                            // Switch to edit mode.
+                            if (_mode == kPlayMode)
+                            {
+                                set_mode<kEditMode>();
+                            }
+                            // Switch to play mode.
+                            else
+                            {
+                                set_mode<kPlayMode>();
+                            }
+                            break;
+
+                        default:
+                            break;
+                    }
+                    break;
+
+                case kPotAdjusted:
+//                  n = event.source - kPot1;
+                    break;
+
+                default:
                     break;
             }
         }
@@ -173,6 +273,27 @@ void UI::set_voice_playing(uint32_t voice, bool state)
     if (_mode == kPlayMode)
     {
         _channelLeds[voice]->set(state);
+    }
+}
+
+void UI::handle_led_timer(Ar::Timer * timer)
+{
+}
+
+void UI::handle_pot_release_timer(Ar::Timer * timer)
+{
+}
+
+void UI::pot_did_change(Pot& pot, uint32_t value)
+{
+    if (get_mode() == kPlayMode)
+    {
+        float gain = float(value) / float(kAdcMax);
+        g_voice[pot.n].set_gain(gain);
+    }
+    else
+    {
+//             UI::get().send_event(UIEvent(kPotAdjusted, (UIEventSource)(kPot1 + n), gain));
     }
 }
 
