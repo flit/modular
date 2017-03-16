@@ -81,6 +81,11 @@
 			<locationURI>PARENT-2-PROJECT_LOC/src/app/ar_config.h</locationURI>
 		</link>
 		<link>
+			<name>app/audio_defs.h</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/src/app/audio_defs.h</locationURI>
+		</link>
+		<link>
 			<name>app/audio_output.cpp</name>
 			<type>1</type>
 			<locationURI>PARENT-2-PROJECT_LOC/src/app/audio_output.cpp</locationURI>
@@ -121,6 +126,11 @@
 			<locationURI>PARENT-2-PROJECT_LOC/src/app/main.cpp</locationURI>
 		</link>
 		<link>
+			<name>app/main.h</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/src/app/main.h</locationURI>
+		</link>
+		<link>
 			<name>app/microseconds.cpp</name>
 			<type>1</type>
 			<locationURI>PARENT-2-PROJECT_LOC/src/app/microseconds.cpp</locationURI>
@@ -129,6 +139,11 @@
 			<name>app/microseconds.h</name>
 			<type>1</type>
 			<locationURI>PARENT-2-PROJECT_LOC/src/app/microseconds.h</locationURI>
+		</link>
+		<link>
+			<name>app/moving_average.h</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/src/app/moving_average.h</locationURI>
 		</link>
 		<link>
 			<name>app/nanolib_stubs.c</name>
@@ -164,11 +179,6 @@
 			<name>app/ring_buffer.h</name>
 			<type>1</type>
 			<locationURI>PARENT-2-PROJECT_LOC/src/app/ring_buffer.h</locationURI>
-		</link>
-		<link>
-			<name>app/running_average.h</name>
-			<type>1</type>
-			<locationURI>PARENT-2-PROJECT_LOC/src/app/running_average.h</locationURI>
 		</link>
 		<link>
 			<name>app/sampler_voice.cpp</name>
