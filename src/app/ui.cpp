@@ -132,7 +132,7 @@ uint32_t Pot::process(uint32_t value)
     {
         value = _avg.update(value);
 
-        uint32_t hysLow = max(_last - _hysteresis / 2, 0UL);
+        uint32_t hysLow = (_last > _hysteresis / 2) ? (_last - _hysteresis / 2) : 0;
         uint32_t hysHigh = min(_last + _hysteresis / 2, kAdcMax);
 
         if (value < hysLow || value > hysHigh)
