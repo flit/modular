@@ -43,6 +43,65 @@ ReaderThread * ReaderThread::s_readerInstance = nullptr;
 // Code
 //------------------------------------------------------------------------------
 
+void ReaderStatistics::init()
+{
+    // Set up bins.
+    uint32_t i;
+    uint32_t n = 0;
+    _perBin = kBinMax / kBinCount;
+    for (i = 0; i < kBinCount; ++i)
+    {
+        _bins[i].minimum = n;
+        _bins[i].maximum = n + _perBin - 1;
+        n += _perBin;
+    }
+    // Last bin is overflow.
+    _bins[i].minimum = n;
+    _bins[i].maximum = 0xffffffff;
+}
+
+template <bool doMinMax>
+void ReaderStatistics::Statistics::update(uint32_t value)
+{
+    count += 1;
+    sum += value;
+    mean = sum / count;
+
+    if (doMinMax)
+    {
+        if (value < minimum)
+        {
+            minimum = value;
+        }
+        if (value > maximum)
+        {
+            maximum = value;
+        }
+    }
+}
+
+void ReaderStatistics::add(uint32_t voiceNumber, uint32_t bufferNumber, uint32_t elapsed, uint32_t bytes, uint32_t offset)
+{
+    Entry e;
+    e.timestamp = Microseconds::get();
+    e.voiceNumber = voiceNumber;
+    e.bufferNumber = bufferNumber;
+    e.elapsed = elapsed;
+    e.bytes = bytes;
+    e.offset = offset;
+    _history.put(e);
+
+    _elapsed.update<true>(elapsed);
+
+    uint32_t n = elapsed / _perBin;
+    if (n > kBinCount)
+    {
+        n = kBinCount;
+    }
+    assert(n >= 0 && n < kBinCount + 1);
+    _bins[n].update<false>(elapsed);
+}
+
 ReaderThread::ReaderThread()
 :   _thread(),
     _sem(),
@@ -65,6 +124,12 @@ void ReaderThread::init()
     for (i=0; i < kQueueSize; ++i)
     {
         add_free_node(&_nodes[i]);
+    }
+
+    _statistics.init();
+    for (i = 0; i < kVoiceCount; ++i)
+    {
+        _voiceStatistics[i].init();
     }
 
     // Record this instance.
@@ -247,14 +312,21 @@ void ReaderThread::reader_thread()
         }
 
         // Read from sample file.
+#if DEBUG
         uint32_t start = Microseconds::get();
+#endif
+
         stream.seek(request->startFrame * frameSize);
         uint32_t bytesRead = stream.read(bytesToRead, targetBuffer);
         uint32_t stop = Microseconds::get();
         uint32_t framesRead = bytesRead / frameSize;
 
+#if DEBUG
         uint32_t delta = stop - start;
         DEBUG_PRINTF(TIME_MASK, "R: read %lu bytes in %lu µs\r\n", bytesRead, delta);
+        _statistics.add(voice->get_number(), request->number, delta, bytesRead, manager.get_samples_read());
+        _voiceStatistics[voice->get_number()].add(voice->get_number(), request->number, delta, bytesRead, manager.get_samples_read());
+#endif
 
         // For stereo data copy just the left channel into the voice buffer.
         if (channelCount == 2)

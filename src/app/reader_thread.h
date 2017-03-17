@@ -31,12 +31,60 @@
 
 #include "argon/argon.h"
 #include "sampler_voice.h"
+#include "ring_buffer.h"
 
 //------------------------------------------------------------------------------
 // Definitions
 //------------------------------------------------------------------------------
 
 namespace slab {
+
+/*!
+ * @brief Computes statistics for sample data reads.
+ */
+class ReaderStatistics
+{
+public:
+    ReaderStatistics() : _history() {}
+    ~ReaderStatistics()=default;
+
+    void init();
+    void add(uint32_t voiceNumber, uint32_t bufferNumber, uint32_t elapsed, uint32_t bytes, uint32_t offset);
+
+protected:
+    struct Entry
+    {
+        uint32_t timestamp;
+        uint8_t voiceNumber;
+        uint8_t bufferNumber;
+        uint16_t bytes;
+        uint32_t elapsed;
+        uint32_t offset;
+    };
+
+    struct Statistics
+    {
+        uint32_t minimum;
+        uint32_t maximum;
+        uint32_t mean;
+        uint32_t count;
+        uint64_t sum;
+
+        Statistics() : minimum(0xffffffff), maximum(0), mean(0), count(0), sum(0) {}
+
+        template <bool doMinMax>
+        void update(uint32_t value);
+    };
+
+    static const uint32_t kHistoryCount = 64;
+    static const uint32_t kBinCount = 10;
+    static const uint32_t kBinMax = 5000; // 5 ms
+
+    RingBuffer<Entry, kHistoryCount> _history;
+    Statistics _elapsed;
+    Statistics _bins[kBinCount + 1];
+    uint32_t _perBin;
+};
 
 /*!
  * @brief Thread to fill channel audio buffers with sample file data.
@@ -68,6 +116,11 @@ protected:
     Ar::ThreadWithStack<2048> _thread;
     Ar::Semaphore _sem;
     Ar::Mutex _queueLock;
+
+#if DEBUG
+    ReaderStatistics _statistics;
+    ReaderStatistics _voiceStatistics[kVoiceCount];
+#endif
 
     struct QueueNode
     {
