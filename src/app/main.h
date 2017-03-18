@@ -31,6 +31,8 @@
 
 #include "sampler_voice.h"
 #include "audio_defs.h"
+#include "ring_buffer.h"
+#include "audio_output.h"
 
 //------------------------------------------------------------------------------
 // Definitions
@@ -47,9 +49,56 @@ enum thread_priorties : uint8_t
     kInitThreadPriority = 40,
 };
 
+/*!
+ * @brief
+ */
+class ChannelCVGate
+{
+public:
+    enum Mode
+    {
+        kGate,
+        kCV
+    };
+
+    ChannelCVGate();
+    ~ChannelCVGate()=default;
+
+    void init();
+
+    void set_mode(Mode newMode);
+    void set_inverted(bool isInverted) { _isInverted = isInverted; }
+
+    uint32_t process(uint32_t value);
+
+    uint32_t n;
+
+protected:
+    Mode _mode;
+    bool _isInverted;
+    uint32_t _last;
+    bool _edge;
+    uint32_t _highCount;
+    RingBuffer<uint16_t, 128> _history;
+};
+
+/*!
+ * @brief Audio render source.
+ */
+class SamplerSynth : public AudioOutput::Source
+{
+public:
+    SamplerSynth() {}
+    virtual ~SamplerSynth()=default;
+
+    virtual void render(uint32_t firstChannel, AudioOutput::Buffer & buffer) override;
+
+protected:
+};
+
 extern SamplerVoice g_voice[kVoiceCount];
 
-}
+} // namespace slab
 
 #endif // _MAIN_H_
 //------------------------------------------------------------------------------

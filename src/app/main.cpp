@@ -30,18 +30,14 @@
 #include "argon/argon.h"
 #include "main.h"
 #include "board.h"
-#include "audio_defs.h"
-#include "audio_output.h"
 #include "pin_irq_manager.h"
 #include "file_system.h"
 #include "wav_file.h"
 #include "utility.h"
-#include "ring_buffer.h"
 #include "led.h"
 #include "microseconds.h"
 #include "debug_log.h"
 #include "reader_thread.h"
-#include "sampler_voice.h"
 #include "adc_sequencer.h"
 #include "ui.h"
 #include "fsl_sd_disk.h"
@@ -89,74 +85,26 @@ namespace slab {
 
 int16_t g_outBuf[kAudioBufferCount][kAudioBufferSize * kAudioChannelCount];
 
-AudioOutput g_audioOut;
-FileSystem g_fs;
-
 Ar::Thread * g_initThread = NULL;
 Ar::ThreadWithStack<2048> g_cvThread("cv", cv_thread, 0, kCVThreadPriority, kArSuspendThread);
 
 
-/*!
- * @brief
- */
-class ChannelCVGate
-{
-public:
-    enum Mode
-    {
-        kGate,
-        kCV
-    };
-
-    ChannelCVGate();
-    ~ChannelCVGate()=default;
-
-    void init();
-
-    void set_mode(Mode newMode);
-    void set_inverted(bool isInverted) { _isInverted = isInverted; }
-
-    uint32_t process(uint32_t value);
-
-    uint32_t n;
-
-protected:
-    Mode _mode;
-    bool _isInverted;
-    uint32_t _last;
-    bool _edge;
-    uint32_t _highCount;
-    RingBuffer<uint16_t, 128> _history;
-};
-
-/*!
- * @brief Audio render source.
- */
-class SamplerSynth : public AudioOutput::Source
-{
-public:
-    SamplerSynth() {}
-    virtual ~SamplerSynth()=default;
-
-    virtual void render(uint32_t firstChannel, AudioOutput::Buffer & buffer) override;
-
-protected:
-};
-
-ChannelCVGate g_gates[4];
-Pot g_pots[4];
+UI g_ui;
+AudioOutput g_audioOut;
+FileSystem g_fs;
+SamplerSynth g_sampler;
+ReaderThread g_readerThread;
+SamplerVoice g_voice[kVoiceCount];
+ChannelCVGate g_gates[kVoiceCount];
+Pot g_pots[kVoiceCount];
 AdcSequencer g_adc0Sequencer(ADC0, 2);
 AdcSequencer g_adc1Sequencer(ADC1, 4);
-SamplerSynth g_sampler;
 LED<PIN_CH1_LED_GPIO_BASE, PIN_CH1_LED> g_ch1Led;
 LED<PIN_CH2_LED_GPIO_BASE, PIN_CH2_LED> g_ch2Led;
 LED<PIN_CH3_LED_GPIO_BASE, PIN_CH3_LED> g_ch3Led;
 LED<PIN_CH4_LED_GPIO_BASE, PIN_CH4_LED> g_ch4Led;
 LEDBase * g_channelLeds[] = { &g_ch1Led, &g_ch2Led, &g_ch3Led, &g_ch4Led};
-SamplerVoice g_voice[4];
-ReaderThread g_readerThread;
 LED<PIN_BUTTON1_LED_GPIO_BASE, PIN_BUTTON1_LED> g_button1Led;
-UI g_ui;
 
 } // namespace slab
 
