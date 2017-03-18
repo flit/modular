@@ -83,36 +83,6 @@ void SampleBufferManager::set_file(uint32_t totalFrames)
     _didReadFileStart = false;
 }
 
-SamplerVoice::SamplerVoice()
-:   _wav(),
-    _data(),
-    _manager(),
-    _isPlaying(false),
-    _turnOnLedNextBuffer(false),
-    _gain(1.0f)
-{
-}
-
-void SamplerVoice::init(uint32_t n)
-{
-    _number = n;
-    _manager.init(this);
-}
-
-void SamplerVoice::set_file(WaveFile& file)
-{
-    _wav = file;
-    _data = _wav.get_audio_data();
-    _isPlaying = false;
-    _manager.set_file(_data.get_frames());
-}
-
-void SamplerVoice::prime()
-{
-    _isPlaying = false;
-    _manager.prime();
-}
-
 void SampleBufferManager::prime()
 {
     Ar::Mutex::Guard guard(_primeMutex);
@@ -147,85 +117,6 @@ void SampleBufferManager::prime()
         }
     }
     DEBUG_PRINTF(QUEUE_MASK, "V%lu: end prime\r\n", _number);
-}
-
-void SamplerVoice::trigger()
-{
-    // Handle re-triggering while sample is already playing.
-    if (_isPlaying)
-    {
-        DEBUG_PRINTF(RETRIG_MASK, "V%lu: retrigger (@%lu)\r\n", _number, _manager.get_samples_played());
-
-        // Start playing over from file start.
-        prime();
-
-        UI::get().set_voice_playing(_number, false);
-        _turnOnLedNextBuffer = true;
-    }
-    else
-    {
-        UI::get().set_voice_playing(_number, true);
-    }
-    _isPlaying = true;
-}
-
-void SamplerVoice::playing_did_finish()
-{
-    UI::get().set_voice_playing(_number, false);
-    prime();
-}
-
-void SamplerVoice::render(int16_t * data, uint32_t frameCount)
-{
-    SampleBuffer * voiceBuffer = nullptr;
-    if (is_valid() && is_playing())
-    {
-        voiceBuffer = _manager.get_current_buffer();
-    }
-
-    uint32_t i;
-    int16_t * out = data;
-
-    if (voiceBuffer)
-    {
-        int16_t intSample;
-        uint32_t readHead = voiceBuffer->readHead;
-        uint32_t bufferFrameCount = voiceBuffer->frameCount;
-        for (i = 0; i < frameCount; ++i)
-        {
-            if (readHead < bufferFrameCount)
-            {
-                intSample = voiceBuffer->data[readHead++];
-            }
-            else
-            {
-                intSample = 0;
-            }
-            *out = int16_t(intSample * _gain);
-            out += 2;
-        }
-        voiceBuffer->readHead = readHead;
-
-        // Did we finish this buffer?
-        if (readHead >= bufferFrameCount)
-        {
-            _manager.retire_buffer(voiceBuffer);
-
-            if (_turnOnLedNextBuffer)
-            {
-                _turnOnLedNextBuffer = false;
-                UI::get().set_voice_playing(_number, true);
-            }
-        }
-    }
-    else
-    {
-        for (i = 0; i < frameCount; ++i)
-        {
-            *out = 0;
-            out += 2;
-        }
-    }
 }
 
 SampleBuffer * SampleBufferManager::get_current_buffer()
@@ -332,6 +223,117 @@ void SampleBufferManager::enqueue_full_buffer(SampleBuffer * buffer)
             buffer->state = SampleBuffer::State::kReady;
             DEBUG_PRINTF(QUEUE_MASK, "V%lu: queuing b%d for play\r\n", _number, buffer->number);
             _fullBuffers.put(buffer);
+        }
+    }
+}
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+SamplerVoice::SamplerVoice()
+:   _wav(),
+    _data(),
+    _manager(),
+    _isPlaying(false),
+    _turnOnLedNextBuffer(false),
+    _gain(1.0f)
+{
+}
+
+void SamplerVoice::init(uint32_t n)
+{
+    _number = n;
+    _manager.init(this);
+}
+
+void SamplerVoice::set_file(WaveFile& file)
+{
+    _wav = file;
+    _data = _wav.get_audio_data();
+    _isPlaying = false;
+    _manager.set_file(_data.get_frames());
+}
+
+void SamplerVoice::prime()
+{
+    _isPlaying = false;
+    _manager.prime();
+}
+
+void SamplerVoice::trigger()
+{
+    // Handle re-triggering while sample is already playing.
+    if (_isPlaying)
+    {
+        DEBUG_PRINTF(RETRIG_MASK, "V%lu: retrigger (@%lu)\r\n", _number, _manager.get_samples_played());
+
+        // Start playing over from file start.
+        prime();
+
+        UI::get().set_voice_playing(_number, false);
+        _turnOnLedNextBuffer = true;
+    }
+    else
+    {
+        UI::get().set_voice_playing(_number, true);
+    }
+    _isPlaying = true;
+}
+
+void SamplerVoice::playing_did_finish()
+{
+    UI::get().set_voice_playing(_number, false);
+    prime();
+}
+
+void SamplerVoice::render(int16_t * data, uint32_t frameCount)
+{
+    SampleBuffer * voiceBuffer = nullptr;
+    if (is_valid() && is_playing())
+    {
+        voiceBuffer = _manager.get_current_buffer();
+    }
+
+    uint32_t i;
+    int16_t * out = data;
+
+    if (voiceBuffer)
+    {
+        int16_t intSample;
+        uint32_t readHead = voiceBuffer->readHead;
+        uint32_t bufferFrameCount = voiceBuffer->frameCount;
+        for (i = 0; i < frameCount; ++i)
+        {
+            if (readHead < bufferFrameCount)
+            {
+                intSample = voiceBuffer->data[readHead++];
+            }
+            else
+            {
+                intSample = 0;
+            }
+            *out = int16_t(intSample * _gain);
+            out += 2;
+        }
+        voiceBuffer->readHead = readHead;
+
+        // Did we finish this buffer?
+        if (readHead >= bufferFrameCount)
+        {
+            _manager.retire_buffer(voiceBuffer);
+
+            if (_turnOnLedNextBuffer)
+            {
+                _turnOnLedNextBuffer = false;
+                UI::get().set_voice_playing(_number, true);
+            }
+        }
+    }
+    else
+    {
+        for (i = 0; i < frameCount; ++i)
+        {
+            *out = 0;
+            out += 2;
         }
     }
 }
