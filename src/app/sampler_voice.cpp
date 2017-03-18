@@ -157,7 +157,7 @@ void SamplerVoice::trigger()
         DEBUG_PRINTF(RETRIG_MASK, "V%lu: retrigger (@%lu)\r\n", _number, _manager.get_samples_played());
 
         // Start playing over from file start.
-        _manager.prime();
+        prime();
 
         UI::get().set_voice_playing(_number, false);
         _turnOnLedNextBuffer = true;
