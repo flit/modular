@@ -165,7 +165,7 @@ protected:
     Ar::ThreadWithStack<2048> _thread;
     Ar::RunLoop _runloop;
     Ar::StaticQueue<UIEvent, kMaxEvents> _eventQueue;
-    Ar::TimerWithMemberCallback<UI> _ledTimer;
+    Ar::TimerWithMemberCallback<UI> _blinkTimer;
     Ar::TimerWithMemberCallback<UI> _potReleaseTimer;
     LEDBase ** _channelLeds;
     LEDBase * _button1Led;
@@ -174,13 +174,14 @@ protected:
     Button _button2;
     UIMode _mode;
     bool _voiceStates[kVoiceCount];
+    uint32_t _editChannel;
 
     void ui_thread();
 
     template <UIMode mode>
     void set_mode();
 
-    void handle_led_timer(Ar::Timer * timer);
+    void handle_blink_timer(Ar::Timer * timer);
     void handle_pot_release_timer(Ar::Timer * timer);
 
 };

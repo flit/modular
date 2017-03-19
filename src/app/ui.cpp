@@ -111,6 +111,8 @@ void Button::irq_handler_stub(PORT_Type * port, uint32_t pin, void * userData)
     _this->handle_irq();
 }
 
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
 Pot::Pot()
 :   _last(0),
     _hysteresis(0)
@@ -147,10 +149,14 @@ uint32_t Pot::process(uint32_t value)
     return 0;
 }
 
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
 UI::UI()
 :   _button1(PIN_BUTTON1_PORT, PIN_BUTTON1_GPIO, PIN_BUTTON1_BIT, kButton1),
     _button2(PIN_BUTTON2_PORT, PIN_BUTTON2_GPIO, PIN_BUTTON2_BIT, kButton2),
-    _mode(kPlayMode)
+    _mode(kPlayMode),
+    _voiceStates{0},
+    _editChannel(0)
 {
 }
 
@@ -162,7 +168,7 @@ void UI::init()
     _runloop.init("ui", &_thread);
     _eventQueue.init("events");
     _runloop.addQueue(&_eventQueue, NULL, NULL);
-    _ledTimer.init("led", this, &UI::handle_led_timer, kArPeriodicTimer, 20);
+    _blinkTimer.init("blink", this, &UI::handle_blink_timer, kArPeriodicTimer, 20);
     _potReleaseTimer.init("pot-release", this, &UI::handle_pot_release_timer, kArOneShotTimer, 20);
 
     _button1.init();
@@ -196,6 +202,10 @@ void UI::set_mode()
         {
             _channelLeds[n]->off();
         }
+
+        // Select first channel for edit.
+        _editChannel = 0;
+        _channelLeds[0]->on();
     }
     // Switch to play mode.
     else
@@ -243,9 +253,17 @@ void UI::ui_thread()
                                 set_mode<kEditMode>();
                             }
                             // Switch to play mode.
-                            else
+                            else if (_editChannel == (kVoiceCount - 1))
                             {
                                 set_mode<kPlayMode>();
+                            }
+                            // Select next channel to edit.
+                            else
+                            {
+                                // Update edit LED.
+                                _channelLeds[_editChannel]->off();
+                                _editChannel = (_editChannel + 1) % kVoiceCount;
+                                _channelLeds[_editChannel]->on();
                             }
                             break;
 
@@ -276,7 +294,7 @@ void UI::set_voice_playing(uint32_t voice, bool state)
     }
 }
 
-void UI::handle_led_timer(Ar::Timer * timer)
+void UI::handle_blink_timer(Ar::Timer * timer)
 {
 }
 
@@ -286,14 +304,31 @@ void UI::handle_pot_release_timer(Ar::Timer * timer)
 
 void UI::pot_did_change(Pot& pot, uint32_t value)
 {
+    uint32_t potNumber = pot.n;
+    float fvalue = float(value) / float(kAdcMax);
+
+    // In play mode, the pots control the gain of their corresponding channel.
     if (get_mode() == kPlayMode)
     {
-        float gain = float(value) / float(kAdcMax);
-        g_voice[pot.n].set_gain(gain);
+        g_voice[potNumber].set_gain(fvalue);
     }
     else
     {
-//             UI::get().send_event(UIEvent(kPotAdjusted, (UIEventSource)(kPot1 + n), gain));
+        // In edit mode, each pot controls a different voice parameter of the selected channel.
+        switch (potNumber)
+        {
+            case 0:
+                // Shift value from 0..1 to 0..2
+                fvalue = fvalue * 2.0f;
+                g_voice[_editChannel].set_pitch(fvalue);
+                break;
+            case 1:
+                break;
+            case 2:
+                break;
+            case 3:
+                break;
+        }
     }
 }
 

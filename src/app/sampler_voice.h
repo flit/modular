@@ -139,6 +139,7 @@ public:
     void playing_did_finish();
 
     void set_gain(float gain) { _gain = gain; }
+    void set_pitch(float pitch) { _pitch = pitch; }
 
     void render(int16_t * data, uint32_t frameCount);
 
@@ -154,8 +155,10 @@ protected:
     SampleBufferManager _manager;
     bool _isPlaying;
     bool _turnOnLedNextBuffer;
+    float _lastBufferLastSample;
+    float _fraction;
     float _gain;
-
+    float _pitch;
 };
 
 } // namespace slab
