@@ -323,7 +323,7 @@ void SamplerVoice::render(int16_t * data, uint32_t frameCount)
     if (rate == 1.0f)
     {
         uint32_t framesRemainingInBuffer = bufferFrameCount - readHead;
-        uint32_t framesFromBuffer = (framesRemainingInBuffer > frameCount) ? frameCount : (framesRemainingInBuffer - frameCount);
+        uint32_t framesFromBuffer = min(framesRemainingInBuffer, frameCount);
 
         // Render sample data into the output buffer.
         for (i = 0; i < framesFromBuffer; ++i)
@@ -334,18 +334,6 @@ void SamplerVoice::render(int16_t * data, uint32_t frameCount)
             float s = s1 * _gain;
             *data = int16_t(s);
             data += 2;
-        }
-
-        // Did we finish this buffer?
-        if (readHead >= bufferFrameCount)
-        {
-            _manager.retire_buffer(voiceBuffer);
-
-            if (_turnOnLedNextBuffer)
-            {
-                _turnOnLedNextBuffer = false;
-                UI::get().set_voice_playing(_number, true);
-            }
         }
     }
     else
@@ -367,12 +355,6 @@ void SamplerVoice::render(int16_t * data, uint32_t frameCount)
                 if (readHead >= bufferFrameCount)
                 {
                     _manager.retire_buffer(voiceBuffer);
-
-                    if (_turnOnLedNextBuffer)
-                    {
-                        _turnOnLedNextBuffer = false;
-                        UI::get().set_voice_playing(_number, true);
-                    }
 
                     // If we're no longer playing, exit this loop.
                     if (!_isPlaying)
@@ -412,6 +394,18 @@ void SamplerVoice::render(int16_t * data, uint32_t frameCount)
     {
         *data = 0;
         data += 2;
+    }
+
+    // Did we finish this buffer?
+    if (readHead >= bufferFrameCount)
+    {
+        _manager.retire_buffer(voiceBuffer);
+    }
+
+    if (_turnOnLedNextBuffer)
+    {
+        _turnOnLedNextBuffer = false;
+        UI::get().set_voice_playing(_number, true);
     }
 }
 
