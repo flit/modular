@@ -230,11 +230,11 @@ void UI::ui_thread()
 {
     while (true)
     {
-        ar_queue_t * object;
-        if (_runloop.run(kArInfiniteTimeout, (void **)&object) == kArRunLoopQueueReceived)
+        ar_runloop_result_t object;
+        if (_runloop.run(kArInfiniteTimeout, &object) == kArRunLoopQueueReceived)
         {
             // _eventQueue is the only queue added to the runloop.
-            assert(object == static_cast<ar_queue_t *>(&_eventQueue));
+            assert(object.m_queue == static_cast<ar_queue_t *>(&_eventQueue));
 
             UIEvent event = _eventQueue.receive();
 //             uint32_t n;
