@@ -264,6 +264,13 @@ void UI::ui_thread()
                                 _channelLeds[_editChannel]->off();
                                 _editChannel = (_editChannel + 1) % kVoiceCount;
                                 _channelLeds[_editChannel]->on();
+
+                                // Set hysteresis on all pots.
+                                uint32_t n;
+                                for (n = 0; n < kVoiceCount; ++n)
+                                {
+                                    _channelPots[n].set_hysteresis(kPotEditHysteresisPercent);
+                                }
                             }
                             break;
 
