@@ -47,10 +47,13 @@ SampleBufferManager::SampleBufferManager()
     _currentBuffer(nullptr),
     _activeBufferCount(0),
     _totalSamples(0),
+    _startSample(0),
     _samplesPlayed(0),
     _samplesRead(0),
     _samplesQueued(0),
-    _didReadFileStart(false)
+    _didReadFileStart(false),
+    _waitingForFileStart(true),
+    _isReady(false)
 {
 }
 
@@ -75,12 +78,16 @@ void SampleBufferManager::init(SamplerVoice * voice)
 
 void SampleBufferManager::set_file(uint32_t totalFrames)
 {
+    _startSample = 0;
     _totalSamples = totalFrames;
+    _endSample = totalFrames;
     _activeBufferCount = min(round_up_div(_totalSamples, kBufferSize), kBufferCount);
     _samplesPlayed = 0;
     _samplesRead = 0;
     _samplesQueued = 0;
     _didReadFileStart = false;
+    _waitingForFileStart = true;
+    _isReady = false;
 }
 
 void SampleBufferManager::prime()
@@ -89,8 +96,8 @@ void SampleBufferManager::prime()
     DEBUG_PRINTF(QUEUE_MASK, "V%lu: start prime\r\n", _number);
 
     // Reset state.
-    _samplesPlayed = 0;
-    _samplesRead = _didReadFileStart ? kBufferSize : 0;
+    _samplesPlayed = _startSample;
+    _samplesRead = _didReadFileStart ? kBufferSize : _startSample;
     _samplesQueued = _samplesRead;
 
     // Clear buffers queues.
@@ -105,6 +112,9 @@ void SampleBufferManager::prime()
     uint32_t i = _didReadFileStart ? 1 : 0;
     for (; i < _activeBufferCount; ++i)
     {
+        // If the buffer is currently being filled by the reader thread, then we can't touch
+        // it. So just flag it for requeuing when it's finished. This will be handled in
+        // enqueue_full_buffer().
         if (_buffer[i].state == SampleBuffer::State::kReading)
         {
             DEBUG_PRINTF(QUEUE_MASK, "V%lu: prime: marking b%lu for reread\r\n", _number, i);
@@ -131,7 +141,7 @@ SampleBuffer * SampleBufferManager::get_current_buffer()
 void SampleBufferManager::queue_buffer_for_read(SampleBuffer * buffer)
 {
     buffer->startFrame = _samplesQueued;
-    buffer->frameCount = min(kBufferSize, _totalSamples - _samplesQueued);
+    buffer->frameCount = min(kBufferSize, _endSample - _samplesQueued);
     buffer->reread = false;
     buffer->state = SampleBuffer::State::kFree;
 
@@ -161,7 +171,7 @@ void SampleBufferManager::retire_buffer(SampleBuffer * buffer)
 {
     _samplesPlayed += buffer->frameCount;
 
-    if (_samplesPlayed >= _totalSamples)
+    if (_samplesPlayed >= _endSample)
     {
         DEBUG_PRINTF(RETIRE_MASK, "V%lu: retiring b%d; played %lu (done)\r\n", _number, buffer->number, _samplesPlayed);
 
@@ -171,8 +181,9 @@ void SampleBufferManager::retire_buffer(SampleBuffer * buffer)
     {
         DEBUG_PRINTF(RETIRE_MASK, "V%lu: retiring b%d; played %lu\r\n", _number, buffer->number, _samplesPlayed);
 
-        // Don't queue up file start buffer for reading.
-        if (buffer != &_buffer[0] && _samplesQueued < _totalSamples)
+        // Don't queue up file start buffer for reading, and don't queue more than the active
+        // number of samples.
+        if (buffer != &_buffer[0] && _samplesQueued < _endSample)
         {
             DEBUG_PRINTF(RETIRE_MASK|QUEUE_MASK, "V%lu: retire: queue b%d to read @ %lu\r\n", _number, buffer->number, _samplesPlayed);
             queue_buffer_for_read(buffer);
@@ -206,6 +217,11 @@ void SampleBufferManager::enqueue_full_buffer(SampleBuffer * buffer)
     if (buffer == &_buffer[0])
     {
         _didReadFileStart = true;
+        if (_waitingForFileStart)
+        {
+            _waitingForFileStart = false;
+            _isReady = true;
+        }
         _samplesRead += buffer->frameCount;
         buffer->state = SampleBuffer::State::kReady;
     }
@@ -225,6 +241,36 @@ void SampleBufferManager::enqueue_full_buffer(SampleBuffer * buffer)
             _fullBuffers.put(buffer);
         }
     }
+}
+
+void SampleBufferManager::set_start_sample(uint32_t start)
+{
+    // Voice must not be playing.
+    assert(!_voice->is_playing());
+
+    _isReady = false;
+    _didReadFileStart = false;
+    _waitingForFileStart = true;
+    _startSample = start;
+    if (_endSample < _startSample)
+    {
+        _endSample = _startSample;
+    }
+
+    _activeBufferCount = min(round_up_div(_endSample - _startSample, kBufferSize), kBufferCount);
+
+    prime();
+}
+
+void SampleBufferManager::set_end_sample(uint32_t end)
+{
+    // Voice must not be playing.
+    assert(!_voice->is_playing());
+    assert(end >= _startSample);
+
+    _endSample = end;
+
+    _activeBufferCount = min(round_up_div(_endSample - _startSample, kBufferSize), kBufferCount);
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -256,16 +302,27 @@ void SamplerVoice::set_file(WaveFile& file)
     _manager.set_file(_data.get_frames());
 }
 
-void SamplerVoice::prime()
+void SamplerVoice::_reset_voice()
 {
     _isPlaying = false;
     _fraction = 0.0f;
     _lastBufferLastSample = 0.0f;
+}
+
+void SamplerVoice::prime()
+{
+    _reset_voice();
     _manager.prime();
 }
 
 void SamplerVoice::trigger()
 {
+    // Ignore the trigger if the manager isn't ready to play.
+    if (!_manager.is_ready())
+    {
+        return;
+    }
+
     // Handle re-triggering while sample is already playing.
     if (_isPlaying)
     {
@@ -407,6 +464,27 @@ void SamplerVoice::render(int16_t * data, uint32_t frameCount)
         _turnOnLedNextBuffer = false;
         UI::get().set_voice_playing(_number, true);
     }
+}
+
+void SamplerVoice::set_sample_start(float start)
+{
+    // Stop playing and turn off LED.
+    _reset_voice();
+    UI::get().set_voice_playing(_number, false);
+
+    // Tell sample manager to set and load new start point.
+    uint32_t sample = uint32_t(float(_manager.get_total_samples()) * start);
+    _manager.set_start_sample(sample);
+}
+
+void SamplerVoice::set_sample_end(float end)
+{
+    // Stop playing and turn off LED.
+    _reset_voice();
+    UI::get().set_voice_playing(_number, false);
+
+    uint32_t sample = uint32_t(float(_manager.get_active_samples()) * end);
+    _manager.set_end_sample(sample);
 }
 
 //------------------------------------------------------------------------------

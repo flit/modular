@@ -84,6 +84,10 @@ public:
 
     void prime();
 
+    void set_start_sample(uint32_t start);
+    void set_end_sample(uint32_t end);
+
+    bool is_ready() const { return _isReady; }
     SampleBuffer * get_current_buffer();
     SampleBuffer * get_empty_buffer();
 
@@ -93,6 +97,7 @@ public:
     void retire_buffer(SampleBuffer * buffer);
 
     uint32_t get_total_samples() const { return _totalSamples; }
+    uint32_t get_active_samples() const { return _endSample - _startSample; }
     uint32_t get_samples_played() const { return _samplesPlayed; }
     uint32_t get_samples_read() const { return _samplesRead; }
     uint32_t get_samples_queued() const { return _samplesQueued; }
@@ -110,10 +115,14 @@ protected:
     SampleBuffer * _currentBuffer;
     uint32_t _activeBufferCount;
     uint32_t _totalSamples;
+    uint32_t _startSample;
+    uint32_t _endSample;
     uint32_t _samplesPlayed;
     uint32_t _samplesRead;
     uint32_t _samplesQueued;
     bool _didReadFileStart;
+    bool _waitingForFileStart;
+    bool _isReady;
 };
 
 /*!
@@ -134,12 +143,14 @@ public:
     void prime();
 
     void trigger();
-    bool is_playing() { return _isPlaying; }
+    bool is_playing() const { return _isPlaying; }
 
     void playing_did_finish();
 
     void set_gain(float gain) { _gain = gain; }
     void set_pitch(float pitch) { _pitch = pitch; }
+    void set_sample_start(float start);
+    void set_sample_end(float end);
 
     void render(int16_t * data, uint32_t frameCount);
 
@@ -159,6 +170,8 @@ protected:
     float _fraction;
     float _gain;
     float _pitch;
+
+    void _reset_voice();
 };
 
 } // namespace slab
