@@ -83,7 +83,8 @@ void scan_for_files();
 
 namespace slab {
 
-int16_t g_outBuf[kAudioBufferCount][kAudioBufferSize * kAudioChannelCount];
+int16_t g_outBuf[kAudioBufferCount][kAudioBufferSize * kAudioChannelCount] __attribute__ ((section(".buffers"),aligned(4)));
+int16_t g_sampleBufs[kVoiceCount][SampleBufferManager::kBufferCount * SampleBufferManager::kBufferSize] __attribute__ ((section(".buffers"),aligned(4)));
 
 Ar::Thread * g_initThread = NULL;
 Ar::ThreadWithStack<2048> g_cvThread("cv", cv_thread, 0, kCVThreadPriority, kArSuspendThread);
@@ -435,10 +436,10 @@ void init_thread(void * arg)
 
     flash_leds();
 
-    g_voice[0].init(0);
-    g_voice[1].init(1);
-    g_voice[2].init(2);
-    g_voice[3].init(3);
+    g_voice[0].init(0, (int16_t *)&g_sampleBufs[0]);
+    g_voice[1].init(1, (int16_t *)&g_sampleBufs[1]);
+    g_voice[2].init(2, (int16_t *)&g_sampleBufs[2]);
+    g_voice[3].init(3, (int16_t *)&g_sampleBufs[3]);
 
     g_ui.set_leds(g_channelLeds, &g_button1Led);
     g_ui.set_pots(g_pots);

@@ -79,7 +79,7 @@ public:
     SampleBufferManager();
     ~SampleBufferManager()=default;
 
-    void init(SamplerVoice * voice);
+    void init(SamplerVoice * voice, int16_t * buffer);
     void set_file(uint32_t totalFrames);
 
     void prime();
@@ -107,7 +107,6 @@ protected:
 
     SamplerVoice * _voice;
     uint32_t _number;
-    int16_t _bufferData[kBufferCount * kBufferSize];
     SampleBuffer _buffer[kBufferCount];
     BufferQueue _fullBuffers;
     BufferQueue _emptyBuffers;
@@ -134,7 +133,7 @@ public:
     SamplerVoice();
     ~SamplerVoice()=default;
 
-    void init(uint32_t n);
+    void init(uint32_t n, int16_t * buffer);
     void set_file(WaveFile & file);
 
     uint32_t get_number() const { return _number; }

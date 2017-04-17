@@ -62,8 +62,8 @@ MEMORY
   m_interrupts          (RX)  : ORIGIN = 0x00000000, LENGTH = 0x00000400
   m_flash_config        (RX)  : ORIGIN = 0x00000400, LENGTH = 0x00000010
   m_text                (RX)  : ORIGIN = 0x00000410, LENGTH = 0x0007FBF0
-  m_data                (RW)  : ORIGIN = 0x1FFF0000, LENGTH = 0x00020000
-/*  m_data_2              (RW)  : ORIGIN = 0x20000000, LENGTH = 0x00010000 */
+  m_data                (RW)  : ORIGIN = 0x1FFF0000, LENGTH = 0x00010000
+  m_data2               (RW)  : ORIGIN = 0x20000000, LENGTH = 0x00010000
 }
 
 /* Define output sections */
@@ -214,14 +214,14 @@ SECTIONS
     __bss_start__ = .;
     *(.bss)
     *(.bss*)
+    *(COMMON)
     . = ALIGN(512);
     USB_RAM_START = .;
     . += USB_RAM_GAP;
-    *(COMMON)
     . = ALIGN(4);
     __bss_end__ = .;
     __END_BSS = .;
-  } > m_data
+  } > m_data AT> m_data
 
   .heap :
   {
@@ -234,11 +234,17 @@ SECTIONS
     __heap_limit = .; /* Add for _sbrk */
   } > m_data
 
+  .buffers (NOLOAD) :
+  {
+    . = ALIGN(4);
+    *(.buffers)
+  } > m_data2
+
   .stack :
   {
     . = ALIGN(8);
     . += STACK_SIZE;
-  } > m_data
+  } > m_data2
 
   m_usb_bdt USB_RAM_START (NOLOAD) :
   {

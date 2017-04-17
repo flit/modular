@@ -60,10 +60,9 @@ M_VECTOR_RAM_SIZE = DEFINED(__ram_vector_table__) ? 0x0400 : 0x0;
 MEMORY
 {
   m_interrupts          (RX)  : ORIGIN = 0x00020000, LENGTH = 0x00020400
-/*  m_flash_config        (RX)  : ORIGIN = 0x00000400, LENGTH = 0x00000010 */
   m_text                (RX)  : ORIGIN = 0x00020400, LENGTH = 0x0005fc00
-  m_data                (RW)  : ORIGIN = 0x1FFF0000, LENGTH = 0x00020000
-/*  m_data_2              (RW)  : ORIGIN = 0x20000000, LENGTH = 0x00010000 */
+  m_data                (RW)  : ORIGIN = 0x1FFF0000, LENGTH = 0x00010000
+  m_data2               (RW)  : ORIGIN = 0x20000000, LENGTH = 0x00010000
 }
 
 /* Define output sections */
@@ -77,13 +76,6 @@ SECTIONS
     KEEP(*(.isr_vector))     /* Startup code */
     . = ALIGN(4);
   } > m_interrupts
-
-/* .flash_config :
- {
-   . = ALIGN(4);
-   KEEP(*(.FlashConfig))    / Flash Configuration Field (FCF) /
-   . = ALIGN(4);
- } > m_flash_config */
 
   /* The program code and other data goes into internal flash */
   .text :
@@ -214,14 +206,14 @@ SECTIONS
     __bss_start__ = .;
     *(.bss)
     *(.bss*)
+    *(COMMON)
     . = ALIGN(512);
     USB_RAM_START = .;
     . += USB_RAM_GAP;
-    *(COMMON)
     . = ALIGN(4);
     __bss_end__ = .;
     __END_BSS = .;
-  } > m_data
+  } > m_data AT> m_data
 
   .heap :
   {
@@ -234,11 +226,17 @@ SECTIONS
     __heap_limit = .; /* Add for _sbrk */
   } > m_data
 
+  .buffers (NOLOAD) :
+  {
+    . = ALIGN(4);
+    *(.buffers)
+  } > m_data2
+
   .stack :
   {
     . = ALIGN(8);
     . += STACK_SIZE;
-  } > m_data
+  } > m_data2
 
   m_usb_bdt USB_RAM_START (NOLOAD) :
   {

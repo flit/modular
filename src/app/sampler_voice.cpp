@@ -57,7 +57,7 @@ SampleBufferManager::SampleBufferManager()
 {
 }
 
-void SampleBufferManager::init(SamplerVoice * voice)
+void SampleBufferManager::init(SamplerVoice * voice, int16_t * buffer)
 {
     _voice = voice;
     _number = voice->get_number();
@@ -68,7 +68,7 @@ void SampleBufferManager::init(SamplerVoice * voice)
     {
         _buffer[i].number = i;
         _buffer[i].state = SampleBuffer::State::kUnused;
-        _buffer[i].data = &_bufferData[i * kBufferSize];
+        _buffer[i].data = &buffer[i * kBufferSize];
         _buffer[i].startFrame = 0;
         _buffer[i].frameCount = kBufferSize;
         _buffer[i].readHead = 0;
@@ -288,10 +288,10 @@ SamplerVoice::SamplerVoice()
 {
 }
 
-void SamplerVoice::init(uint32_t n)
+void SamplerVoice::init(uint32_t n, int16_t * buffer)
 {
     _number = n;
-    _manager.init(this);
+    _manager.init(this, buffer);
 }
 
 void SamplerVoice::set_file(WaveFile& file)
