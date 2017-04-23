@@ -44,7 +44,7 @@ using namespace slab;
 //------------------------------------------------------------------------------
 
 const uint32_t kAdcMax = 65536;
-const uint32_t kPotEditHysteresisPercent = 20;
+const uint32_t kPotEditHysteresisPercent = 5;
 
 //------------------------------------------------------------------------------
 // Variables
