@@ -26,11 +26,10 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#if !defined(_MAIN_H_)
-#define _MAIN_H_
+#if !defined(_SAMPLER_SYNTH_H_)
+#define _SAMPLER_SYNTH_H_
 
-#include "sampler_voice.h"
-#include "audio_defs.h"
+#include "audio_output.h"
 
 //------------------------------------------------------------------------------
 // Definitions
@@ -38,20 +37,23 @@
 
 namespace slab {
 
-enum thread_priorties : uint8_t
+/*!
+ * @brief Audio render source.
+ */
+class SamplerSynth : public AudioOutput::Source
 {
-    kAudioThreadPriority = 180,
-    kReaderThreadPriority = 120,
-    kCVThreadPriority = 80,
-    kUIThreadPriority = 60,
-    kInitThreadPriority = 40,
-};
+public:
+    SamplerSynth() {}
+    virtual ~SamplerSynth()=default;
 
-extern SamplerVoice g_voice[kVoiceCount];
+    virtual void render(uint32_t firstChannel, AudioOutput::Buffer & buffer) override;
+
+protected:
+};
 
 } // namespace slab
 
-#endif // _MAIN_H_
+#endif // _SAMPLER_SYNTH_H_
 //------------------------------------------------------------------------------
 // EOF
 //------------------------------------------------------------------------------

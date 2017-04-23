@@ -101,6 +101,16 @@
 			<locationURI>virtual:/virtual</locationURI>
 		</link>
 		<link>
+			<name>app/channel_cv_gate.cpp</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/src/app/channel_cv_gate.cpp</locationURI>
+		</link>
+		<link>
+			<name>app/channel_cv_gate.h</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/src/app/channel_cv_gate.h</locationURI>
+		</link>
+		<link>
 			<name>app/debug_log.h</name>
 			<type>1</type>
 			<locationURI>PARENT-2-PROJECT_LOC/src/app/debug_log.h</locationURI>
@@ -179,6 +189,16 @@
 			<name>app/ring_buffer.h</name>
 			<type>1</type>
 			<locationURI>PARENT-2-PROJECT_LOC/src/app/ring_buffer.h</locationURI>
+		</link>
+		<link>
+			<name>app/sampler_synth.cpp</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/src/app/sampler_synth.cpp</locationURI>
+		</link>
+		<link>
+			<name>app/sampler_synth.h</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/src/app/sampler_synth.h</locationURI>
 		</link>
 		<link>
 			<name>app/sampler_voice.cpp</name>

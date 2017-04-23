@@ -26,11 +26,11 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#if !defined(_MAIN_H_)
-#define _MAIN_H_
+#if !defined(_CHANNEL_CV_GATE_H_)
+#define _CHANNEL_CV_GATE_H_
 
-#include "sampler_voice.h"
-#include "audio_defs.h"
+#include <stdint.h>
+#include "ring_buffer.h"
 
 //------------------------------------------------------------------------------
 // Definitions
@@ -38,20 +38,42 @@
 
 namespace slab {
 
-enum thread_priorties : uint8_t
+/*!
+ * @brief
+ */
+class ChannelCVGate
 {
-    kAudioThreadPriority = 180,
-    kReaderThreadPriority = 120,
-    kCVThreadPriority = 80,
-    kUIThreadPriority = 60,
-    kInitThreadPriority = 40,
-};
+public:
+    enum Mode
+    {
+        kGate,
+        kCV
+    };
 
-extern SamplerVoice g_voice[kVoiceCount];
+    ChannelCVGate();
+    ~ChannelCVGate()=default;
+
+    void init();
+
+    void set_mode(Mode newMode);
+    void set_inverted(bool isInverted) { _isInverted = isInverted; }
+
+    uint32_t process(uint32_t value);
+
+    uint32_t n;
+
+protected:
+    Mode _mode;
+    bool _isInverted;
+    uint32_t _last;
+    bool _edge;
+    uint32_t _highCount;
+    RingBuffer<uint16_t, 128> _history;
+};
 
 } // namespace slab
 
-#endif // _MAIN_H_
+#endif // _CHANNEL_CV_GATE_H_
 //------------------------------------------------------------------------------
 // EOF
 //------------------------------------------------------------------------------

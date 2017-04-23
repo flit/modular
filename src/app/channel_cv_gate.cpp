@@ -26,32 +26,88 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#if !defined(_MAIN_H_)
-#define _MAIN_H_
 
-#include "sampler_voice.h"
-#include "audio_defs.h"
+#include "channel_cv_gate.h"
+
+using namespace slab;
 
 //------------------------------------------------------------------------------
 // Definitions
 //------------------------------------------------------------------------------
 
-namespace slab {
+const uint32_t kAdcMax = 65536;
+const uint32_t kTriggerThreshold = kAdcMax - (0.3 * (kAdcMax / 2));
 
-enum thread_priorties : uint8_t
+//------------------------------------------------------------------------------
+// Code
+//------------------------------------------------------------------------------
+
+ChannelCVGate::ChannelCVGate()
+:   _mode(kGate),
+    _isInverted(false),
+    _last(0),
+    _edge(false),
+    _highCount(0)
 {
-    kAudioThreadPriority = 180,
-    kReaderThreadPriority = 120,
-    kCVThreadPriority = 80,
-    kUIThreadPriority = 60,
-    kInitThreadPriority = 40,
-};
+}
 
-extern SamplerVoice g_voice[kVoiceCount];
+void ChannelCVGate::init()
+{
+}
 
-} // namespace slab
+void ChannelCVGate::set_mode(Mode newMode)
+{
+    _mode = newMode;
+}
 
-#endif // _MAIN_H_
+uint32_t ChannelCVGate::process(uint32_t value)
+{
+    _history.put(value);
+
+    uint32_t result = 0;
+    value <<= 4;
+
+    if (!_isInverted)
+    {
+        // Invert value to compensate for inverting opamp config;
+        value = kAdcMax - value;
+    }
+
+    if (_mode == Mode::kGate)
+    {
+        uint32_t state = (value > kTriggerThreshold) ? 1 : 0;
+
+        if (state == 0)
+        {
+            _edge = false;
+            _highCount = 0;
+        }
+
+        if (state == 1)
+        {
+            if (_last == 0)
+            {
+                _edge = true;
+                _highCount = 0;
+            }
+
+            ++_highCount;
+
+            if (_highCount == 3)
+            {
+                result = 1;
+            }
+        }
+
+        _last = state;
+    }
+    else
+    {
+    }
+
+    return result;
+}
+
 //------------------------------------------------------------------------------
 // EOF
 //------------------------------------------------------------------------------

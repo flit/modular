@@ -39,6 +39,8 @@
 #include "debug_log.h"
 #include "reader_thread.h"
 #include "adc_sequencer.h"
+#include "channel_cv_gate.h"
+#include "sampler_synth.h"
 #include "ui.h"
 #include "fsl_sd_disk.h"
 #include "fsl_edma.h"
@@ -58,9 +60,6 @@ using namespace slab;
 //------------------------------------------------------------------------------
 
 #define ENABLE_LOAD_REPORT (1)
-
-const uint32_t kAdcMax = 65536;
-const uint32_t kTriggerThreshold = kAdcMax - (0.3 * (kAdcMax / 2));
 
 //------------------------------------------------------------------------------
 // Prototypes
@@ -165,72 +164,6 @@ void flash_leds()
 
 }
 
-ChannelCVGate::ChannelCVGate()
-:   _mode(kGate),
-    _isInverted(false),
-    _last(0),
-    _edge(false),
-    _highCount(0)
-{
-}
-
-void ChannelCVGate::init()
-{
-}
-
-void ChannelCVGate::set_mode(Mode newMode)
-{
-    _mode = newMode;
-}
-
-uint32_t ChannelCVGate::process(uint32_t value)
-{
-    _history.put(value);
-
-    uint32_t result = 0;
-    value <<= 4;
-
-    if (!_isInverted)
-    {
-        // Invert value to compensate for inverting opamp config;
-        value = kAdcMax - value;
-    }
-
-    if (_mode == Mode::kGate)
-    {
-        uint32_t state = (value > kTriggerThreshold) ? 1 : 0;
-
-        if (state == 0)
-        {
-            _edge = false;
-            _highCount = 0;
-        }
-
-        if (state == 1)
-        {
-            if (_last == 0)
-            {
-                _edge = true;
-                _highCount = 0;
-            }
-
-            ++_highCount;
-
-            if (_highCount == 3)
-            {
-                result = 1;
-            }
-        }
-
-        _last = state;
-    }
-    else
-    {
-    }
-
-    return result;
-}
-
 void cv_thread(void * arg)
 {
     g_gates[0].n = 0;
@@ -292,35 +225,6 @@ void cv_thread(void * arg)
         g_pots[2].process(results1[0]);
         g_pots[3].process(results1[1]);
     }
-}
-
-#define SQUARE_OUT (0)
-
-//! Runs on the audio thread.
-void SamplerSynth::render(uint32_t firstChannel, AudioOutput::Buffer & buffer)
-{
-    int16_t * data = (int16_t *)buffer.data;;
-    int frameCount = buffer.dataSize / sizeof(int16_t) / kAudioChannelCount;
-
-#if SQUARE_OUT
-    // Output a naïve full-scale 440 Hz square wave for testing without the SD card.
-    static int phase = 0;
-    int w = kSampleRate / 440;
-    int i;
-    for (i = 0; i < frameCount; ++i)
-    {
-        int16_t intSample = (phase > w/2) ? 32767 : -32768;
-        *out++ = intSample;
-        *out++ = intSample;
-        if (++phase > w)
-        {
-            phase = 0;
-        }
-    }
-#else // SQUARE_OUT
-    g_voice[firstChannel].render(data, frameCount);
-    g_voice[firstChannel + 1].render(data + 1, frameCount);
-#endif // SQUARE_OUT
 }
 
 void scan_for_files()

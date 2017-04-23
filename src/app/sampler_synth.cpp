@@ -26,32 +26,63 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#if !defined(_MAIN_H_)
-#define _MAIN_H_
 
-#include "sampler_voice.h"
+#include "sampler_synth.h"
+#include "main.h"
+#include "microseconds.h"
 #include "audio_defs.h"
+
+using namespace slab;
 
 //------------------------------------------------------------------------------
 // Definitions
 //------------------------------------------------------------------------------
 
+#define SQUARE_OUT (0)
+
+//------------------------------------------------------------------------------
+// Variables
+//------------------------------------------------------------------------------
+
 namespace slab {
+uint32_t g_timestamp1;
+uint32_t g_timestamp2;
+}
 
-enum thread_priorties : uint8_t
+//------------------------------------------------------------------------------
+// Code
+//------------------------------------------------------------------------------
+
+//! Runs on the audio thread.
+void SamplerSynth::render(uint32_t firstChannel, AudioOutput::Buffer & buffer)
 {
-    kAudioThreadPriority = 180,
-    kReaderThreadPriority = 120,
-    kCVThreadPriority = 80,
-    kUIThreadPriority = 60,
-    kInitThreadPriority = 40,
-};
+    g_timestamp2 = Microseconds::get() - g_timestamp1;
+    int16_t * data = (int16_t *)buffer.data;;
+    int frameCount = buffer.dataSize / sizeof(int16_t) / kAudioChannelCount;
 
-extern SamplerVoice g_voice[kVoiceCount];
+#if SQUARE_OUT
+    // Output a naïve full-scale 440 Hz square wave for testing without the SD card.
+    static int phase = 0;
+    int w = kSampleRate / 440;
+    int i;
+    for (i = 0; i < frameCount; ++i)
+    {
+        int16_t intSample = (phase > w/2) ? 32767 : -32768;
+        *out++ = intSample;
+        *out++ = intSample;
+        if (++phase > w)
+        {
+            phase = 0;
+        }
+    }
+#else // SQUARE_OUT
+    uint32_t a = Microseconds::get();
+    g_voice[firstChannel].render(data, frameCount);
+    g_voice[firstChannel + 1].render(data + 1, frameCount);
+    uint32_t d __attribute__((unused)) = Microseconds::get() - a;
+#endif // SQUARE_OUT
+}
 
-} // namespace slab
-
-#endif // _MAIN_H_
 //------------------------------------------------------------------------------
 // EOF
 //------------------------------------------------------------------------------
