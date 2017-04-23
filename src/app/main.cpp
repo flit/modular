@@ -57,6 +57,8 @@ using namespace slab;
 // Definitions
 //------------------------------------------------------------------------------
 
+#define ENABLE_LOAD_REPORT (1)
+
 const uint32_t kAdcMax = 65536;
 const uint32_t kTriggerThreshold = kAdcMax - (0.3 * (kAdcMax / 2));
 
@@ -65,8 +67,11 @@ const uint32_t kTriggerThreshold = kAdcMax - (0.3 * (kAdcMax / 2));
 //------------------------------------------------------------------------------
 
 void cv_thread(void * arg);
-void read_thread(void * arg);
 void init_thread(void * arg);
+
+#if ENABLE_LOAD_REPORT
+void load_thread(void * arg);
+#endif
 
 void flash_leds();
 
@@ -89,6 +94,9 @@ int16_t g_sampleBufs[kVoiceCount][SampleBufferManager::kBufferCount * SampleBuff
 Ar::Thread * g_initThread = NULL;
 Ar::ThreadWithStack<2048> g_cvThread("cv", cv_thread, 0, kCVThreadPriority, kArSuspendThread);
 
+#if ENABLE_LOAD_REPORT
+Ar::ThreadWithStack<2048> g_loadReportThread("load", load_thread, 0, kUIThreadPriority-1, kArStartThread);
+#endif
 
 UI g_ui;
 AudioOutput g_audioOut;
@@ -114,6 +122,11 @@ DEFINE_DEBUG_LOG
 //------------------------------------------------------------------------------
 // Code
 //------------------------------------------------------------------------------
+
+uint64_t ar_get_microseconds()
+{
+    return Microseconds::get();
+}
 
 void flash_leds()
 {
@@ -468,6 +481,38 @@ void init_thread(void * arg)
 
     delete g_initThread;
 }
+
+#if ENABLE_LOAD_REPORT
+void load_thread(void * arg)
+{
+    while (true)
+    {
+        uint32_t ms = ar_get_millisecond_count();
+
+        static char buffer[128];
+        ar_thread_status_t report[10];
+
+        uint32_t count = ar_thread_get_report(report, 10);
+
+        uint32_t i;
+        uint32_t l = 1;
+        for (i = 0; i < count; ++i)
+        {
+            uint32_t percentInt = report[i].m_cpu / 10;
+            uint32_t percentFrac = report[i].m_cpu - percentInt * 10;
+            assert(l < sizeof(buffer));
+            l += snprintf(buffer + (l - 1), sizeof(buffer) - l,
+                "%2lu.%1lu%% %-8s%s",
+                percentInt, percentFrac, report[i].m_name,
+                (i == (count - 1) ? "\n" : ""));
+        }
+        printf(buffer);
+        printf("total = %lu ‰\n", ar_get_system_load());
+
+        Ar::Thread::sleepUntil(ms + 1000);
+    }
+}
+#endif // ENABLE_LOAD_REPORT
 
 int main(void)
 {
