@@ -101,6 +101,7 @@ void SampleBufferManager::prime()
     _samplesQueued = _samplesRead;
 
     // Clear buffers queues.
+    ReaderThread::get()->clear_voice_queue(_voice);
     _fullBuffers.clear();
     _emptyBuffers.clear();
 
@@ -257,7 +258,7 @@ void SampleBufferManager::set_start_sample(uint32_t start)
         _endSample = _startSample;
     }
 
-    _activeBufferCount = min(round_up_div(_endSample - _startSample, kBufferSize), kBufferCount);
+    _activeBufferCount = min(round_up_div(get_active_samples(), kBufferSize), kBufferCount);
 
     prime();
 }
@@ -270,7 +271,7 @@ void SampleBufferManager::set_end_sample(uint32_t end)
 
     _endSample = end;
 
-    _activeBufferCount = min(round_up_div(_endSample - _startSample, kBufferSize), kBufferCount);
+    _activeBufferCount = min(round_up_div(get_active_samples(), kBufferSize), kBufferCount);
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -483,7 +484,9 @@ void SamplerVoice::set_sample_end(float end)
     _reset_voice();
     UI::get().set_voice_playing(_number, false);
 
-    uint32_t sample = uint32_t(float(_manager.get_active_samples()) * end);
+    uint32_t startSample = _manager.get_start_sample();
+    uint32_t s = _manager.get_total_samples() - startSample;
+    uint32_t sample = startSample + uint32_t(float(s) * end);
     _manager.set_end_sample(sample);
 }
 

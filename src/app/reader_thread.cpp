@@ -186,6 +186,49 @@ void ReaderThread::enqueue(SamplerVoice * request)
     _sem.put();
 }
 
+void ReaderThread::clear_voice_queue(SamplerVoice * voice)
+{
+    Ar::Mutex::Guard guard(_queueLock);
+
+    QueueNode * iter = _first;
+    while (iter)
+    {
+        if (iter->voice == voice)
+        {
+            // Remove this node from the queue.
+            if (iter == _first)
+            {
+                _first = iter->next;
+            }
+            if (iter == _last)
+            {
+                _last = iter->previous;
+            }
+
+            if (iter->previous)
+            {
+                iter->previous->next = iter->next;
+            }
+            if (iter->next)
+            {
+                iter->next->previous = iter->previous;
+            }
+
+            // Update count.
+            --_count;
+
+            // Add node to free list.
+            QueueNode * temp = iter;
+            iter = iter->next;
+            add_free_node(temp);
+        }
+        else
+        {
+            iter = iter->next;
+        }
+    }
+}
+
 void ReaderThread::insert_before(QueueNode * node, QueueNode * beforeNode)
 {
     if (beforeNode)
@@ -283,8 +326,14 @@ void ReaderThread::reader_thread()
     {
         // Pull a voice that needs a buffer filled from the queue.
         SamplerVoice * voice = dequeue();
+
+        // The voice can be null if clear_voice_queue() was called, and the sem count
+        // is higher than the number of queue entries.
+        if (!voice)
+        {
+            continue;
+        }
         uint32_t start1 = Microseconds::get();
-        assert(voice);
         assert(voice->is_valid());
 
         // Ask the voice for the next buffer to fill. This may return null, which is valid.

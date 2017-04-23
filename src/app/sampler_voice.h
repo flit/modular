@@ -98,6 +98,8 @@ public:
 
     uint32_t get_total_samples() const { return _totalSamples; }
     uint32_t get_active_samples() const { return _endSample - _startSample; }
+    uint32_t get_start_sample() const { return _startSample; }
+    uint32_t get_end_sample() const { return _endSample; }
     uint32_t get_samples_played() const { return _samplesPlayed; }
     uint32_t get_samples_read() const { return _samplesRead; }
     uint32_t get_samples_queued() const { return _samplesQueued; }

@@ -104,6 +104,7 @@ public:
     void start() { _thread.resume(); }
 
     void enqueue(SamplerVoice * request);
+    void clear_voice_queue(SamplerVoice * voice);
 
     uint32_t get_pending_count() const { return _count; }
 
