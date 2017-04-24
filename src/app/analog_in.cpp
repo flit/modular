@@ -55,14 +55,28 @@ AnalogIn::AnalogIn(uint32_t instance, uint32_t channel)
     }
 }
 
+AnalogIn::~AnalogIn()
+{
+    if (s_adcInited[m_instance])
+    {
+        ADC16_Deinit(m_base);
+        DisableIRQ(m_instance == 0 ? ADC0_IRQn : ADC1_IRQn);
+        s_adcInited[m_instance] = false;
+    }
+}
+
 void AnalogIn::init()
 {
     if (!s_adcInited[m_instance])
     {
         adc16_config_t config;
         ADC16_GetDefaultConfig(&config);
-        config.resolution = kADC16_Resolution16Bit;
-        config.longSampleMode = kADC16_LongSampleCycle24;
+        config.clockSource = kADC16_ClockSourceAsynchronousClock;
+        config.enableAsynchronousClock = true;
+        config.resolution = kADC16_ResolutionSE12Bit;
+        config.longSampleMode = kADC16_LongSampleCycle6;
+        config.enableHighSpeed = true;
+        config.enableLowPower = true;
         ADC16_Init(m_base, &config);
         ADC16_DoAutoCalibration(m_base);
         ADC16_SetHardwareAverage(m_base, kADC16_HardwareAverageCount32);

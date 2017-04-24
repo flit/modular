@@ -29,7 +29,7 @@
 #if !defined(_ANALOG_IN_H_)
 #define _ANALOG_IN_H_
 
-#include "argon.h"
+#include "argon/argon.h"
 #include "fsl_adc16.h"
 
 //------------------------------------------------------------------------------
@@ -45,7 +45,7 @@ class AnalogIn
 {
 public:
     AnalogIn(uint32_t instance, uint32_t channel);
-    ~AnalogIn() {}
+    ~AnalogIn();
 
     void init();
 
