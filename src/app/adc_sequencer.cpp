@@ -29,6 +29,7 @@
 
 #include "adc_sequencer.h"
 #include "debug_log.h"
+#include "microseconds.h"
 #include "fsl_adc16.h"
 #include "fsl_dmamux.h"
 
@@ -52,6 +53,12 @@ AdcSequencer::AdcSequencer(ADC_Type * base, uint32_t firstDmaChannel)
 {
     memset(_tcds, 0, sizeof(_tcds));
     memset(_requests, 0, sizeof(_requests));
+
+#if DEBUG
+    _ts = 0;
+    _lts = 0;
+    _elapsed = 0;
+#endif // DEBUG
 }
 
 void AdcSequencer::init()
@@ -146,6 +153,12 @@ void AdcSequencer::start()
 
 void AdcSequencer::handle_completion()
 {
+#if DEBUG
+    _lts = _ts;
+    _ts = Microseconds::get();
+    _elapsed = _ts - _lts;
+#endif // DEBUG
+
     assert(_sem);
     _sem->put();
 

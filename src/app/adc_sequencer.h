@@ -77,6 +77,11 @@ protected:
     edma_tcd_t _tcds[2] __attribute__((aligned(32)));
     uint32_t _requests[32];
 
+#if DEBUG
+    uint32_t _ts;
+    uint32_t _lts;
+    uint32_t _elapsed;
+#endif // DEBUG
 };
 
 } // namespace slab
