@@ -97,7 +97,7 @@ void SampleBufferManager::prime()
 
     // Reset state.
     _samplesPlayed = _startSample;
-    _samplesRead = _didReadFileStart ? kBufferSize : _startSample;
+    _samplesRead = _didReadFileStart ? _startSample + kBufferSize : _startSample;
     _samplesQueued = _samplesRead;
 
     // Clear buffers queues.
