@@ -172,6 +172,7 @@ void UI::init()
     _potReleaseTimer.init("pot-release", this, &UI::handle_pot_release_timer, kArOneShotTimer, 20);
 
     _button1.init();
+    _button2.init();
 }
 
 void UI::set_leds(LEDBase ** channelLeds, LEDBase * button1Led)
@@ -203,9 +204,8 @@ void UI::set_mode()
             _channelLeds[n]->off();
         }
 
-        // Select first channel for edit.
-        _editChannel = 0;
-        _channelLeds[0]->on();
+        // Select last channel being edited.
+        _channelLeds[_editChannel]->on();
     }
     // Switch to play mode.
     else
@@ -253,11 +253,19 @@ void UI::ui_thread()
                                 set_mode<kEditMode>();
                             }
                             // Switch to play mode.
-                            else if (_editChannel == (kVoiceCount - 1))
+                            else
                             {
                                 set_mode<kPlayMode>();
                             }
-                            // Select next channel to edit.
+                            break;
+
+                        case kButton2:
+                            // Bank switch in play mode.
+                            if (_mode == kPlayMode)
+                            {
+
+                            }
+                            // In edit mode, select next channel to edit.
                             else
                             {
                                 // Update edit LED.
