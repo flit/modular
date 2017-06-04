@@ -133,8 +133,7 @@ void init_board()
     PORT_SetPinInterruptConfig(PIN_BUTTON1_PORT, PIN_BUTTON1_BIT, kPORT_InterruptEitherEdge);
     PORT_SetPinInterruptConfig(PIN_BUTTON2_PORT, PIN_BUTTON2_BIT, kPORT_InterruptEitherEdge);
 
-    PORT_EnablePinsDigitalFilter(PIN_BUTTON1_PORT, PIN_BUTTON1_BIT, true);
-    PORT_EnablePinsDigitalFilter(PIN_BUTTON2_PORT, PIN_BUTTON2_BIT, true);
+    PORT_EnablePinsDigitalFilter(PIN_BUTTON1_PORT, PIN_BUTTON1 | PIN_BUTTON2, true);
 
     // Set up digital filtering on button port for 20 ms.
     port_digital_filter_config_t filterConfig = {
