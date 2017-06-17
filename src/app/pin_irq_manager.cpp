@@ -61,6 +61,8 @@ void PinIrqManager::connect(PORT_Type * port, uint32_t pin, pin_callback_t callb
     m_pins[portIndex][pin].callback = callback;
     m_pins[portIndex][pin].userData = userData;
 
+    PORT_ClearPinsInterruptFlags(port, 1 << pin);
+    NVIC_ClearPendingIRQ(kPortIrqs[portIndex]);
     EnableIRQ(kPortIrqs[portIndex]);
 }
 
