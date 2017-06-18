@@ -111,30 +111,40 @@ uint32_t PinIrqManager::portToIndex(PORT_Type * port)
     return 0;
 }
 
+#if defined(PORTA)
 extern "C" void PORTA_IRQHandler(void)
 {
     PinIrqManager::get().handle_irq(PORTA);
 }
+#endif // defined(PORTA)
 
+#if defined(PORTB)
 extern "C" void PORTB_IRQHandler(void)
 {
     PinIrqManager::get().handle_irq(PORTB);
 }
+#endif // defined(PORTB)
 
+#if defined(PORTC)
 extern "C" void PORTC_IRQHandler(void)
 {
     PinIrqManager::get().handle_irq(PORTC);
 }
+#endif // defined(PORTC)
 
+#if defined(PORTD)
 extern "C" void PORTD_IRQHandler(void)
 {
     PinIrqManager::get().handle_irq(PORTD);
 }
+#endif // defined(PORTD)
 
+#if defined(PORTE)
 extern "C" void PORTE_IRQHandler(void)
 {
     PinIrqManager::get().handle_irq(PORTE);
 }
+#endif // defined(PORTE)
 
 //------------------------------------------------------------------------------
 // EOF
