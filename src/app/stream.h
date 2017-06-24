@@ -43,12 +43,13 @@ namespace slab {
 class Stream
 {
 public:
+    using error_t = uint32_t;
 
     Stream() {}
     virtual ~Stream() {}
 
-    virtual uint32_t read(uint32_t count, void * data)=0;
-    virtual uint32_t write(uint32_t count, const void * data)=0;
+    virtual error_t read(uint32_t count, void * data, uint32_t * actualCount)=0;
+    virtual error_t write(uint32_t count, const void * data, uint32_t * actualCount)=0;
     virtual bool seek(uint32_t offset)=0;
 
     virtual uint32_t get_size() const=0;

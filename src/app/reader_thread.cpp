@@ -365,8 +365,18 @@ void ReaderThread::reader_thread()
         uint32_t start = Microseconds::get();
 #endif
 
-        stream.seek(request->startFrame * frameSize);
-        uint32_t bytesRead = stream.read(bytesToRead, targetBuffer);
+        if (!stream.seek(request->startFrame * frameSize))
+        {
+            DEBUG_PRINTF(ERROR_MASK, "R: seek error (b%i v%lu)\r\n", request->number, voice->get_number());
+            continue;
+        }
+        uint32_t bytesRead;
+        fs::error_t status = stream.read(bytesToRead, targetBuffer, &bytesRead);
+        if (status != fs::kSuccess)
+        {
+            DEBUG_PRINTF(ERROR_MASK, "R: read error = %lu (b%i v%lu)\r\n", status, request->number, voice->get_number());
+            continue;
+        }
         uint32_t stop = Microseconds::get();
         uint32_t framesRead = bytesRead / frameSize;
 

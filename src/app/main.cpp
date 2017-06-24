@@ -99,7 +99,7 @@ Ar::ThreadWithStack<2048> g_loadReportThread("load", load_thread, 0, kUIThreadPr
 
 UI g_ui;
 AudioOutput g_audioOut;
-FileSystem g_fs;
+fs::FileSystem g_fs;
 SamplerSynth g_sampler;
 ReaderThread g_readerThread;
 SamplerVoice g_voice[kVoiceCount];
@@ -229,7 +229,7 @@ void cv_thread(void * arg)
 
 void scan_for_files()
 {
-    DirectoryIterator dir = g_fs.open_dir("/");
+    fs::DirectoryIterator dir = g_fs.open_dir("/");
     FILINFO info;
 
     while (dir.next(&info))
@@ -249,7 +249,7 @@ void scan_for_files()
         {
             WaveFile wav(info.fname);
 
-            bool inited = wav.parse();
+            bool inited = (wav.parse() == fs::kSuccess);
 
             if (inited && wav.get_channels() <= 2)
             {
@@ -335,15 +335,15 @@ void init_audio_out()
 
 void init_fs()
 {
-    int res = g_fs.init();
+    fs::error_t res = g_fs.init();
 
-    if (res == 0)
+    if (res == fs::kSuccess)
     {
         scan_for_files();
     }
     else
     {
-        DEBUG_PRINTF(ERROR_MASK, "fs init failed: %d\r\n", res);
+        DEBUG_PRINTF(ERROR_MASK, "fs init failed: %lu\r\n", res);
     }
 }
 

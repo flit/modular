@@ -43,9 +43,13 @@ namespace slab {
 /*!
  * @brief Decodes a .wav file.
  */
-class WaveFile : public File
+class WaveFile : public fs::File
 {
 public:
+    enum wave_error : uint32_t
+    {
+        kParseError = 100,
+    };
 
     //! @brief Stream of a wav file's audio data.
     //!
@@ -59,8 +63,8 @@ public:
         AudioDataStream(const AudioDataStream& other)=default;
         AudioDataStream& operator = (const AudioDataStream& other)=default;
 
-        virtual uint32_t read(uint32_t count, void * data) override;
-        virtual uint32_t write(uint32_t count, const void * data) override { return 0; }
+        virtual error_t read(uint32_t count, void * data, uint32_t * actualCount) override;
+        virtual error_t write(uint32_t count, const void * data, uint32_t * actualCount) override { return fs::kGenericError; }
         virtual bool seek(uint32_t offset) override;
 
         virtual uint32_t get_size() const override;
@@ -81,7 +85,7 @@ public:
     bool is_valid() const { return _dataSize > 0; }
 
     //! @brief Parse file to read format and find data.
-    bool parse();
+    error_t parse();
 
     AudioDataStream get_audio_data() { return AudioDataStream(this); }
 

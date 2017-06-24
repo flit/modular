@@ -63,30 +63,39 @@ WaveFile& WaveFile::operator = (const WaveFile& other)
     return *this;
 }
 
-bool WaveFile::parse()
+fs::error_t WaveFile::parse()
 {
+    error_t status;
     uint32_t bytesRead;
 
     // Make sure we're open.
-    if (!open())
+    status = open();
+    if (status != fs::kSuccess)
     {
-        return false;
+        return status;
     }
 
     // Move to start of the file.
-    seek(0);
+    if (!seek(0))
+    {
+        return fs::kGenericError;
+    }
 
     // Read and validate file header.
     RIFFFileHeader fileHeader;
-    bytesRead = read(sizeof(fileHeader), &fileHeader);
+    status = read(sizeof(fileHeader), &fileHeader, &bytesRead);
+    if (status != fs::kSuccess)
+    {
+        return status;
+    }
     if (bytesRead != sizeof(fileHeader))
     {
-        return false;
+        return kParseError;
     }
 
     if (fileHeader.groupID != kRIFFGroupID || fileHeader.formatID != kWaveFormatID)
     {
-        return false;
+        return kParseError;
     }
 
     ChunkHeader chunkHeader;
@@ -94,23 +103,27 @@ bool WaveFile::parse()
     // Scan for format chunk.
     if (!find_chunk(kFormatChunkID, &chunkHeader))
     {
-        return false;
+        return kParseError;
     }
 
     // Save offset of the start of the format chunk data.
     uint32_t currentOffset = get_offset();
 
     // Read format chunk.
-    bytesRead = read(sizeof(_format), &_format);
+    status = read(sizeof(_format), &_format, &bytesRead);
+    if (status != fs::kSuccess)
+    {
+        return status;
+    }
     if (bytesRead != sizeof(_format))
     {
-        return false;
+        return kParseError;
     }
 
     // Make sure the file is uncompressed.
     if (_format.wFormatTag != kUncompressedWaveFormat)
     {
-        return false;
+        return kParseError;
     }
 
     // Skip over any extra data in the format chunk.
@@ -119,13 +132,13 @@ bool WaveFile::parse()
     // Scan for data chunk.
     if (!find_chunk(kDataChunkID, &chunkHeader))
     {
-        return false;
+        return kParseError;
     }
 
     // We're now positioned to read audio data.
     _dataOffset = get_offset();
     _dataSize = chunkHeader.chunkSize;
-    return true;
+    return fs::kSuccess;
 }
 
 bool WaveFile::find_chunk(uint32_t chunkID, ChunkHeader * header)
@@ -136,8 +149,8 @@ bool WaveFile::find_chunk(uint32_t chunkID, ChunkHeader * header)
     while (get_offset() <= get_size())
     {
         // Read the header at the current offset.
-        bytesRead = read(sizeof(ChunkHeader), header);
-        if (bytesRead != sizeof(ChunkHeader))
+        fs::error_t status = read(sizeof(ChunkHeader), header, &bytesRead);
+        if (status != fs::kSuccess || bytesRead != sizeof(ChunkHeader))
         {
             return false;
         }
@@ -150,7 +163,10 @@ bool WaveFile::find_chunk(uint32_t chunkID, ChunkHeader * header)
 
         // Skip over this chunk's data.
         uint32_t newOffset = get_offset() + header->chunkSize;
-        seek(newOffset);
+        if (!seek(newOffset))
+        {
+            return false;
+        }
 
         // Make sure we didn't hit the end of the file or had some other error.
         if (get_offset() != newOffset)
@@ -162,10 +178,10 @@ bool WaveFile::find_chunk(uint32_t chunkID, ChunkHeader * header)
     return false;
 }
 
-uint32_t WaveFile::AudioDataStream::read(uint32_t count, void * data)
+fs::error_t WaveFile::AudioDataStream::read(uint32_t count, void * data, uint32_t * actualCount)
 {
     assert(_file);
-    return _file->read(count, data);
+    return _file->read(count, data, actualCount);
 }
 
 bool WaveFile::AudioDataStream::seek(uint32_t offset)

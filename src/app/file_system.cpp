@@ -34,11 +34,52 @@
 #include <stdio.h>
 #include <ctype.h>
 
-using namespace slab;
+using namespace slab::fs;
+
+//------------------------------------------------------------------------------
+// Prototypes
+//------------------------------------------------------------------------------
+
+static error_t convert_ff_err(FRESULT result);
 
 //------------------------------------------------------------------------------
 // Code
 //------------------------------------------------------------------------------
+
+error_t convert_ff_err(FRESULT result)
+{
+    switch (result)
+    {
+        case FR_OK:
+            return kSuccess;
+        case FR_DISK_ERR:
+        case FR_NOT_READY:
+        case FR_NOT_ENABLED:
+        case FR_NO_FILESYSTEM:
+        case FR_WRITE_PROTECTED:
+            return kDiskError;
+        case FR_NO_FILE:
+        case FR_NO_PATH:
+            return kNameError;
+        case FR_DENIED:
+        case FR_EXIST:
+            return kAccessError;
+        case FR_INVALID_NAME:
+        case FR_INVALID_OBJECT:
+        case FR_INVALID_DRIVE:
+        case FR_INVALID_PARAMETER:
+            return kInvalidError;
+        case FR_TIMEOUT:
+        case FR_LOCKED:
+            return kTimeoutError;
+        case FR_INT_ERR:
+        case FR_MKFS_ABORTED:
+        case FR_NOT_ENOUGH_CORE:
+        case FR_TOO_MANY_OPEN_FILES:
+        default:
+            return kGenericError;
+    }
+}
 
 FileSystem::FileSystem()
 {
@@ -48,10 +89,10 @@ FileSystem::~FileSystem()
 {
 }
 
-int FileSystem::init(const char * path)
+error_t FileSystem::init(const char * path)
 {
     // Pass 1 for options to force immediate mounting.
-    return f_mount(&_fs, path, 1);
+    return convert_ff_err(f_mount(&_fs, path, 1));
 }
 
 DirectoryIterator FileSystem::open_dir(const char * path)
@@ -111,7 +152,7 @@ void File::set(const char * path)
     strncpy(_path, path, sizeof(_path));
 }
 
-bool File::open(bool writable, bool create)
+File::error_t File::open(bool writable, bool create)
 {
     if (_isOpen)
     {
@@ -130,7 +171,7 @@ bool File::open(bool writable, bool create)
 
     FRESULT result = f_open(&_fp, _path, mode);
     _isOpen = (result == FR_OK);
-    return _isOpen;
+    return convert_ff_err(result);
 }
 
 void File::close()
@@ -149,18 +190,26 @@ bool File::remove()
     return result == FR_OK;
 }
 
-uint32_t File::read(uint32_t count, void * data)
+File::error_t File::read(uint32_t count, void * data, uint32_t * actualCount)
 {
     uint32_t bytesRead = 0;
-    f_read(&_fp, data, count, (UINT *)&bytesRead);
-    return bytesRead;
+    FRESULT result = f_read(&_fp, data, count, (UINT *)&bytesRead);
+    if (actualCount)
+    {
+        *actualCount = bytesRead;
+    }
+    return convert_ff_err(result);
 }
 
-uint32_t File::write(uint32_t count, const void * data)
+File::error_t File::write(uint32_t count, const void * data, uint32_t * actualCount)
 {
     uint32_t bytesWritten = 0;
-    f_write(&_fp, data, count, (UINT *)&bytesWritten);
-    return bytesWritten;
+    FRESULT result = f_write(&_fp, data, count, (UINT *)&bytesWritten);
+    if (actualCount)
+    {
+        *actualCount = bytesWritten;
+    }
+    return convert_ff_err(result);
 }
 
 bool File::seek(uint32_t offset)

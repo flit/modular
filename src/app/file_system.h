@@ -37,6 +37,22 @@
 //------------------------------------------------------------------------------
 
 namespace slab {
+namespace fs {
+
+//! @brief File system errors.
+enum fs_error : uint32_t
+{
+    kSuccess = 0,
+    kGenericError,
+    kDiskError,
+    kNameError,
+    kAccessError,
+    kInvalidError,
+    kTimeoutError,
+};
+
+//! @brief Filesystem error type.
+using error_t = uint32_t;
 
 /*!
  * @brief
@@ -44,7 +60,6 @@ namespace slab {
 class File : public Stream
 {
 public:
-
     File();
     File(const char * path);
     virtual ~File();
@@ -53,11 +68,11 @@ public:
 
     void set(const char * path);
 
-    bool open(bool writable=false, bool create=false);
+    error_t open(bool writable=false, bool create=false);
     void close();
 
-    virtual uint32_t read(uint32_t count, void * data) override;
-    virtual uint32_t write(uint32_t count, const void * data) override;
+    virtual error_t read(uint32_t count, void * data, uint32_t * actualCount) override;
+    virtual error_t write(uint32_t count, const void * data, uint32_t * actualCount) override;
     virtual bool seek(uint32_t offset) override;
 
     virtual uint32_t get_size() const override { return f_size(&_fp); }
@@ -94,11 +109,10 @@ protected:
 class FileSystem
 {
 public:
-
     FileSystem();
     ~FileSystem();
 
-    int init(const char * path="");
+    error_t init(const char * path="");
 
     DirectoryIterator open_dir(const char * path);
 
@@ -106,6 +120,7 @@ protected:
     FATFS _fs;
 };
 
+} // namespace fs
 } // namespace slab
 
 #endif // _FILE_SYSTEM_H_
