@@ -333,85 +333,96 @@ void ReaderThread::reader_thread()
         {
             continue;
         }
-        uint32_t start1 = Microseconds::get();
-        assert(voice->is_valid());
 
-        // Ask the voice for the next buffer to fill. This may return null, which is valid.
-        SampleBufferManager& manager = voice->get_buffer_manager();
-        SampleBuffer * request = manager.get_empty_buffer();
-        if (!request)
-        {
-            continue;
-        }
-        DEBUG_PRINTF(FILL_MASK, "R: filling b%i v%lu @ %lu\r\n", request->number, voice->get_number(), request->startFrame);
+        fill_buffer(voice);
+    }
+}
 
-        // Figure out how much data to read.
-        Stream& stream = voice->get_audio_stream();
-        uint32_t frameSize = voice->get_wave_file().get_frame_size();
-        uint32_t channelCount = voice->get_wave_file().get_channels();
-        uint32_t bytesToRead = request->frameCount * frameSize;
-        assert(channelCount <= 2);
+void ReaderThread::fill_buffer(SamplerVoice * voice)
+{
+    assert(voice->is_valid());
+    uint32_t start1 = Microseconds::get();
 
-        // Read mono files directly into the voice buffer, stereo into a temp buffer.
-        void * targetBuffer = request->data;
-        if (channelCount == 2)
-        {
-            targetBuffer = _readBuf;
-            assert(bytesToRead <= sizeof(_readBuf));
-        }
+    // Ask the voice for the next buffer to fill. This may return null, which is valid.
+    SampleBufferManager& manager = voice->get_buffer_manager();
+    SampleBuffer * request = manager.get_empty_buffer();
+    if (!request)
+    {
+        return;
+    }
+    DEBUG_PRINTF(FILL_MASK, "R: filling b%i v%lu @ %lu\r\n", request->number, voice->get_number(), request->startFrame);
 
-        // Read from sample file.
+    // Figure out how much data to read.
+    Stream& stream = voice->get_audio_stream();
+    uint32_t frameSize = voice->get_wave_file().get_frame_size();
+    uint32_t channelCount = voice->get_wave_file().get_channels();
+    uint32_t bytesToRead = request->frameCount * frameSize;
+    assert(channelCount <= 2);
+
+    // Read mono files directly into the voice buffer, stereo into a temp buffer.
+    void * targetBuffer = request->data;
+    if (channelCount == 2)
+    {
+        targetBuffer = _readBuf;
+        assert(bytesToRead <= sizeof(_readBuf));
+    }
+
+    // Read from sample file.
 #if DEBUG
-        uint32_t start = Microseconds::get();
+    uint32_t start = Microseconds::get();
 #endif
 
-        if (!stream.seek(request->startFrame * frameSize))
-        {
-            DEBUG_PRINTF(ERROR_MASK, "R: seek error (b%i v%lu)\r\n", request->number, voice->get_number());
-            continue;
-        }
-        uint32_t bytesRead;
-        fs::error_t status = stream.read(bytesToRead, targetBuffer, &bytesRead);
-        if (status != fs::kSuccess)
-        {
-            DEBUG_PRINTF(ERROR_MASK, "R: read error = %lu (b%i v%lu)\r\n", status, request->number, voice->get_number());
-            continue;
-        }
-        uint32_t stop = Microseconds::get();
-        uint32_t framesRead = bytesRead / frameSize;
+    if (!stream.seek(request->startFrame * frameSize))
+    {
+        DEBUG_PRINTF(ERROR_MASK, "R: seek error (b%i v%lu)\r\n", request->number, voice->get_number());
+        return;
+    }
+    uint32_t bytesRead;
+    fs::error_t status = stream.read(bytesToRead, targetBuffer, &bytesRead);
+    if (status != fs::kSuccess)
+    {
+        DEBUG_PRINTF(ERROR_MASK, "R: read error = %lu (b%i v%lu)\r\n", status, request->number, voice->get_number());
+        return;
+    }
+    uint32_t stop = Microseconds::get();
+    uint32_t framesRead = bytesRead / frameSize;
 
 #if DEBUG
-        uint32_t delta = stop - start;
-        DEBUG_PRINTF(TIME_MASK, "R: read %lu bytes in %lu µs\r\n", bytesRead, delta);
-        _statistics.add(voice->get_number(), request->number, delta, bytesRead, manager.get_samples_read());
-        _voiceStatistics[voice->get_number()].add(voice->get_number(), request->number, delta, bytesRead, manager.get_samples_read());
+    uint32_t delta = stop - start;
+    DEBUG_PRINTF(TIME_MASK, "R: read %lu bytes in %lu µs\r\n", bytesRead, delta);
+    _statistics.add(voice->get_number(), request->number, delta, bytesRead, manager.get_samples_read());
+    _voiceStatistics[voice->get_number()].add(voice->get_number(), request->number, delta, bytesRead, manager.get_samples_read());
 #endif
 
-        // For stereo data copy just the left channel into the voice buffer.
-        if (channelCount == 2)
-        {
-            uint32_t i;
-            int16_t * buf = _readBuf;
-            int16_t * data = request->data;
-            for (i = 0; i < framesRead; ++i)
-            {
-                *data++ = *buf;
-                buf += 2;
-            }
-        }
+    // For stereo data copy just the left channel into the voice buffer.
+    if (channelCount == 2)
+    {
+        fill_from_stereo(request->data, framesRead);
+    }
 
-        // If we hit EOF, fill the remainder of the buffer with zeroes.
-        if (framesRead < request->frameCount)
-        {
-            memset((uint8_t *)(request->data + framesRead), 0, (request->frameCount - framesRead) * sizeof(int16_t));
-        }
+    // If we hit EOF, fill the remainder of the buffer with zeroes.
+    // @todo Should set request buffer frameCount instead of filling with zeroes.
+    if (framesRead < request->frameCount)
+    {
+        memset((uint8_t *)(request->data + framesRead), 0, (request->frameCount - framesRead) * sizeof(int16_t));
+    }
 
-        request->readHead = 0;
-        manager.enqueue_full_buffer(request);
+    request->readHead = 0;
+    manager.enqueue_full_buffer(request);
 
-        uint32_t stop1 = Microseconds::get();
-        uint32_t delta1 = stop1 - start1;
-        DEBUG_PRINTF(TIME_MASK, "R: %lu µs to fill b%i v%lu\r\n", delta1, request->number, voice->get_number());
+    uint32_t stop1 = Microseconds::get();
+    uint32_t delta1 = stop1 - start1;
+    DEBUG_PRINTF(TIME_MASK, "R: %lu µs to fill b%i v%lu\r\n", delta1, request->number, voice->get_number());
+}
+
+void ReaderThread::fill_from_stereo(int16_t * data, uint32_t framesRead)
+{
+    uint32_t i;
+    int16_t * buf = _readBuf;
+    for (i = 0; i < framesRead; ++i)
+    {
+        *data++ = *buf;
+        buf += 2;
     }
 }
 

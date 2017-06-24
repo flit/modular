@@ -137,6 +137,8 @@ protected:
     uint32_t _count;
 
     void reader_thread();
+    void fill_buffer(SamplerVoice * voice);
+    void fill_from_stereo(int16_t * data, uint32_t framesRead);
 
     SamplerVoice * dequeue();
     void insert_before(QueueNode * node, QueueNode * beforeNode);
