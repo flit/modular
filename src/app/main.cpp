@@ -31,7 +31,7 @@
 #include "main.h"
 #include "board.h"
 #include "pin_irq_manager.h"
-#include "file_system.h"
+#include "file_manager.h"
 #include "wav_file.h"
 #include "utility.h"
 #include "led.h"
@@ -99,7 +99,7 @@ Ar::ThreadWithStack<2048> g_loadReportThread("load", load_thread, 0, kUIThreadPr
 
 UI g_ui;
 AudioOutput g_audioOut;
-fs::FileSystem g_fs;
+FileManager g_fileManager;
 SamplerSynth g_sampler;
 ReaderThread g_readerThread;
 SamplerVoice g_voice[kVoiceCount];
@@ -227,58 +227,6 @@ void cv_thread(void * arg)
     }
 }
 
-void scan_for_files()
-{
-    fs::DirectoryIterator dir = g_fs.open_dir("/");
-    FILINFO info;
-
-    while (dir.next(&info))
-    {
-        // Skip directories and hidden or system files.
-        if (info.fattrib & (AM_DIR | AM_HID | AM_SYS))
-        {
-            continue;
-        }
-
-        // Look for '[0-9].wav' files.
-        if (isdigit(info.fname[0]) && info.fname[1] == '.'
-            && toupper(info.fname[2]) == 'W'
-            && toupper(info.fname[3]) == 'A'
-            && toupper(info.fname[4]) == 'V'
-            && info.fsize > 0)
-        {
-            WaveFile wav(info.fname);
-
-            bool inited = (wav.parse() == fs::kSuccess);
-
-            if (inited && wav.get_channels() <= 2)
-            {
-                uint32_t channel = info.fname[0] - '1';
-                if (channel >= 0 && channel < kVoiceCount)
-                {
-                    g_voice[channel].set_file(wav);
-
-                    uint32_t frameCount = g_voice[channel].get_audio_stream().get_frames();
-
-                    DEBUG_PRINTF(INIT_MASK, "%s: %lu Hz; %lu bits; %lu ch; %lu bytes/frame; %lu frames\r\n",
-                        info.fname,
-                        wav.get_sample_rate(),
-                        wav.get_sample_size(),
-                        wav.get_channels(),
-                        wav.get_frame_size(),
-                        frameCount);
-
-                    g_voice[channel].prime();
-                }
-            }
-            else
-            {
-                DEBUG_PRINTF(ERROR_MASK, "Failed to parse %s\r\n", info.fname);
-            }
-        }
-    }
-}
-
 void init_dma()
 {
     // Init eDMA and DMAMUX.
@@ -333,20 +281,6 @@ void init_audio_out()
     GPIO_SetPinsOutput(PIN_DAC_RESET_GPIO, PIN_DAC_RESET);
 }
 
-void init_fs()
-{
-    fs::error_t res = g_fs.init();
-
-    if (res == fs::kSuccess)
-    {
-        scan_for_files();
-    }
-    else
-    {
-        DEBUG_PRINTF(ERROR_MASK, "fs init failed: %lu\r\n", res);
-    }
-}
-
 void init_thread(void * arg)
 {
     DEBUG_PRINTF(INIT_MASK, "\r\nSAMPLBäR Initializing...\r\n");
@@ -366,7 +300,7 @@ void init_thread(void * arg)
     init_audio_out();
     g_readerThread.init();
     sd_init();
-    init_fs();
+    g_fileManager.init();
 
 
     g_readerThread.start();
