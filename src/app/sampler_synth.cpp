@@ -64,12 +64,13 @@ void SamplerSynth::render(uint32_t firstChannel, AudioOutput::Buffer & buffer)
     // Output a naïve full-scale 440 Hz square wave for testing without the SD card.
     static int phase = 0;
     int w = kSampleRate / 440;
+    int w2 = w / 2;
     int i;
     for (i = 0; i < frameCount; ++i)
     {
-        int16_t intSample = (phase > w/2) ? 32767 : -32768;
-        *out++ = intSample;
-        *out++ = intSample;
+        int16_t intSample = (phase > w2) ? 32767 : -32768;
+        *data++ = intSample;
+        *data++ = intSample;
         if (++phase > w)
         {
             phase = 0;
