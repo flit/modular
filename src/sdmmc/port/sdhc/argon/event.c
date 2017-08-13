@@ -57,10 +57,6 @@ static ar_semaphore_t g_eventCardDetect;
  * Code
  ******************************************************************************/
 
-void EVENT_InitTimer(void)
-{
-}
-
 static ar_semaphore_t *EVENT_GetInstance(event_t eventType)
 {
     ar_semaphore_t *event;

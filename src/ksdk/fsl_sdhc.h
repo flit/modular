@@ -1,7 +1,6 @@
 /*
  * Copyright (c) 2015, Freescale Semiconductor, Inc.
- * Copyright 2016 NXP
- * All rights reserved.
+ * Copyright 2016-2017 NXP
  *
  * Redistribution and use in source and binary forms, with or without modification,
  * are permitted provided that the following conditions are met:
@@ -20,7 +19,7 @@
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
  * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
  * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- * DISCLAIMED. IN NO EVENT SL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
+ * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
  * ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
  * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
  * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
@@ -44,8 +43,8 @@
 
 /*! @name Driver version */
 /*@{*/
-/*! @brief Driver version 2.1.5. */
-#define FSL_SDHC_DRIVER_VERSION (MAKE_VERSION(2U, 1U, 5U))
+/*! @brief Driver version 2.1.6. */
+#define FSL_SDHC_DRIVER_VERSION (MAKE_VERSION(2U, 1U, 6U))
 /*@}*/
 
 /*! @brief Maximum block count can be set one time */
@@ -523,10 +522,10 @@ typedef struct _sdhc_handle sdhc_handle_t;
 /*! @brief SDHC callback functions. */
 typedef struct _sdhc_transfer_callback
 {
-    void (*CardInserted)(void);  /*!< Card inserted occurs when DAT3/CD pin is for card detect */
-    void (*CardRemoved)(void);   /*!< Card removed occurs */
-    void (*SdioInterrupt)(void); /*!< SDIO card interrupt occurs */
-    void (*SdioBlockGap)(void);  /*!< SDIO card stopped at block gap occurs */
+    void (*CardInserted)(SDHC_Type *base); /*!< Card inserted occurs when DAT3/CD pin is for card detect */
+    void (*CardRemoved)(SDHC_Type *base);  /*!< Card removed occurs */
+    void (*SdioInterrupt)(void);           /*!< SDIO card interrupt occurs */
+    void (*SdioBlockGap)(void);            /*!< SDIO card stopped at block gap occurs */
     void (*TransferComplete)(SDHC_Type *base,
                              sdhc_handle_t *handle,
                              status_t status,
@@ -829,6 +828,24 @@ bool SDHC_SetCardActive(SDHC_Type *base, uint32_t timeout);
 static inline void SDHC_SetDataBusWidth(SDHC_Type *base, sdhc_data_bus_width_t width)
 {
     base->PROCTL = ((base->PROCTL & ~SDHC_PROCTL_DTW_MASK) | SDHC_PROCTL_DTW(width));
+}
+
+/*!
+ * @brief detect card insert status.
+ *
+ * @param base SDHC peripheral base address.
+ * @param enable/disable flag
+ */
+static inline void SDHC_CardDetectByData3(SDHC_Type *base, bool enable)
+{
+    if (enable)
+    {
+        base->PROCTL |= SDHC_PROCTL_D3CD_MASK;
+    }
+    else
+    {
+        base->PROCTL &= ~SDHC_PROCTL_D3CD_MASK;
+    }
 }
 
 /*!

@@ -1,18 +1,14 @@
 /*
  * Copyright (c) 2016, Freescale Semiconductor, Inc.
- * Copyright 2016 NXP
- * All rights reserved.
+ * Copyright 2016-2017 NXP
  *
- * Redistribution and use in source and binary forms, with or without
- * modification,
+ * Redistribution and use in source and binary forms, with or without modification,
  * are permitted provided that the following conditions are met:
  *
- * o Redistributions of source code must retain the above copyright notice, this
- * list
+ * o Redistributions of source code must retain the above copyright notice, this list
  *   of conditions and the following disclaimer.
  *
- * o Redistributions in binary form must reproduce the above copyright notice,
- * this
+ * o Redistributions in binary form must reproduce the above copyright notice, this
  *   list of conditions and the following disclaimer in the documentation and/or
  *   other materials provided with the distribution.
  *
@@ -20,22 +16,20 @@
  *   contributors may be used to endorse or promote products derived from this
  *   software without specific prior written permission.
  *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
- * AND
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
  * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
  * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- * DISCLAIMED. IN NO EVENT SL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
- * ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
- * DAMAGES
+ * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
+ * ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
  * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
- * ON
+ * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
  * ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
 #include "fsl_host.h"
+#include "fsl_sdhc.h"
 #include "event.h"
 #include "board.h"
 #include "fsl_port.h"
@@ -48,7 +42,11 @@
 /*******************************************************************************
  * Prototypes
  ******************************************************************************/
-
+/*!
+ * @brief host controller error recovery.
+ * @param host base address.
+ */
+static void Host_ErrorRecovery(HOST_TYPE *hostBase);
 /*******************************************************************************
  * Variables
  ******************************************************************************/
@@ -61,7 +59,6 @@ static volatile uint32_t g_sdInsertedFlag;
  * Code
  ******************************************************************************/
 
-#if 0
 /* Delay some time united in milliseconds. */
 static void Delay(uint32_t milliseconds)
 {
@@ -77,42 +74,78 @@ static void Delay(uint32_t milliseconds)
     }
 }
 
-static void DetectCardByGpio(void)
+// static void HOST_DetectCardByGpio(void)
+// {
+//     if (GPIO_ReadPinInput(BOARD_SDHC_CD_GPIO_BASE, BOARD_SDHC_CD_GPIO_PIN))
+// #if defined BOARD_SDHC_CD_LOGIC_RISING
+//     {
+//         g_sdInsertedFlag = 1U;
+//     }
+//     else
+//     {
+//         g_sdInsertedFlag = 0U;
+//     }
+// #else
+//     {
+//         g_sdInsertedFlag = 0U;
+//     }
+//     else
+//     {
+//         g_sdInsertedFlag = 1U;
+//     }
+// #endif
+// }
+
+static void HOST_DetectCardInsertByHost(HOST_TYPE *hostBase)
 {
-    if (GPIO_ReadPinInput(BOARD_SDHC_CD_GPIO_BASE, BOARD_SDHC_CD_GPIO_PIN))
-#if defined BOARD_SDHC_CD_LOGIC_RISING
-    {
-        g_sdInsertedFlag = 1U;
-    }
-    else
-    {
-        g_sdInsertedFlag = 0U;
-    }
-#else
-    {
-        g_sdInsertedFlag = 0U;
-    }
-    else
-    {
-        g_sdInsertedFlag = 1U;
-    }
-#endif
+    g_sdInsertedFlag = 1U;
+    EVENT_Notify(kEVENT_CardDetect);
+    HOST_CARD_DETECT_INSERT_INTERRUPT_DISABLE(hostBase);
 }
 
+static void HOST_DetectCardRemoveByHost(HOST_TYPE *hostBase)
+{
+    g_sdInsertedFlag = 0U;
+    EVENT_Notify(kEVENT_CardDetect);
+}
+
+#if 0
 /* Card detect. */
-status_t CardInsertDetect(HOST_TYPE *hostBase)
+status_t HOST_DetectCard(HOST_TYPE *hostBase, host_detect_card_type_t cd, bool isHostReady)
 {
     if (!EVENT_Create(kEVENT_CardDetect))
     {
         return kStatus_Fail;
     }
 
-    /* Card detection pin will generate interrupt on either eage */
-    PORT_SetPinInterruptConfig(BOARD_SDHC_CD_PORT_BASE, BOARD_SDHC_CD_GPIO_PIN, kPORT_InterruptEitherEdge);
-    /* Open card detection pin NVIC. */
-    NVIC_EnableIRQ(BOARD_SDHC_CD_PORT_IRQ);
-
-    DetectCardByGpio();
+    if (cd == kHOST_DetectCardByGpioCD)
+    {
+        /* Card detection pin will generate interrupt on either eage */
+//         PORT_SetPinInterruptConfig(BOARD_SDHC_CD_PORT_BASE, BOARD_SDHC_CD_GPIO_PIN, kPORT_InterruptEitherEdge);
+//         /* Open card detection pin NVIC. */
+//         NVIC_EnableIRQ(HOST_CARD_DETECT_IRQ);
+//         /* set IRQ priority */
+//         NVIC_SetPriority(HOST_CARD_DETECT_IRQ, 6U);
+//         /* check card detect status */
+//         HOST_DetectCardByGpio();
+    }
+    else if (cd == kHOST_DetectCardByHostDATA3)
+    {
+        if (!isHostReady)
+        {
+            return kStatus_Fail;
+        }
+        /* enable card detect through DATA3 */
+        HOST_CARD_DETECT_DATA3_ENABLE(hostBase, true);
+        /* enable card detect interrupt */
+        HOST_CARD_DETECT_INSERT_ENABLE(hostBase);
+        HOST_CARD_DETECT_INSERT_INTERRUPT_ENABLE(hostBase);
+    }
+    else
+    {
+        /* SDHC do not support detect card through CD */
+        return kStatus_Fail;
+    }
 
     if (!g_sdInsertedFlag)
     {
@@ -133,23 +166,19 @@ status_t CardInsertDetect(HOST_TYPE *hostBase)
 
     return kStatus_Success;
 }
-
-#if defined(__IAR_SYSTEMS_ICC__)
-#pragma weak BOARD_SDHC_CD_PORT_IRQ_HANDLER = CardInsertDetectHandle
 #endif
 
 /* Card detect pin port interrupt handler. */
-void CardInsertDetectHandle(void)
-{
-    if (PORT_GetPinsInterruptFlags(BOARD_SDHC_CD_PORT_BASE) == (1U << BOARD_SDHC_CD_GPIO_PIN))
-    {
-        DetectCardByGpio();
-    }
-    /* Clear interrupt flag.*/
-    PORT_ClearPinsInterruptFlags(BOARD_SDHC_CD_PORT_BASE, ~0U);
-    EVENT_Notify(kEVENT_CardDetect);
-}
-#endif // 0
+// void HOST_CARD_DETECT_INTERRUPT_HANDLER(void)
+// {
+//     if (PORT_GetPinsInterruptFlags(BOARD_SDHC_CD_PORT_BASE) == (1U << BOARD_SDHC_CD_GPIO_PIN))
+//     {
+//         HOST_DetectCardByGpio();
+//     }
+//     /* Clear interrupt flag.*/
+//     PORT_ClearPinsInterruptFlags(BOARD_SDHC_CD_PORT_BASE, ~0U);
+//     EVENT_Notify(kEVENT_CardDetect);
+// }
 
 void CardInsertedCallback(void)
 {
@@ -199,9 +228,30 @@ static status_t SDHC_TransferFunction(SDHC_Type *base, sdhc_transfer_t *content)
         (!g_sdhcTransferSuccessFlag))
     {
         error = kStatus_Fail;
+        /* host error recovery */
+        Host_ErrorRecovery(base);
     }
 
     return error;
+}
+
+static void Host_ErrorRecovery(HOST_TYPE *hostBase)
+{
+    uint32_t status = 0U;
+    /* get host present status */
+    status = SDHC_GetPresentStatusFlags(hostBase);
+    /* check command inhibit status flag */
+    if ((status & kSDHC_CommandInhibitFlag) != 0U)
+    {
+        /* reset command line */
+        SDHC_Reset(hostBase, kSDHC_ResetCommand, 100U);
+    }
+    /* check data inhibit status flag */
+    if ((status & kSDHC_DataInhibitFlag) != 0U)
+    {
+        /* reset data line */
+        SDHC_Reset(hostBase, kSDHC_ResetData, 100U);
+    }
 }
 
 status_t HOST_Init(void *host)
@@ -218,9 +268,9 @@ status_t HOST_Init(void *host)
     SDHC_Init(sdhcHost->base, &(sdhcHost->config));
 
     /* Create handle for SDHC driver */
-    sdhcCallback.CardInserted = CardInsertedCallback;
-    sdhcCallback.CardRemoved = CardRemovedCallback;
     sdhcCallback.TransferComplete = SDHC_TransferCompleteCallback;
+    sdhcCallback.CardInserted = HOST_DetectCardInsertByHost;
+    sdhcCallback.CardRemoved = HOST_DetectCardRemoveByHost;
     SDHC_TransferCreateHandle(sdhcHost->base, &g_sdhcHandle, &sdhcCallback, NULL);
 
     /* Create transfer complete event. */

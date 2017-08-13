@@ -1,7 +1,6 @@
 /*
  * Copyright (c) 2016, Freescale Semiconductor, Inc.
- * Copyright 2016 NXP
- * All rights reserved.
+ * Copyright 2016-2017 NXP
  *
  * Redistribution and use in source and binary forms, with or without modification,
  * are permitted provided that the following conditions are met:
@@ -20,7 +19,7 @@
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
  * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
  * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- * DISCLAIMED. IN NO EVENT SL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
+ * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
  * ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
  * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
  * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
@@ -40,7 +39,11 @@
 #include "fsl_sdif.h"
 #elif defined(FSL_FEATURE_SOC_USDHC_COUNT) && FSL_FEATURE_SOC_USDHC_COUNT > 0U
 #include "fsl_usdhc.h"
+#if (FSL_FEATURE_SOC_IOMUXC_COUNT != 0U)
 #include "fsl_iomuxc.h"
+#else
+#include "fsl_port.h"
+#endif
 #endif
 
 /*!
@@ -51,6 +54,21 @@
 /*******************************************************************************
  * Definitions
  ******************************************************************************/
+/* add cache line size align */
+#if defined(FSL_SDK_ENABLE_DRIVER_CACHE_CONTROL) && FSL_SDK_ENABLE_DRIVER_CACHE_CONTROL
+#if defined(FSL_FEATURE_L1DCACHE_LINESIZE_BYTE)
+#if defined(FSL_FEATURE_L2DCACHE_LINESIZE_BYTE)
+#define SDMMC_DATA_BUFFER_ALIGN_CAHCE MAX(FSL_FEATURE_L1DCACHE_LINESIZE_BYTE, FSL_FEATURE_L2DCACHE_LINESIZE_BYTE)
+#else
+#define SDMMC_DATA_BUFFER_ALIGN_CAHCE FSL_FEATURE_L1DCACHE_LINESIZE_BYTE
+#endif
+#else
+#define SDMMC_DATA_BUFFER_ALIGN_CAHCE 1
+#endif
+#else
+#define SDMMC_DATA_BUFFER_ALIGN_CAHCE 1
+#endif
+
 #define HOST_NOT_SUPPORT 0U /*!< use this define to indicate the host not support feature*/
 #define HOST_SUPPORT 1U     /*!< use this define to indicate the host support feature*/
 /* select host */
@@ -163,6 +181,17 @@
 #define HOST_INIT_MMC_POWER()
 #define HOST_ENABLE_MMC_POWER(enable)
 #define HOST_ENABLE_TUNING_FLAG(data)
+#define HOST_CARD_DETECT_INTERRUPT_HANDLER BOARD_SDHC_CD_PORT_IRQ_HANDLER
+#define HOST_CARD_DETECT_IRQ BOARD_SDHC_CD_PORT_IRQ
+/* sd card detect through host CD */
+#define HOST_CARD_DETECT_INSERT_ENABLE(base) (SDHC_EnableInterruptStatus(base, kSDHC_CardInsertionFlag))
+#define HOST_CARD_DETECT_REMOVE_ENABLE(base) (SDHC_EnableInterruptStatus(base, kSDHC_CardRemovalFlag))
+#define HOST_CARD_DETECT_INSERT_STATUS(base) (SDHC_GetInterruptStatusFlags(base) & kSDHC_CardInsertionFlag)
+#define HOST_CARD_DETECT_REMOVE_STATUS(base) (SDHC_GetInterruptStatusFlags(base, kSDHC_CardRemovalFlag))
+#define HOST_CARD_DETECT_INSERT_INTERRUPT_ENABLE(base) (SDHC_EnableInterruptSignal(base, kSDHC_CardInsertionFlag))
+#define HOST_CARD_DETECT_INSERT_INTERRUPT_DISABLE(base) (SDHC_DisableInterruptSignal(base, kSDHC_CardInsertionFlag))
+#define HOST_CARD_DETECT_REMOVE_INTERRUPT_ENABLE(base) (SDHC_EnableInterruptSignal(base, kSDHC_CardRemovalFlag))
+#define HOST_CARD_DETECT_DATA3_ENABLE(base, flag) (SDHC_CardDetectByData3(base, flag))
 
 /*! @brief SDHC host capability*/
 enum _host_capability
@@ -190,6 +219,8 @@ enum _host_capability
 
 /* DMA mode */
 #define SDHC_DMA_MODE kSDHC_DmaModeAdma2
+/* address align */
+#define HOST_DMA_BUFFER_ADDR_ALIGN (SDHC_ADMA2_ADDRESS_ALIGN)
 
 /* Read/write watermark level. The bigger value indicates DMA has higher read/write performance. */
 #define SDHC_READ_WATERMARK_LEVEL (0x80U)
@@ -312,6 +343,24 @@ enum _host_capability
 #define HOST_INIT_MMC_POWER()
 #define HOST_ENABLE_MMC_POWER(enable)
 #define HOST_ENABLE_TUNING_FLAG(data)
+
+#define HOST_CARD_DETECT_STATUS() BOARD_SDIF_CD_STATUS()
+#define HOST_CARD_DETECT_INIT() BOARD_SDIF_CD_GPIO_INIT()
+#define HOST_CARD_DETECT_INTERRUPT_STATUS() BOARD_SDIF_CD_INTERRUPT_STATUS()
+#define HOST_CARD_DETECT_INTERRUPT_CLEAR(flag) BOARD_SDIF_CD_CLEAR_INTERRUPT(flag)
+#define HOST_CARD_DETECT_INTERRUPT_HANDLER BOARD_SDIF_CD_PORT_IRQ_HANDLER
+#define HOST_CARD_DETECT_IRQ BOARD_SDIF_CD_PORT_IRQ
+/* define card detect pin voltage level when card inserted */
+#if defined BOARD_SDIF_CARD_INSERT_CD_LEVEL
+#define HOST_CARD_INSERT_CD_LEVEL BOARD_SDIF_CARD_INSERT_CD_LEVEL
+#else
+#define HOST_CARD_INSERT_CD_LEVEL (0U)
+#endif
+
+/* sd card detect through host CD */
+#define HOST_CARD_DETECT_INSERT_ENABLE(base) (SDIF_EnableInterrupt(base, kSDIF_CardDetect))
+#define HOST_CARD_DETECT_INSERT_STATUS(base, data3) (SDIF_DetectCardInsert(base, data3))
+
 /*! @brief SDIF host capability*/
 enum _host_capability
 {
@@ -339,6 +388,8 @@ enum _host_capability
  * user need check the DMA descriptor table lenght if bigger enough.
  */
 #define SDIF_DMA_TABLE_WORDS (0x40U)
+/* address align */
+#define HOST_DMA_BUFFER_ADDR_ALIGN (4U)
 
 #elif defined(FSL_FEATURE_SOC_USDHC_COUNT) && FSL_FEATURE_SOC_USDHC_COUNT > 0U
 /* SDR104 mode freq */
@@ -427,16 +478,26 @@ enum _host_capability
 #define HOST_SWITCH_VCC_TO_180V()
 #define HOST_SWITCH_VCC_TO_330V()
 
+#if defined(FSL_FEATURE_USDHC_HAS_SDR50_MODE) && (!FSL_FEATURE_USDHC_HAS_SDR50_MODE)
+#define HOST_EXECUTE_STANDARD_TUNING_STATUS(base) (0U)
+#define HOST_EXECUTE_STANDARD_TUNING_RESULT(base) (1U)
+#define HOST_AUTO_STANDARD_RETUNING_TIMER(base)
+#define HOST_EXECUTE_STANDARD_TUNING_ENABLE(base, flag)
+#define HOST_CHECK_TUNING_ERROR(base) (0U)
+#define HOST_ADJUST_TUNING_DELAY(base, delay)
+#else
 #define HOST_EXECUTE_STANDARD_TUNING_ENABLE(base, flag) \
     (USDHC_EnableStandardTuning(base, HOST_STANDARD_TUNING_START, HOST_TUINIG_STEP, flag))
 #define HOST_EXECUTE_STANDARD_TUNING_STATUS(base) (USDHC_GetExecuteStdTuningStatus(base))
 #define HOST_EXECUTE_STANDARD_TUNING_RESULT(base) (USDHC_CheckStdTuningResult(base))
 #define HOST_AUTO_STANDARD_RETUNING_TIMER(base) (USDHC_SetRetuningTimer(base, HOST_RETUNING_TIMER_COUNT))
-#define HOST_AUTO_TUNING_CONFIG(base) (USDHC_EnableAutoTuningForCmdAndData(base))
 #define HOST_EXECUTE_MANUAL_TUNING_ENABLE(base, flag) (USDHC_EnableManualTuning(base, flag))
-
 #define HOST_ADJUST_TUNING_DELAY(base, delay) (USDHC_AdjustDelayForManualTuning(base, delay))
 #define HOST_AUTO_TUNING_ENABLE(base, flag) (USDHC_EnableAutoTuning(base, flag))
+#define HOST_CHECK_TUNING_ERROR(base) (USDHC_CheckTuningError(base))
+#endif
+
+#define HOST_AUTO_TUNING_CONFIG(base) (USDHC_EnableAutoTuningForCmdAndData(base))
 #define HOST_RESET_TUNING(base, timeout)                                                           \
     {                                                                                              \
         (USDHC_Reset(base, kUSDHC_ResetTuning | kUSDHC_ResetData | kUSDHC_ResetCommand, timeout)); \
@@ -458,18 +519,34 @@ enum _host_capability
 #define HOST_GET_STROBE_DLL_STATUS(base)
 #endif
 
-#define HOST_CHECK_TUNING_ERROR(base) (USDHC_CheckTuningError(base))
 /* sd card power */
 #define HOST_INIT_SD_POWER() BOARD_USDHC_SDCARD_POWER_CONTROL_INIT()
 #define HOST_ENABLE_SD_POWER(enable) BOARD_USDHC_SDCARD_POWER_CONTROL(enable)
 /* mmc card power */
 #define HOST_INIT_MMC_POWER() BOARD_USDHC_MMCCARD_POWER_CONTROL_INIT()
 #define HOST_ENABLE_MMC_POWER(enable) BOARD_USDHC_MMCCARD_POWER_CONTROL(enable)
-/* sd card detect */
-#define HOST_CARD_DETECT_STATUS() BOARD_USDHC_CD_STATUS()
-#define HOST_CARD_DETECT_INIT() BOARD_USDHC_CD_GPIO_INIT()
-#define HOST_CARD_DETECT_INTERRUPT_STATUS(base) BOARD_USDHC_CD_INTERRUPT_STATUS(base)
-#define HOST_CARD_DETECT_INTERRUPT_CLEAR(base, flag) BOARD_USDHC_CD_CLEAR_INTERRUPT(base, flag)
+/* sd card detect through gpio */
+#define HOST_CARD_DETECT_GPIO_STATUS() BOARD_USDHC_CD_STATUS()
+#define HOST_CARD_DETECT_GPIO_INIT() BOARD_USDHC_CD_GPIO_INIT()
+#define HOST_CARD_DETECT_GPIO_INTERRUPT_STATUS() BOARD_USDHC_CD_INTERRUPT_STATUS()
+#define HOST_CARD_DETECT_GPIO_INTERRUPT_STATUS_CLEAR(flag) BOARD_USDHC_CD_CLEAR_INTERRUPT(flag)
+#define HOST_CARD_DETECT_GPIO_INTERRUPT_HANDLER BOARD_USDHC_CD_PORT_IRQ_HANDLER
+#define HOST_CARD_DETECT_GPIO_IRQ BOARD_USDHC_CD_PORT_IRQ
+/* sd card detect through host CD */
+#define HOST_CARD_DETECT_INSERT_ENABLE(base) (USDHC_EnableInterruptStatus(base, kUSDHC_CardInsertionFlag))
+#define HOST_CARD_DETECT_REMOVE_ENABLE(base) (USDHC_EnableInterruptStatus(base, kUSDHC_CardRemovalFlag))
+#define HOST_CARD_DETECT_INSERT_STATUS(base) (USDHC_GetInterruptStatusFlags(base) & kUSDHC_CardInsertionFlag)
+#define HOST_CARD_DETECT_REMOVE_STATUS(base) (USDHC_GetInterruptStatusFlags(base, kUSDHC_CardRemovalFlag))
+#define HOST_CARD_DETECT_INSERT_INTERRUPT_ENABLE(base) (USDHC_EnableInterruptSignal(base, kUSDHC_CardInsertionFlag))
+#define HOST_CARD_DETECT_REMOVE_INTERRUPT_ENABLE(base) (USDHC_EnableInterruptSignal(base, kUSDHC_CardRemovalFlag))
+#define HOST_CARD_DETECT_DATA3_ENABLE(base, flag) (USDHC_CardDetectByData3(base, flag))
+
+/* define card detect pin voltage level when card inserted */
+#if defined BOARD_USDHC_CARD_INSERT_CD_LEVEL
+#define HOST_CARD_INSERT_CD_LEVEL BOARD_USDHC_CARD_INSERT_CD_LEVEL
+#else
+#define HOST_CARD_INSERT_CD_LEVEL (0U)
+#endif
 #define HOST_ENABLE_TUNING_FLAG(data) (data.executeTuning = true)
 /*! @brief USDHC host capability*/
 enum _host_capability
@@ -480,10 +557,22 @@ enum _host_capability
     kHOST_SupportSuspendResume = kUSDHC_SupportSuspendResumeFlag,
     kHOST_SupportV330 = kUSDHC_SupportV330Flag, /* this define should depend on your board config */
     kHOST_SupportV300 = kUSDHC_SupportV300Flag, /* this define should depend on your board config */
+#if defined(BOARD_SD_SUPPORT_180V) && !BOARD_SD_SUPPORT_180V
+    kHOST_SupportV180 = HOST_NOT_SUPPORT, /* this define should depend on you board config */
+#else
     kHOST_SupportV180 = kUSDHC_SupportV180Flag, /* this define should depend on you board config */
+#endif
     kHOST_SupportV120 = HOST_NOT_SUPPORT,
     kHOST_Support4BitBusWidth = kUSDHC_Support4BitFlag,
+#if defined(BOARD_MMC_SUPPORT_8BIT_BUS)
+#if BOARD_MMC_SUPPORT_8BIT_BUS
     kHOST_Support8BitBusWidth = kUSDHC_Support8BitFlag,
+#else
+    kHOST_Support8BitBusWidth = HOST_NOT_SUPPORT,
+#endif
+#else
+    kHOST_Support8BitBusWidth = kUSDHC_Support8BitFlag,
+#endif
     kHOST_SupportDDR50 = kUSDHC_SupportDDR50Flag,
     kHOST_SupportSDR104 = kUSDHC_SupportSDR104Flag,
     kHOST_SupportSDR50 = kUSDHC_SupportSDR50Flag,
@@ -500,6 +589,8 @@ enum _host_capability
 
 /* DMA mode */
 #define USDHC_DMA_MODE kUSDHC_DmaModeAdma2
+/* address align */
+#define HOST_DMA_BUFFER_ADDR_ALIGN (USDHC_ADMA2_ADDRESS_ALIGN)
 
 /* Read/write watermark level. The bigger value indicates DMA has higher read/write performance. */
 #define USDHC_READ_WATERMARK_LEVEL (0x80U)
@@ -510,11 +601,11 @@ enum _host_capability
  * One ADMA2 table item occupy two words which can transfer maximum 0xFFFFU bytes one time.
  * The more data to be transferred in one time, the bigger value of SDHC_ADMA_TABLE_WORDS need to be set.
  */
-#define USDHC_ADMA_TABLE_WORDS (8U)
-
-#define USDHC_READ_BURST_LEN (8U)  /*!< number of words USDHC read in a single burst */
-#define USDHC_WRITE_BURST_LEN (8U) /*!< number of words USDHC write in a single burst */
-#define USDHC_DATA_TIMEOUT (0xFU)  /*!< data timeout counter value */
+#define USDHC_ADMA_TABLE_WORDS (8U) /* define the ADMA descriptor table length */
+#define USDHC_ADMA2_ADDR_ALIGN (4U) /* define the ADMA2 descriptor table addr align size */
+#define USDHC_READ_BURST_LEN (8U)   /*!< number of words USDHC read in a single burst */
+#define USDHC_WRITE_BURST_LEN (8U)  /*!< number of words USDHC write in a single burst */
+#define USDHC_DATA_TIMEOUT (0xFU)   /*!< data timeout counter value */
 
 #endif
 
@@ -530,6 +621,14 @@ enum _host_endian_mode
 
 #define EVENT_TIMEOUT_TRANSFER_COMPLETE (1000U)
 #define EVENT_TIMEOUT_CARD_DETECT (~0U)
+
+/*! @brief sd card detect type */
+typedef enum _host_detect_card_type
+{
+    kHOST_DetectCardByGpioCD,    /*!< sd card detect by CD pin through GPIO */
+    kHOST_DetectCardByHostCD,    /*!< sd card detect by CD pin through host */
+    kHOST_DetectCardByHostDATA3, /*!< sd card detect by DAT3 pin through host */
+} host_detect_card_type_t;
 
 /*******************************************************************************
  * API
@@ -557,10 +656,15 @@ static inline status_t HOST_NotSupport(void *parameter)
 /*!
  * @brief Detect card insert, only need for SD cases.
  * @param hostBase the pointer to host base address
+ * @param cd card detect type
+ *            kSD_DetectByGpioCD  -   detect card through CD pin by GPIO
+ *            kSD_DetectByHostCD  -   detect card through CD pin by host
+ *            kSD_DetectByHostDATA3 - detect card through DATA3 pin by host
+ * @param isHostReady flag indicate host is ready or not, this flag is useful when detect card through host
  * @retval kStatus_Success detect card insert
  * @retval kStatus_Fail card insert event fail
  */
-status_t CardInsertDetect(HOST_TYPE *hostBase);
+status_t HOST_DetectCard(HOST_TYPE *hostBase, host_detect_card_type_t cd, bool isHostReady);
 
 /*!
  * @brief Init host controller.

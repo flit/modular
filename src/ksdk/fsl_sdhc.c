@@ -1,18 +1,14 @@
 /*
  * Copyright (c) 2016, Freescale Semiconductor, Inc.
- * Copyright 2016 NXP
- * All rights reserved.
+ * Copyright 2016-2017 NXP
  *
- * Redistribution and use in source and binary forms, with or without
- * modification,
+ * Redistribution and use in source and binary forms, with or without modification,
  * are permitted provided that the following conditions are met:
  *
- * o Redistributions of source code must retain the above copyright notice, this
- * list
+ * o Redistributions of source code must retain the above copyright notice, this list
  *   of conditions and the following disclaimer.
  *
- * o Redistributions in binary form must reproduce the above copyright notice,
- * this
+ * o Redistributions in binary form must reproduce the above copyright notice, this
  *   list of conditions and the following disclaimer in the documentation and/or
  *   other materials provided with the distribution.
  *
@@ -20,16 +16,13 @@
  *   contributors may be used to endorse or promote products derived from this
  *   software without specific prior written permission.
  *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
- * AND
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
  * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
  * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- * DISCLAIMED. IN NO EVENT SL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
- * ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
- * DAMAGES
+ * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
+ * ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
  * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
- * ON
+ * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
  * ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
@@ -179,10 +172,11 @@ static status_t SDHC_TransferDataBlocking(sdhc_dma_mode_t dmaMode, SDHC_Type *ba
 /*!
  * @brief Handle card detect interrupt.
  *
+ * @param base SDHC peripheral base address.
  * @param handle SDHC handle.
  * @param interruptFlags Card detect related interrupt flags.
  */
-static void SDHC_TransferHandleCardDetect(sdhc_handle_t *handle, uint32_t interruptFlags);
+static void SDHC_TransferHandleCardDetect(SDHC_Type *base, sdhc_handle_t *handle, uint32_t interruptFlags);
 
 /*!
  * @brief Handle command interrupt.
@@ -270,7 +264,7 @@ static void SDHC_SetTransferInterrupt(SDHC_Type *base, bool usingInterruptSignal
          kSDHC_BufferWriteReadyFlag | kSDHC_DmaErrorFlag | kSDHC_DmaCompleteFlag);
     if (cardDetectDat3)
     {
-        interruptEnabled |= (kSDHC_CardInsertionFlag );//| kSDHC_CardRemovalFlag);
+        interruptEnabled |= (kSDHC_CardInsertionFlag | kSDHC_CardRemovalFlag);
     }
 
     SDHC_EnableInterruptStatus(base, interruptEnabled);
@@ -691,20 +685,20 @@ static status_t SDHC_TransferDataBlocking(sdhc_dma_mode_t dmaMode, SDHC_Type *ba
     return error;
 }
 
-static void SDHC_TransferHandleCardDetect(sdhc_handle_t *handle, uint32_t interruptFlags)
+static void SDHC_TransferHandleCardDetect(SDHC_Type *base, sdhc_handle_t *handle, uint32_t interruptFlags)
 {
     if (interruptFlags & kSDHC_CardInsertionFlag)
     {
         if (handle->callback.CardInserted)
         {
-            handle->callback.CardInserted();
+            handle->callback.CardInserted(base);
         }
     }
     else
     {
         if (handle->callback.CardRemoved)
         {
-            handle->callback.CardRemoved();
+            handle->callback.CardRemoved(base);
         }
     }
 }
@@ -1391,7 +1385,7 @@ void SDHC_TransferHandleIRQ(SDHC_Type *base, sdhc_handle_t *handle)
 
     if (interruptFlags & kSDHC_CardDetectFlag)
     {
-        SDHC_TransferHandleCardDetect(handle, (interruptFlags & kSDHC_CardDetectFlag));
+        SDHC_TransferHandleCardDetect(base, handle, (interruptFlags & kSDHC_CardDetectFlag));
     }
     if (interruptFlags & kSDHC_CommandFlag)
     {
@@ -1419,5 +1413,10 @@ void SDHC_DriverIRQHandler(void)
     assert(s_sdhcHandle[0]);
 
     s_sdhcIsr(SDHC, s_sdhcHandle[0]);
+/* Add for ARM errata 838869, affects Cortex-M4, Cortex-M4F Store immediate overlapping
+  exception return operation might vector to incorrect interrupt */
+#if defined __CORTEX_M && (__CORTEX_M == 4U)
+    __DSB();
+#endif
 }
 #endif

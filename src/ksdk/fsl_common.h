@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2015, Freescale Semiconductor, Inc.
- * All rights reserved.
+ * Copyright (c) 2015-2016, Freescale Semiconductor, Inc.
+ * Copyright 2016-2017 NXP
  *
  * Redistribution and use in source and binary forms, with or without modification,
  * are permitted provided that the following conditions are met:
@@ -12,7 +12,7 @@
  *   list of conditions and the following disclaimer in the documentation and/or
  *   other materials provided with the distribution.
  *
- * o Neither the name of Freescale Semiconductor, Inc. nor the names of its
+ * o Neither the name of the copyright holder nor the names of its
  *   contributors may be used to endorse or promote products derived from this
  *   software without specific prior written permission.
  *
@@ -35,6 +35,11 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <string.h>
+
+#if defined(__ICCARM__)
+#include <stddef.h>
+#endif
+
 #include "fsl_device_registers.h"
 
 /*!
@@ -52,12 +57,21 @@
 /*! @brief Construct the version number for drivers. */
 #define MAKE_VERSION(major, minor, bugfix) (((major) << 16) | ((minor) << 8) | (bugfix))
 
+/*! @name Driver version */
+/*@{*/
+/*! @brief common driver version 2.0.0. */
+#define FSL_COMMON_DRIVER_VERSION (MAKE_VERSION(2, 0, 0))
+/*@}*/
+
 /* Debug console type definition. */
-#define DEBUG_CONSOLE_DEVICE_TYPE_NONE 0U   /*!< No debug console.             */
-#define DEBUG_CONSOLE_DEVICE_TYPE_UART 1U   /*!< Debug console base on UART.   */
-#define DEBUG_CONSOLE_DEVICE_TYPE_LPUART 2U /*!< Debug console base on LPUART. */
-#define DEBUG_CONSOLE_DEVICE_TYPE_LPSCI 3U  /*!< Debug console base on LPSCI.  */
-#define DEBUG_CONSOLE_DEVICE_TYPE_USBCDC 4U /*!< Debug console base on USBCDC. */
+#define DEBUG_CONSOLE_DEVICE_TYPE_NONE 0U     /*!< No debug console.             */
+#define DEBUG_CONSOLE_DEVICE_TYPE_UART 1U     /*!< Debug console base on UART.   */
+#define DEBUG_CONSOLE_DEVICE_TYPE_LPUART 2U   /*!< Debug console base on LPUART. */
+#define DEBUG_CONSOLE_DEVICE_TYPE_LPSCI 3U    /*!< Debug console base on LPSCI.  */
+#define DEBUG_CONSOLE_DEVICE_TYPE_USBCDC 4U   /*!< Debug console base on USBCDC. */
+#define DEBUG_CONSOLE_DEVICE_TYPE_FLEXCOMM 5U /*!< Debug console base on USBCDC. */
+#define DEBUG_CONSOLE_DEVICE_TYPE_IUART 6U    /*!< Debug console base on i.MX UART. */
+#define DEBUG_CONSOLE_DEVICE_TYPE_VUSART 7U   /*!< Debug console base on LPC_USART. */
 
 /*! @brief Status group numbers. */
 enum _status_groups
@@ -84,6 +98,13 @@ enum _status_groups
     kStatusGroup_SCG = 21,                    /*!< Group number for SCG status codes. */
     kStatusGroup_SDSPI = 22,                  /*!< Group number for SDSPI status codes. */
     kStatusGroup_FLEXIO_I2S = 23,             /*!< Group number for FLEXIO I2S status codes */
+    kStatusGroup_FLEXIO_MCULCD = 24,          /*!< Group number for FLEXIO LCD status codes */
+    kStatusGroup_FLASHIAP = 25,               /*!< Group number for FLASHIAP status codes */
+    kStatusGroup_FLEXCOMM_I2C = 26,           /*!< Group number for FLEXCOMM I2C status codes */
+    kStatusGroup_I2S = 27,                    /*!< Group number for I2S status codes */
+    kStatusGroup_IUART = 28,                  /*!< Group number for IUART status codes */
+    kStatusGroup_CSI = 29,                    /*!< Group number for CSI status codes */
+    kStatusGroup_MIPI_DSI = 30,               /*!< Group number for MIPI DSI status codes */
     kStatusGroup_SDRAMC = 35,                 /*!< Group number for SDRAMC status codes. */
     kStatusGroup_POWER = 39,                  /*!< Group number for POWER status codes. */
     kStatusGroup_ENET = 40,                   /*!< Group number for ENET status codes. */
@@ -98,9 +119,29 @@ enum _status_groups
     kStatusGroup_FLEXCAN = 53,                /*!< Group number for FlexCAN status codes. */
     kStatusGroup_LTC = 54,                    /*!< Group number for LTC status codes. */
     kStatusGroup_FLEXIO_CAMERA = 55,          /*!< Group number for FLEXIO CAMERA status codes. */
+    kStatusGroup_LPC_SPI = 56,                /*!< Group number for LPC_SPI status codes. */
+    kStatusGroup_LPC_USART = 57,              /*!< Group number for LPC_USART status codes. */
+    kStatusGroup_DMIC = 58,                   /*!< Group number for DMIC status codes. */
+    kStatusGroup_SDIF = 59,                   /*!< Group number for SDIF status codes.*/
+    kStatusGroup_SPIFI = 60,                  /*!< Group number for SPIFI status codes. */
+    kStatusGroup_OTP = 61,                    /*!< Group number for OTP status codes. */
+    kStatusGroup_MCAN = 62,                   /*!< Group number for MCAN status codes. */
+    kStatusGroup_CAAM = 63,                   /*!< Group number for CAAM status codes. */
+    kStatusGroup_ECSPI = 64,                  /*!< Group number for ECSPI status codes. */
+    kStatusGroup_USDHC = 65,                  /*!< Group number for USDHC status codes.*/
+    kStatusGroup_LPC_I2C = 66,                /*!< Group number for LPC_I2C status codes.*/
+    kStatusGroup_DCP = 67,                    /*!< Group number for DCP status codes.*/
+    kStatusGroup_ESAI = 69,                   /*!< Group number for ESAI status codes. */
+    kStatusGroup_FLEXSPI = 70,                /*!< Group number for FLEXSPI status codes. */
+    kStatusGroup_MMDC = 71,                   /*!< Group number for MMDC status codes. */
+    kStatusGroup_MICFIL = 72,                 /*!< Group number for MIC status codes. */
+    kStatusGroup_SDMA = 73,                   /*!< Group number for SDMA status codes. */
+    kStatusGroup_ICS = 74,                    /*!< Group number for ICS status codes. */
+    kStatusGroup_SPDIF = 75,                  /*!< Group number for SPDIF status codes. */
     kStatusGroup_NOTIFIER = 98,               /*!< Group number for NOTIFIER status codes. */
     kStatusGroup_DebugConsole = 99,           /*!< Group number for debug console status codes. */
-    kStatusGroup_ApplicationRangeStart = 100, /*!< Starting number for application groups. */
+    kStatusGroup_SEMC = 100,                   /*!< Group number for SEMC status codes. */    
+    kStatusGroup_ApplicationRangeStart = 101, /*!< Starting number for application groups. */
 };
 
 /*! @brief Generic status return codes. */
@@ -118,6 +159,10 @@ enum _generic_status
 /*! @brief Type used for all status and error return values. */
 typedef int32_t status_t;
 
+/*
+ * The fsl_clock.h is included here because it needs MAKE_VERSION/MAKE_STATUS/status_t
+ * defined in previous of this file.
+ */
 #include "fsl_clock.h"
 
 /*! @name Min/max macros */
@@ -132,7 +177,9 @@ typedef int32_t status_t;
 /* @} */
 
 /*! @brief Computes the number of elements in an array. */
+#if !defined(ARRAY_SIZE)
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
+#endif
 
 /*! @name UINT16_MAX/UINT32_MAX value */
 /* @{ */
@@ -156,6 +203,118 @@ typedef int32_t status_t;
 #define MSEC_TO_COUNT(ms, clockFreqInHz) (uint64_t)((uint64_t)ms * clockFreqInHz / 1000U)
 /*! Macro to convert a raw count value to millisecond */
 #define COUNT_TO_MSEC(count, clockFreqInHz) (uint64_t)((uint64_t)count * 1000U / clockFreqInHz)
+/* @} */
+
+/*! @name Alignment variable definition macros */
+/* @{ */
+#if (defined(__ICCARM__))
+/**
+ * Workaround to disable MISRA C message suppress warnings for IAR compiler.
+ * http://supp.iar.com/Support/?note=24725
+ */
+_Pragma("diag_suppress=Pm120")
+#define SDK_PRAGMA(x) _Pragma(#x)
+    _Pragma("diag_error=Pm120")
+/*! Macro to define a variable with alignbytes alignment */
+#define SDK_ALIGN(var, alignbytes) SDK_PRAGMA(data_alignment = alignbytes) var
+/*! Macro to define a variable with L1 d-cache line size alignment */
+#if defined(FSL_FEATURE_L1DCACHE_LINESIZE_BYTE)
+#define SDK_L1DCACHE_ALIGN(var) SDK_PRAGMA(data_alignment = FSL_FEATURE_L1DCACHE_LINESIZE_BYTE) var
+#endif
+/*! Macro to define a variable with L2 cache line size alignment */
+#if defined(FSL_FEATURE_L2CACHE_LINESIZE_BYTE)
+#define SDK_L2CACHE_ALIGN(var) SDK_PRAGMA(data_alignment = FSL_FEATURE_L2CACHE_LINESIZE_BYTE) var
+#endif
+#elif defined(__CC_ARM)
+/*! Macro to define a variable with alignbytes alignment */
+#define SDK_ALIGN(var, alignbytes) __align(alignbytes) var
+/*! Macro to define a variable with L1 d-cache line size alignment */
+#if defined(FSL_FEATURE_L1DCACHE_LINESIZE_BYTE)
+#define SDK_L1DCACHE_ALIGN(var) __align(FSL_FEATURE_L1DCACHE_LINESIZE_BYTE) var
+#endif
+/*! Macro to define a variable with L2 cache line size alignment */
+#if defined(FSL_FEATURE_L2CACHE_LINESIZE_BYTE)
+#define SDK_L2CACHE_ALIGN(var) __align(FSL_FEATURE_L2CACHE_LINESIZE_BYTE) var
+#endif
+#elif defined(__GNUC__)
+/*! Macro to define a variable with alignbytes alignment */
+#define SDK_ALIGN(var, alignbytes) var __attribute__((aligned(alignbytes)))
+/*! Macro to define a variable with L1 d-cache line size alignment */
+#if defined(FSL_FEATURE_L1DCACHE_LINESIZE_BYTE)
+#define SDK_L1DCACHE_ALIGN(var) var __attribute__((aligned(FSL_FEATURE_L1DCACHE_LINESIZE_BYTE)))
+#endif
+/*! Macro to define a variable with L2 cache line size alignment */
+#if defined(FSL_FEATURE_L2CACHE_LINESIZE_BYTE)
+#define SDK_L2CACHE_ALIGN(var) var __attribute__((aligned(FSL_FEATURE_L2CACHE_LINESIZE_BYTE)))
+#endif
+#else
+#error Toolchain not supported
+#define SDK_ALIGN(var, alignbytes) var
+#if defined(FSL_FEATURE_L1DCACHE_LINESIZE_BYTE)
+#define SDK_L1DCACHE_ALIGN(var) var
+#endif
+#if defined(FSL_FEATURE_L2CACHE_LINESIZE_BYTE)
+#define SDK_L2CACHE_ALIGN(var) var
+#endif
+#endif
+
+/*! Macro to change a value to a given size aligned value */
+#define SDK_SIZEALIGN(var, alignbytes) \
+    ((unsigned int)((var) + ((alignbytes)-1)) & (unsigned int)(~(unsigned int)((alignbytes)-1)))
+/* @} */
+
+/*! @name Non-cacheable region definition macros */
+/* For initialized non-zero non-cacheable variables, please using "AT_NONCACHEABLE_SECTION_INIT(var) ={xx};" or
+ * "AT_NONCACHEABLE_SECTION_ALIGN_INIT(var) ={xx};" in your projects to define them, for zero-inited non-cacheable variables,
+ * please using "AT_NONCACHEABLE_SECTION(var);" or "AT_NONCACHEABLE_SECTION_ALIGN(var);" to define them, these zero-inited variables
+ * will be initialized to zero in system startup.
+ */
+/* @{ */
+#if (defined(__ICCARM__))
+#if defined(FSL_FEATURE_L1ICACHE_LINESIZE_BYTE)
+#define AT_NONCACHEABLE_SECTION(var) var @"NonCacheable"
+#define AT_NONCACHEABLE_SECTION_ALIGN(var, alignbytes) SDK_PRAGMA(data_alignment = alignbytes) var @"NonCacheable"
+#define AT_NONCACHEABLE_SECTION_INIT(var) var @"NonCacheable.init"
+#define AT_NONCACHEABLE_SECTION_ALIGN_INIT(var, alignbytes) SDK_PRAGMA(data_alignment = alignbytes) var @"NonCacheable.init"
+#else
+#define AT_NONCACHEABLE_SECTION(var) var
+#define AT_NONCACHEABLE_SECTION_ALIGN(var, alignbytes) SDK_PRAGMA(data_alignment = alignbytes) var
+#define AT_NONCACHEABLE_SECTION_INIT(var) var
+#define AT_NONCACHEABLE_SECTION_ALIGN_INIT(var, alignbytes) SDK_PRAGMA(data_alignment = alignbytes) var
+#endif
+#elif(defined(__CC_ARM))
+#if defined(FSL_FEATURE_L1ICACHE_LINESIZE_BYTE)
+#define AT_NONCACHEABLE_SECTION(var) __attribute__((section("NonCacheable"))) var
+#define AT_NONCACHEABLE_SECTION_ALIGN(var, alignbytes) \
+    __attribute__((section("NonCacheable"), zero_init)) __align(alignbytes) var
+#else
+#define AT_NONCACHEABLE_SECTION(var) var
+#define AT_NONCACHEABLE_SECTION_ALIGN(var, alignbytes) __align(alignbytes) var
+#endif
+#elif(defined(__GNUC__))
+/* For GCC, when the non-cacheable section is required, please define "__STARTUP_INITIALIZE_NONCACHEDATA"
+ * in your projects to make sure the non-cacheable section variables will be initialized in system startup.
+ */
+#if defined(FSL_FEATURE_L1ICACHE_LINESIZE_BYTE)
+#define AT_NONCACHEABLE_SECTION_INIT(var) __attribute__((section("NonCacheable.init"))) var
+#define AT_NONCACHEABLE_SECTION_ALIGN_INIT(var, alignbytes) \
+    __attribute__((section("NonCacheable.init"))) var __attribute__((aligned(alignbytes)))
+#define AT_NONCACHEABLE_SECTION(var) __attribute__((section("NonCacheable,\"aw\",%nobits @"))) var
+#define AT_NONCACHEABLE_SECTION_ALIGN(var, alignbytes) \
+    __attribute__((section("NonCacheable,\"aw\",%nobits @"))) var __attribute__((aligned(alignbytes)))
+#else
+#define AT_NONCACHEABLE_SECTION(var) var
+#define AT_NONCACHEABLE_SECTION_ALIGN(var, alignbytes) var __attribute__((aligned(alignbytes)))
+#define AT_NONCACHEABLE_SECTION_INIT(var) var
+#define AT_NONCACHEABLE_SECTION_ALIGN_INIT(var, alignbytes) var __attribute__((aligned(alignbytes)))
+#endif
+#else
+#error Toolchain not supported.
+#define AT_NONCACHEABLE_SECTION(var) var
+#define AT_NONCACHEABLE_SECTION_ALIGN(var, alignbytes) var
+#define AT_NONCACHEABLE_SECTION_INIT(var) var
+#define AT_NONCACHEABLE_SECTION_ALIGN_INIT(var, alignbytes) var
+#endif
 /* @} */
 
 /*******************************************************************************

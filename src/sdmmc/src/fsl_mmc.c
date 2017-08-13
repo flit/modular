@@ -1,7 +1,6 @@
 /*
  * Copyright (c) 2015, Freescale Semiconductor, Inc.
- * Copyright 2016 NXP
- * All rights reserved.
+ * Copyright 2016-2017 NXP
  *
  * Redistribution and use in source and binary forms, with or without modification,
  * are permitted provided that the following conditions are met:
@@ -20,7 +19,7 @@
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
  * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
  * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- * DISCLAIMED. IN NO EVENT SL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
+ * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
  * ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
  * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
  * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
@@ -425,6 +424,9 @@ static const uint32_t g_transerSpeedFrequencyUnit[] = {100000U, 1000000U, 100000
 /* The multiplying value defined in TRANSFER SPEED field in CSD */
 static const uint32_t g_transerSpeedMultiplierFactor[] = {0U,  10U, 12U, 13U, 15U, 20U, 26U, 30U,
                                                           35U, 40U, 45U, 52U, 55U, 60U, 70U, 80U};
+/* g_sdmmc statement */
+extern uint32_t g_sdmmc[SDK_SIZEALIGN(SDMMC_GLOBAL_BUFFER_SIZE, SDMMC_DATA_BUFFER_ALIGN_CAHCE)];
+
 /*******************************************************************************
  * Code
  ******************************************************************************/
@@ -590,7 +592,7 @@ static status_t MMC_StopTransmission(mmc_card_t *card)
 
 static status_t MMC_SwitchVoltage(mmc_card_t *card, uint32_t *opCode)
 {
-    mmc_voltage_window_t tempVoltage;
+    mmc_voltage_window_t tempVoltage = kMMC_VoltageWindowNone;
     /* Get host's voltage window. */
     if (((kHOST_SupportV330 != HOST_NOT_SUPPORT) || (kHOST_SupportV300 != HOST_NOT_SUPPORT)) &&
         (card->ocr & MMC_OCR_V270TO360_MASK) && ((card->hostVoltageWindowVCC == kMMC_VoltageWindowNone) ||
@@ -952,15 +954,15 @@ static void MMC_DecodeExtendedCsd(mmc_card_t *card, uint32_t *rawExtendedCsd)
 
     /* Check if card support alternate boot. */
     extendedCsd->bootInformation = buffer[228U];
-    if (extendedCsd->bootInformation & kMMC_SupportAlternateBoot)
+    if (extendedCsd->bootInformation & 0x1U)
     {
         card->flags |= kMMC_SupportAlternateBootFlag;
     }
-    else if (extendedCsd->bootInformation & kMMC_SupportDDRBootFlag)
+    else if (extendedCsd->bootInformation & 0x2U)
     {
         card->flags |= kMMC_SupportDDRBootFlag;
     }
-    else if (extendedCsd->bootInformation & kMMC_SupportHighSpeedBoot)
+    else if (extendedCsd->bootInformation & 0x4U)
     {
         card->flags |= kMMC_SupportHighSpeedBootFlag;
     }
@@ -1202,11 +1204,11 @@ static status_t MMC_TestDataBusWidth(mmc_card_t *card, mmc_data_bus_width_t widt
 {
     assert(card);
 
-    uint32_t blockSize;
-    uint32_t sendPattern[2U] = {0};
-    uint32_t receivedPattern[2U] = {0};
-    uint32_t xorMask;
-    uint32_t xorResult;
+    uint32_t blockSize = 0U;
+    uint32_t tempsendPattern = 0U;
+    uint32_t *tempPattern = g_sdmmc;
+    uint32_t xorMask = 0U;
+    uint32_t xorResult = 0U;
 
     /* For 8 data lines the data block would be (MSB to LSB): 0x0000_0000_0000_AA55,
     For 4 data lines the data block would be (MSB to LSB): 0x0000_005A,
@@ -1215,19 +1217,19 @@ static status_t MMC_TestDataBusWidth(mmc_card_t *card, mmc_data_bus_width_t widt
     {
         case kMMC_DataBusWidth8bit:
             blockSize = 8U;
-            sendPattern[0U] = 0xAA55U;
+            tempPattern[0U] = 0xAA55U;
             xorMask = 0xFFFFU;
             xorResult = 0xFFFFU;
             break;
         case kMMC_DataBusWidth4bit:
             blockSize = 4U;
-            sendPattern[0U] = 0x5AU;
+            tempPattern[0U] = 0x5AU;
             xorMask = 0xFFU;
             xorResult = 0xFFU;
             break;
         default:
             blockSize = 4U;
-            sendPattern[0U] = 0x80U;
+            tempPattern[0U] = 0x80U;
             xorMask = 0xFFU;
             xorResult = 0xC0U;
             break;
@@ -1241,17 +1243,17 @@ static status_t MMC_TestDataBusWidth(mmc_card_t *card, mmc_data_bus_width_t widt
             /* In big endian mode, the byte transferred first is the byte stored in highest byte position in a word
             which will cause the card receive the inverted byte sequence in a word in bus test procedure. So the
             sequence of 4 bytes stored in a word should be converted. */
-            sendPattern[0] = SWAP_WORD_BYTE_SEQUENCE(sendPattern[0]);
+            tempPattern[0] = SWAP_WORD_BYTE_SEQUENCE(tempPattern[0]);
             xorMask = SWAP_WORD_BYTE_SEQUENCE(xorMask);
             xorResult = SWAP_WORD_BYTE_SEQUENCE(xorResult);
             break;
         case kHOST_EndianModeHalfWordBig:
             /* In half word big endian mode, the byte transferred first is the lower byte in the higher half word.
             0xAA55U should be converted to 0xAA550000U to set the 0x55 to be the first byte to transfer. */
-            sendPattern[0] = SWAP_HALF_WROD_BYTE_SEQUENCE(sendPattern[0]);
+            tempPattern[0] = SWAP_HALF_WROD_BYTE_SEQUENCE(tempPattern[0]);
             xorMask = SWAP_HALF_WROD_BYTE_SEQUENCE(xorMask);
             xorResult = SWAP_HALF_WROD_BYTE_SEQUENCE(xorResult);
-            sendPattern[0] = SWAP_WORD_BYTE_SEQUENCE(sendPattern[0]);
+            tempPattern[0] = SWAP_WORD_BYTE_SEQUENCE(tempPattern[0]);
             xorMask = SWAP_WORD_BYTE_SEQUENCE(xorMask);
             xorResult = SWAP_WORD_BYTE_SEQUENCE(xorResult);
             break;
@@ -1259,17 +1261,22 @@ static status_t MMC_TestDataBusWidth(mmc_card_t *card, mmc_data_bus_width_t widt
             return kStatus_SDMMC_NotSupportYet;
     }
 
-    if (kStatus_Success != MMC_SendTestPattern(card, blockSize, sendPattern))
+    if (kStatus_Success != MMC_SendTestPattern(card, blockSize, tempPattern))
     {
         return kStatus_SDMMC_SendTestPatternFailed;
     }
-    if (kStatus_Success != MMC_ReceiveTestPattern(card, blockSize, receivedPattern))
+    /* restore the send pattern */
+    tempsendPattern = tempPattern[0U];
+    /* reset the global buffer */
+    tempPattern[0U] = 0U;
+
+    if (kStatus_Success != MMC_ReceiveTestPattern(card, blockSize, tempPattern))
     {
         return kStatus_SDMMC_ReceiveTestPatternFailed;
     }
 
     /* XOR the send pattern and receive pattern */
-    if (((sendPattern[0U] ^ receivedPattern[0U]) & xorMask) != xorResult)
+    if (((tempPattern[0U] ^ tempsendPattern) & xorMask) != xorResult)
     {
         return kStatus_Fail;
     }
@@ -1581,7 +1588,7 @@ static status_t MMC_SelectBusTiming(mmc_card_t *card)
     {
         case kMMC_HighSpeedTimingNone:
         case kMMC_HighSpeed400Timing:
-            if ((card->host.capability.flags & kHOST_SupportHS400) &&
+            if ((kHOST_SupportHS400 != HOST_NOT_SUPPORT) &&
                 (card->flags & (kMMC_SupportHS400DDR200MHZ180VFlag | kMMC_SupportHS400DDR200MHZ120VFlag)))
             {
                 switchHS400 = true;
@@ -1973,29 +1980,17 @@ static status_t MMC_Write(
     return kStatus_Success;
 }
 
-status_t MMC_Init(mmc_card_t *card)
+status_t MMC_CardInit(mmc_card_t *card)
 {
     assert(card);
     assert((card->hostVoltageWindowVCC != kMMC_VoltageWindowNone) &&
            (card->hostVoltageWindowVCC != kMMC_VoltageWindow120));
 
-    status_t error = kStatus_Success;
     uint32_t opcode = 0U;
 
     if (!card->isHostReady)
     {
-        error = HOST_Init(&(card->host));
-        if (error != kStatus_Success)
-        {
-            return error;
-        }
-        /* set the host status flag, after the card re-plug in, don't need init host again */
-        card->isHostReady = true;
-    }
-    else
-    {
-        /* reset the host */
-        HOST_Reset(card->host.base);
+        return kStatus_SDMMC_HostNotReady;
     }
     /* set DATA bus width */
     HOST_SET_CARD_BUS_WIDTH(card->host.base, kHOST_DATABUSWIDTH1BIT);
@@ -2030,7 +2025,7 @@ status_t MMC_Init(mmc_card_t *card)
     }
     else
     {
-        opcode |= kMMC_AccessModeSector << MMC_OCR_ACCESS_MODE_SHIFT;
+        opcode |= kMMC_AccessModeByte << MMC_OCR_ACCESS_MODE_SHIFT;
     }
 
     if (kStatus_Success != MMC_SendOperationCondition(card, opcode))
@@ -2102,14 +2097,63 @@ status_t MMC_Init(mmc_card_t *card)
     return kStatus_Success;
 }
 
-void MMC_Deinit(mmc_card_t *card)
+void MMC_CardDeinit(mmc_card_t *card)
 {
     assert(card);
 
     MMC_SelectCard(card, false);
-    HOST_Deinit(&(card->host));
-    /* should re-init host */
-    card->isHostReady = false;
+}
+
+status_t MMC_HostInit(void *host)
+{
+    return HOST_Init(host);
+}
+
+void MMC_HostDeinit(mmc_card_t *card, void *host)
+{
+    HOST_Deinit(host);
+
+    if (card != NULL)
+    {
+        /* should re-init host */
+        card->isHostReady = false;
+    }
+}
+
+void MMC_HostReset(HOST_CONFIG *host)
+{
+    HOST_Reset(host->base);
+}
+
+status_t MMC_Init(mmc_card_t *card)
+{
+    status_t error = kStatus_Success;
+
+    if (!card->isHostReady)
+    {
+        error = MMC_HostInit(&(card->host));
+        if (error != kStatus_Success)
+        {
+            return error;
+        }
+        /* set the host status flag, after the card re-plug in, don't need init host again */
+        card->isHostReady = true;
+    }
+    else
+    {
+        /* reset the host */
+        MMC_HostReset(&(card->host));
+    }
+
+    return MMC_CardInit(card);
+}
+
+void MMC_Deinit(mmc_card_t *card)
+{
+    assert(card);
+
+    MMC_CardDeinit(card);
+    MMC_HostDeinit(card, &(card->host));
 }
 
 bool MMC_CheckReadOnly(mmc_card_t *card)

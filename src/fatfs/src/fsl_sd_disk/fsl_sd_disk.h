@@ -34,7 +34,6 @@
 
 #include <stdint.h>
 #include "diskio.h"
-#include "fsl_common.h"
 
 /*!
  * @addtogroup SD Disk
@@ -59,8 +58,6 @@ extern "C" {
  * @name SD Disk Function
  * @{
  */
-
-status_t sd_init();
 
 /*!
  * @brief Initializes SD disk.

@@ -153,28 +153,22 @@ DSTATUS sd_disk_initialize(uint8_t physicalDrive)
     }
 
     /* Save host information. */
-//     g_sd.host.base = SD_HOST_BASEADDR;
-//     g_sd.host.sourceClock_Hz = SD_HOST_CLK_FREQ;
+    g_sd.host.base = SD_HOST_BASEADDR;
+    g_sd.host.sourceClock_Hz = SD_HOST_CLK_FREQ;
 
-    if (kStatus_Success != SD_InitCard(&g_sd))
+    /* card detect type */
+#ifndef BOARD_SD_DETECT_TYPE
+    g_sd.usrParam.cd = kHOST_DetectCardByGpioCD;
+#else
+    g_sd.usrParam.cd = BOARD_SD_DETECT_TYPE;
+#endif
+
+    if (kStatus_Success != SD_Init(&g_sd))
     {
-//         SD_Deinit(&g_sd);
-//         memset(&g_sd, 0U, sizeof(g_sd));
+        SD_Deinit(&g_sd);
+        memset(&g_sd, 0U, sizeof(g_sd));
         return STA_NOINIT;
     }
 
     return 0;
-}
-
-status_t sd_init()
-{
-    g_sd.host.base = SD_HOST_BASEADDR;
-    g_sd.host.sourceClock_Hz = SD_HOST_CLK_FREQ;
-
-    status_t err = SD_Init(&g_sd);
-    if (err != kStatus_Success)
-    {
-        SD_Deinit(&g_sd);
-    }
-    return err;
 }

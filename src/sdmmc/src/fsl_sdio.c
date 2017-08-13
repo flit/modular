@@ -1,7 +1,6 @@
 /*
  * Copyright (c) 2016, Freescale Semiconductor, Inc.
- * Copyright 2016 NXP
- * All rights reserved.
+ * Copyright 2016-2017 NXP
  *
  * Redistribution and use in source and binary forms, with or without modification,
  * are permitted provided that the following conditions are met:
@@ -20,7 +19,7 @@
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
  * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
  * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- * DISCLAIMED. IN NO EVENT SL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
+ * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
  * ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
  * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
  * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
@@ -35,7 +34,10 @@
 /*******************************************************************************
  * Definitions
  ******************************************************************************/
-#define SDIO_COMMON_CIS_TUPLE_NUM (3U) /*!< define the tuple number will be read during init */
+/*! @brief define the tuple number will be read during init */
+#define SDIO_COMMON_CIS_TUPLE_NUM (3U)
+/*! @brief SDIO retry times */
+#define SDIO_RETRY_TIMES (32U)
 
 /*******************************************************************************
  * Prototypes
@@ -153,7 +155,7 @@ static status_t SDIO_SendOperationCondition(sdio_card_t *card, uint32_t argument
 
     HOST_TRANSFER content = {0U};
     HOST_COMMAND command = {0U};
-    uint32_t i = FSL_SDMMC_MAX_VOLTAGE_RETRIES;
+    uint32_t i = SDIO_RETRY_TIMES;
 
     command.index = kSDIO_SendOperationCondition;
     command.argument = argument;
@@ -459,6 +461,11 @@ status_t SDIO_GetCardCapability(sdio_card_t *card, sdio_func_num_t func)
             {
                 card->cccrflags |= kSDIO_CCCRSupportHighSpeed;
             }
+            /* high speed flag */
+            if (tempBuffer[8U] & 0x80U)
+            {
+                card->cccrflags |= kSDIO_CCCRSupportLowSpeed4Bit;
+            }
             /* common CIS pointer */
             card->commonCISPointer = tempBuffer[9U] | (tempBuffer[10U] << 8U) | (tempBuffer[11U] << 16U);
 
@@ -558,12 +565,19 @@ status_t SDIO_SetDataBusWidth(sdio_card_t *card, sdio_bus_width_t busWidth)
 
     uint8_t regBusInterface = 0U;
 
+    if ((busWidth == kSDIO_DataBus4Bit) && ((card->cccrflags & kSDIO_CCCRSupportHighSpeed) == 0U) &&
+        ((card->cccrflags & kSDIO_CCCRSupportLowSpeed4Bit) == 0U))
+    {
+        return kStatus_SDMMC_SDIO_InvalidArgument;
+    }
+
     /* load bus interface register */
     if (kStatus_Success != SDIO_IO_Read_Direct(card, kSDIO_FunctionNum0, kSDIO_RegBusInterface, &regBusInterface))
     {
         return kStatus_SDMMC_TransferFailed;
     }
     /* set bus width */
+    regBusInterface &= 0xFCU;
     regBusInterface |= busWidth;
 
     /* write to register */
@@ -571,6 +585,15 @@ status_t SDIO_SetDataBusWidth(sdio_card_t *card, sdio_bus_width_t busWidth)
         SDIO_IO_Write_Direct(card, kSDIO_FunctionNum0, kSDIO_RegBusInterface, &regBusInterface, true))
     {
         return kStatus_SDMMC_TransferFailed;
+    }
+
+    if (busWidth == kSDIO_DataBus4Bit)
+    {
+        HOST_SET_CARD_BUS_WIDTH(card->host.base, kHOST_DATABUSWIDTH4BIT);
+    }
+    else
+    {
+        HOST_SET_CARD_BUS_WIDTH(card->host.base, kHOST_DATABUSWIDTH1BIT);
     }
 
     return kStatus_Success;
@@ -581,31 +604,43 @@ status_t SDIO_SwitchToHighSpeed(sdio_card_t *card)
     assert(card);
 
     uint8_t temp = 0U;
+    uint32_t retryTimes = SDIO_RETRY_TIMES;
+    status_t status = kStatus_SDMMC_SDIO_SwitchHighSpeedFail;
 
     if (card->cccrflags & kSDIO_CCCRSupportHighSpeed)
     {
-        /* enable high speed mode */
-        temp = 0x02U;
-        if (kStatus_Success != SDIO_IO_Write_Direct(card, kSDIO_FunctionNum0, kSDIO_RegHighSpeed, &temp, true))
+        do
         {
-            return kStatus_SDMMC_TransferFailed;
-        }
-        /* either EHS=0 and SHS=0 ,the card is still in default mode  */
-        if ((temp & 0x03U) == 0x03U)
-        {
-            /* set to 4bit data bus */
-            SDIO_SetDataBusWidth(card, kSDIO_DataBus4Bit);
-            HOST_SET_CARD_BUS_WIDTH(card->host.base, kHOST_DATABUSWIDTH4BIT);
-            /* high speed mode , set freq to 50MHZ */
-            card->busClock_Hz = HOST_SET_CARD_CLOCK(card->host.base, card->host.sourceClock_Hz, SD_CLOCK_50MHZ);
-        }
-        else
-        {
-            return kStatus_SDMMC_SDIO_SwitchHighSpeedFail;
-        }
+            retryTimes--;
+            /* enable high speed mode */
+            temp = 0x02U;
+            if (kStatus_Success != SDIO_IO_Write_Direct(card, kSDIO_FunctionNum0, kSDIO_RegHighSpeed, &temp, true))
+            {
+                continue;
+            }
+            /* either EHS=0 and SHS=0 ,the card is still in default mode  */
+            if ((temp & 0x03U) == 0x03U)
+            {
+                /* high speed mode , set freq to 50MHZ */
+                card->busClock_Hz = HOST_SET_CARD_CLOCK(card->host.base, card->host.sourceClock_Hz, SD_CLOCK_50MHZ);
+                status = kStatus_Success;
+                break;
+            }
+            else
+            {
+                continue;
+            }
+
+        } while (retryTimes);
+    }
+    else
+    {
+        /* default mode 25MHZ */
+        card->busClock_Hz = HOST_SET_CARD_CLOCK(card->host.base, card->host.sourceClock_Hz, SD_CLOCK_25MHZ);
+        status = kStatus_Success;
     }
 
-    return kStatus_Success;
+    return status;
 }
 
 static status_t SDIO_DecodeCIS(
@@ -784,35 +819,16 @@ status_t SDIO_ReadCIS(sdio_card_t *card, sdio_func_num_t func, const uint32_t *t
     return kStatus_Success;
 }
 
-status_t SDIO_Init(sdio_card_t *card)
+status_t SDIO_CardInit(sdio_card_t *card)
 {
     assert(card);
-    assert(card->host.base);
 
-    status_t error = kStatus_Success;
+    sdio_bus_width_t busWidth = kSDIO_DataBus1Bit;
 
     if (!card->isHostReady)
     {
-        error = HOST_Init(&(card->host));
-        if (error != kStatus_Success)
-        {
-            return error;
-        }
-        /* set the host status flag, after the card re-plug in, don't need init host again */
-        card->isHostReady = true;
+        return kStatus_SDMMC_HostNotReady;
     }
-    else
-    {
-        /* reset the host */
-        HOST_Reset(card->host.base);
-    }
-
-    error = CardInsertDetect(card->host.base);
-    if (error != kStatus_Success)
-    {
-        return error;
-    }
-
     /* Identify mode ,set clock to 400KHZ. */
     card->busClock_Hz = HOST_SET_CARD_CLOCK(card->host.base, card->host.sourceClock_Hz, SDMMC_CLOCK_400KHZ);
     HOST_SET_CARD_BUS_WIDTH(card->host.base, kHOST_DATABUSWIDTH1BIT);
@@ -873,28 +889,96 @@ status_t SDIO_Init(sdio_card_t *card)
     {
         return kStatus_SDMMC_SDIO_ReadCISFail;
     }
-
-    /* freq and bus width setting */
-    if (card->cccrflags & kSDIO_CCCRSupportLowSpeed4Bit)
+    /* try to switch high speed */
+    if (kStatus_Success != SDIO_SwitchToHighSpeed(card))
     {
-        /* set to 4bit data bus */
-        SDIO_SetDataBusWidth(card, kSDIO_DataBus4Bit);
-        HOST_SET_CARD_BUS_WIDTH(card->host.base, kHOST_DATABUSWIDTH4BIT);
-    }
-    else if (card->cccrflags & kSDIO_CCCRSupportHighSpeed)
-    {
-        if (kStatus_Success != SDIO_SwitchToHighSpeed(card))
-        {
-            return kStatus_SDMMC_SDIO_SwitchHighSpeedFail;
-        }
-
-        return kStatus_Success;
+        return kStatus_SDMMC_SDIO_SwitchHighSpeedFail;
     }
 
-    /* default mode 25MHZ */
-    card->busClock_Hz = HOST_SET_CARD_CLOCK(card->host.base, card->host.sourceClock_Hz, SD_CLOCK_25MHZ);
+    /* switch data bus width */
+    if ((card->cccrflags & kSDIO_CCCRSupportHighSpeed) || (card->cccrflags & kSDIO_CCCRSupportLowSpeed4Bit))
+    {
+        busWidth = kSDIO_DataBus4Bit;
+    }
+    if (kStatus_Success != SDIO_SetDataBusWidth(card, busWidth))
+    {
+        return kStatus_SDMMC_SetDataBusWidthFailed;
+    }
 
     return kStatus_Success;
+}
+
+void inline SDIO_CardDeinit(sdio_card_t *card)
+{
+    assert(card);
+
+    SDIO_CardReset(card);
+    SDIO_SelectCard(card, false);
+}
+
+status_t inline SDIO_HostInit(void *host)
+{
+    return HOST_Init(host);
+}
+
+void inline SDIO_HostDeinit(sdio_card_t *card, void *host)
+{
+    HOST_Deinit(host);
+
+    if (card != NULL)
+    {
+        /* should re-init host */
+        card->isHostReady = false;
+    }
+}
+
+void inline SDIO_HostReset(HOST_CONFIG *host)
+{
+    HOST_Reset(host->base);
+}
+
+status_t SDIO_CardDetect(HOST_TYPE *hostBase, sd_card_detect_type_t cd, bool isHostReady)
+{
+    return HOST_DetectCard(hostBase, cd, isHostReady);
+}
+
+status_t SDIO_Init(sdio_card_t *card)
+{
+    assert(card);
+    assert(card->host.base);
+
+    status_t error = kStatus_Success;
+
+    if (!card->isHostReady)
+    {
+        error = SDIO_HostInit(&(card->host));
+        if (error != kStatus_Success)
+        {
+            return error;
+        }
+        /* set the host status flag, after the card re-plug in, don't need init host again */
+        card->isHostReady = true;
+    }
+    else
+    {
+        /* reset the host */
+        SDIO_HostReset(&(card->host));
+    }
+
+    if (SDIO_CardDetect(card->host.base) != kStatus_Success)
+    {
+        return error;
+    }
+
+    return SDIO_CardInit(card);
+}
+
+void SDIO_Deinit(sdio_card_t *card)
+{
+    assert(card);
+
+    SDIO_CardDeinit(card);
+    SDIO_HostDeinit(card, &(card->host));
 }
 
 status_t SDIO_EnableIOInterrupt(sdio_card_t *card, sdio_func_num_t func, bool enable)
@@ -948,7 +1032,7 @@ status_t SDIO_EnableIO(sdio_card_t *card, sdio_func_num_t func, bool enable)
     assert(func <= kSDIO_FunctionNum7);
 
     uint8_t ioEn = 0U, ioReady = 0U;
-    uint32_t i = FSL_SDMMC_MAX_VOLTAGE_RETRIES;
+    uint32_t i = SDIO_RETRY_TIMES;
 
     /* load io enable register */
     if (kStatus_Success != SDIO_IO_Read_Direct(card, kSDIO_FunctionNum0, kSDIO_RegIOEnable, &ioEn))
@@ -980,7 +1064,7 @@ status_t SDIO_EnableIO(sdio_card_t *card, sdio_func_num_t func, bool enable)
     /* if enable io, need check the IO ready status */
     if (enable)
     {
-        while (i--)
+        do
         {
             /* wait IO ready */
             if (kStatus_Success != SDIO_IO_Read_Direct(card, kSDIO_FunctionNum0, kSDIO_RegIOReady, &ioReady))
@@ -992,10 +1076,12 @@ status_t SDIO_EnableIO(sdio_card_t *card, sdio_func_num_t func, bool enable)
             {
                 return kStatus_Success;
             }
-        }
+
+            i--;
+        } while (i);
     }
 
-    return (i == 0U) ? kStatus_Fail : kStatus_Success;
+    return kStatus_Fail;
 }
 
 status_t SDIO_SelectIO(sdio_card_t *card, sdio_func_num_t func)
@@ -1028,15 +1114,4 @@ status_t SDIO_AbortIO(sdio_card_t *card, sdio_func_num_t func)
     }
 
     return kStatus_Success;
-}
-
-void SDIO_DeInit(sdio_card_t *card)
-{
-    assert(card);
-    /* disselect card */
-    SDIO_CardReset(card);
-    SDIO_SelectCard(card, false);
-    HOST_Deinit(&(card->host));
-    /* should re-init host */
-    card->isHostReady = false;
 }

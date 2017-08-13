@@ -1,7 +1,6 @@
 /*
  * Copyright (c) 2015, Freescale Semiconductor, Inc.
- * Copyright 2016 NXP
- * All rights reserved.
+ * Copyright 2016-2017 NXP
  *
  * Redistribution and use in source and binary forms, with or without modification,
  * are permitted provided that the following conditions are met:
@@ -20,7 +19,7 @@
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
  * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
  * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- * DISCLAIMED. IN NO EVENT SL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
+ * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
  * ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
  * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
  * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
@@ -476,9 +475,13 @@ enum _sdio_capability_flag
     kSDIO_CCCRSupportMasterPowerControl = (1U << 8U),       /*!< support master power control */
     kSDIO_CCCRSupportHighSpeed = (1U << 9U),                /*!< support high speed */
     kSDIO_CCCRSupportContinuousSPIInt = (1U << 10U),        /*!< support continuous SPI interrupt */
-    kSDIO_FBRSupportCSA = (1U << 11U),                      /*!< function support CSA */
-    kSDIO_FBRSupportPowerSelection = (1U << 12U),           /*!< function support power selection */
+};
 
+/*! @brief sdio fbr flag */
+enum _sdio_fbr_flag
+{
+    kSDIO_FBRSupportCSA = (1U << 0U),            /*!< function support CSA */
+    kSDIO_FBRSupportPowerSelection = (1U << 1U), /*!< function support power selection */
 };
 
 /*! @brief sdio bus width */

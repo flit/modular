@@ -1,7 +1,6 @@
 /*
  * Copyright (c) 2015, Freescale Semiconductor, Inc.
- * Copyright 2016 NXP
- * All rights reserved.
+ * Copyright 2016-2017 NXP
  *
  * Redistribution and use in source and binary forms, with or without modification,
  * are permitted provided that the following conditions are met:
@@ -20,7 +19,7 @@
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
  * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
  * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- * DISCLAIMED. IN NO EVENT SL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
+ * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
  * ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
  * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
  * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
@@ -39,10 +38,22 @@
  * Definitions
  *****************************************************************************/
 /*! @brief Driver version. */
-#define FSL_SDSPI_DRIVER_VERSION (MAKE_VERSION(2U, 1U, 1U)) /*2.1.1*/
+#define FSL_SDSPI_DRIVER_VERSION (MAKE_VERSION(2U, 1U, 2U)) /*2.1.2*/
 
 /*! @brief Default block size */
 #define FSL_SDSPI_DEFAULT_BLOCK_SIZE (512U)
+
+/*! @brief Dummy byte define, OxFF should be defined as the dummy data */
+#if defined(FSL_FEATURE_SOC_DSPI_COUNT) && (FSL_FEATURE_SOC_DSPI_COUNT > 0U)
+#undef DSPI_DUMMY_DATA
+#define DSPI_DUMMY_DATA (0xFFU) /*!< Dummy data used for Tx if there is no txData. */
+#elif defined(FSL_FEATURE_SOC_LPSPI_COUNT) && (FSL_FEATURE_SOC_LPSPI_COUNT > 0U)
+#undef LPSPI_DUMMY_DATA
+#define LPSPI_DUMMY_DATA (0xFFU) /*!< Dummy data used for tx if there is not txData. */
+#else
+#undef SPI_DUMMYDATA
+#define SPI_DUMMYDATA (0xFFU)
+#endif
 
 /*!
  * @addtogroup SDSPI
