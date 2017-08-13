@@ -266,39 +266,6 @@ extern "C" {
  */
 
 /*!
- * @brief Initializes the card on a specific host controller.
- *
- * This function initializes the card on a specific host controller, it is consist of
- * host init, card detect, card init function, however user can ignore this high level function,
- * instead of use the low level function, such as SD_CardInit, SD_HostInit, SD_CardDetect.
- *
- * @param card Card descriptor.
- * @retval kStatus_SDMMC_HostNotReady host is not ready.
- * @retval kStatus_SDMMC_GoIdleFailed Go idle failed.
- * @retval kStatus_SDMMC_NotSupportYet Card not support.
- * @retval kStatus_SDMMC_SendOperationConditionFailed Send operation condition failed.
- * @retval kStatus_SDMMC_AllSendCidFailed Send CID failed.
- * @retval kStatus_SDMMC_SendRelativeAddressFailed Send relative address failed.
- * @retval kStatus_SDMMC_SendCsdFailed Send CSD failed.
- * @retval kStatus_SDMMC_SelectCardFailed Send SELECT_CARD command failed.
- * @retval kStatus_SDMMC_SendScrFailed Send SCR failed.
- * @retval kStatus_SDMMC_SetBusWidthFailed Set bus width failed.
- * @retval kStatus_SDMMC_SwitchHighSpeedFailed Switch high speed failed.
- * @retval kStatus_SDMMC_SetCardBlockSizeFailed Set card block size failed.
- * @retval kStatus_Success Operate successfully.
- */
-status_t SD_Init(sd_card_t *card);
-
-/*!
- * @brief Deinitializes the card.
- *
- * This function deinitializes the specific card and host.
- *
- * @param card Card descriptor.
- */
-void SD_Deinit(sd_card_t *card);
-
-/*!
  * @brief Initializes the card.
  *
  * This function initializes the card only, make sure the host is ready when call this function,
@@ -337,7 +304,7 @@ void SD_CardDeinit(sd_card_t *card);
  *
  * @param host host descriptor.
  */
-status_t SD_HostInit(void *host);
+status_t SD_HostInit(sd_card_t *card);
 
 /*!
  * @brief Deinitializes the host.
@@ -347,7 +314,7 @@ status_t SD_HostInit(void *host);
  * @param card Card descriptor.
  * @param host host descriptor
  */
-void SD_HostDeinit(sd_card_t *card, void *host);
+void SD_HostDeinit(sd_card_t *card);
 
 /*!
  * @brief reset the host.
@@ -515,7 +482,7 @@ status_t MMC_HostInit(void *host);
  * @param card Card descriptor.
  * @param host host descriptor
  */
-void MMC_HostDeinit(sd_card_t *card, void *host);
+void MMC_HostDeinit(mmc_card_t *card, void *host);
 
 /*!
  * @brief reset the host.

@@ -335,7 +335,12 @@ void bootloader_thread(void * arg)
 {
     DEBUG_PRINTF(INIT_MASK, "Bootloader Initializing...\r\n");
 
-    sd_init();
+    // Configure SD host.
+    g_sd.host.base = SDHC;
+    g_sd.host.sourceClock_Hz = CLOCK_GetFreq(kCLOCK_CoreSysClk);
+    g_sd.usrParam.cd = kHOST_DetectCardByGpioCD;
+
+    SD_HostInit(&g_sd);
 
     // Look for a firmware update file.
     int result = g_fs.init();

@@ -34,6 +34,8 @@
 
 #include <stdint.h>
 #include "diskio.h"
+#include "fsl_common.h"
+#include "fsl_card.h"
 
 /*!
  * @addtogroup SD Disk
@@ -45,6 +47,8 @@
  ******************************************************************************/
 
 #define CD_USING_GPIO
+
+extern sd_card_t g_sd;
 
 /*************************************************************************************************
  * API

@@ -1661,14 +1661,19 @@ void SD_CardDeinit(sd_card_t *card)
     SD_SelectCard(card, false);
 }
 
-status_t SD_HostInit(void *host)
+status_t SD_HostInit(sd_card_t *card)
 {
-    return HOST_Init(host);
+    status_t err = HOST_Init(&card->host);
+    if (err == kStatus_Success)
+    {
+        card->isHostReady = true;
+    }
+    return err;
 }
 
-void SD_HostDeinit(sd_card_t *card, void *host)
+void SD_HostDeinit(sd_card_t *card)
 {
-    HOST_Deinit(host);
+    HOST_Deinit(&card->host);
 
     if (card != NULL)
     {
@@ -1687,40 +1692,3 @@ status_t SD_CardDetect(HOST_TYPE *hostBase, host_detect_card_type_t cd, bool isH
     return HOST_DetectCard(hostBase, cd, isHostReady);
 }
 
-status_t SD_Init(sd_card_t *card)
-{
-    assert(card);
-
-    status_t error = kStatus_Success;
-
-    if (!card->isHostReady)
-    {
-        error = SD_HostInit(&(card->host));
-        if (error != kStatus_Success)
-        {
-            return error;
-        }
-        /* set the host status flag, after the card re-plug in, don't need init host again */
-        card->isHostReady = true;
-    }
-    else
-    {
-        SD_HostReset(&(card->host));
-    }
-
-    /*detect card insert*/
-    if (SD_CardDetect(card->host.base, card->usrParam.cd, card->isHostReady) != kStatus_Success)
-    {
-        return error;
-    }
-
-    return SD_CardInit(card);
-}
-
-void SD_Deinit(sd_card_t *card)
-{
-    /* card deinitialize */
-    SD_CardDeinit(card);
-    /* host deinitialize */
-    SD_HostDeinit(card, &(card->host));
-}

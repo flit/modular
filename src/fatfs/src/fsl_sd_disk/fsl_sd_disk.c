@@ -48,7 +48,7 @@
  ******************************************************************************/
 
 /*! @brief Card descriptor */
-static sd_card_t g_sd;
+sd_card_t g_sd;
 
 /*******************************************************************************
  * Code
@@ -152,23 +152,10 @@ DSTATUS sd_disk_initialize(uint8_t physicalDrive)
         return STA_NOINIT;
     }
 
-    /* Save host information. */
-    g_sd.host.base = SD_HOST_BASEADDR;
-    g_sd.host.sourceClock_Hz = SD_HOST_CLK_FREQ;
-
-    /* card detect type */
-#ifndef BOARD_SD_DETECT_TYPE
-    g_sd.usrParam.cd = kHOST_DetectCardByGpioCD;
-#else
-    g_sd.usrParam.cd = BOARD_SD_DETECT_TYPE;
-#endif
-
-    if (kStatus_Success != SD_Init(&g_sd))
+    status_t err = SD_CardInit(&g_sd);
+    if (err != kStatus_Success)
     {
-        SD_Deinit(&g_sd);
-        memset(&g_sd, 0U, sizeof(g_sd));
-        return STA_NOINIT;
+        SD_CardDeinit(&g_sd);
     }
-
-    return 0;
+    return err;
 }
