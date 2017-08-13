@@ -51,6 +51,7 @@ const uint32_t kXtal32Freq = 32768;
 #define BOARD_SDHC_CD_PORT_IRQ PORTD_IRQn
 #define BOARD_SDHC_CD_PORT_IRQ_HANDLER PORTD_IRQHandler
 #define BOARD_SDHC_CD_LOGIC_RISING
+#define BOARD_SD_DETECT_TYPE kHOST_DetectCardByHostCD
 
 // SWO
 #define PIN_SWO_PORT            (PORTA)

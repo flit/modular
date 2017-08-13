@@ -86,7 +86,7 @@ struct AppVectors
 void flash_leds();
 void card_detect_handler(PORT_Type * port, uint32_t pin, void * userData);
 void start_app(uint32_t stack, uint32_t entry);
-void perform_update(File& updateFile);
+void perform_update(fs::File& updateFile);
 void check_update();
 void bootloader_thread(void * arg);
 
@@ -96,7 +96,7 @@ void bootloader_thread(void * arg);
 
 volatile AppVectors * g_app = reinterpret_cast<volatile AppVectors *>(APP_START_ADDR);
 
-FileSystem g_fs;
+fs::FileSystem g_fs;
 
 Ar::ThreadWithStack<4096> g_bootloaderThread("bootloader", bootloader_thread, 0, 100);
 
@@ -183,7 +183,7 @@ void start_app(uint32_t stack, uint32_t entry)
                     );
 }
 
-void perform_update(File& updateFile)
+void perform_update(fs::File& updateFile)
 {
     const uint32_t kSectorSize = FSL_FEATURE_FLASH_PFLASH_BLOCK_SECTOR_SIZE;
 
@@ -223,8 +223,9 @@ void perform_update(File& updateFile)
         uint32_t bytesToRead = min(remainingBytes, kSectorSize);
 
         // Read data from update file.
-        uint32_t bytesRead = updateFile.read(bytesToRead, g_sectorBuffer);
-        if (bytesRead != bytesToRead)
+        uint32_t bytesRead;
+        fs::error_t err = updateFile.read(bytesToRead, g_sectorBuffer, &bytesRead);
+        if (err || bytesRead != bytesToRead)
         {
             DEBUG_PRINTF(ERROR_MASK, "failed to read data from file\r\n");
             return;
@@ -266,7 +267,9 @@ void perform_update(File& updateFile)
     updateFile.seek(0);
 
     // Read data from update file.
-    if (updateFile.read(kSectorSize, g_sectorBuffer) != kSectorSize)
+    uint32_t bytesRead;
+    fs::error_t err = updateFile.read(kSectorSize, g_sectorBuffer, &bytesRead);
+    if (err || bytesRead != kSectorSize)
     {
         DEBUG_PRINTF(ERROR_MASK, "failed to read first sector from file\r\n");
         return;
@@ -291,8 +294,9 @@ void perform_update(File& updateFile)
 
 void check_update()
 {
-    File updateFile(FW_UPDATE_FILENAME);
-    if (!updateFile.open())
+    fs::File updateFile(FW_UPDATE_FILENAME);
+    fs::error_t err = updateFile.open();
+    if (err)
     {
         DEBUG_PRINTF(ERROR_MASK, "failed to open update file\r\n");
         return;
@@ -301,7 +305,9 @@ void check_update()
 
     // Read the vector table from the update file.
     AppVectors header;
-    if (updateFile.read(sizeof(header), &header) != sizeof(header))
+    uint32_t bytesRead;
+    err = updateFile.read(sizeof(header), &header, &bytesRead);
+    if (err || bytesRead != sizeof(header))
     {
         DEBUG_PRINTF(ERROR_MASK, "unable to read file header\r\n");
         return;
@@ -343,8 +349,8 @@ void bootloader_thread(void * arg)
     SD_HostInit(&g_sd);
 
     // Look for a firmware update file.
-    int result = g_fs.init();
-    if (result == 0)
+    fs::error_t result = g_fs.init();
+    if (result == fs::kSuccess)
     {
         check_update();
     }

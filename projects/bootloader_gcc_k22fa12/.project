@@ -146,11 +146,6 @@
 			<locationURI>PARENT-2-PROJECT_LOC/src/argon/argon.h</locationURI>
 		</link>
 		<link>
-			<name>argon/cortex_m</name>
-			<type>2</type>
-			<locationURI>virtual:/virtual</locationURI>
-		</link>
-		<link>
 			<name>argon/src</name>
 			<type>2</type>
 			<locationURI>virtual:/virtual</locationURI>
@@ -321,31 +316,6 @@
 			<locationURI>PARENT-2-PROJECT_LOC/src/app/board_k22fa12/clock_config.h</locationURI>
 		</link>
 		<link>
-			<name>argon/cortex_m/ar_asm_macros.h</name>
-			<type>1</type>
-			<locationURI>PARENT-2-PROJECT_LOC/src/argon/cortex_m/ar_asm_macros.h</locationURI>
-		</link>
-		<link>
-			<name>argon/cortex_m/ar_atomics_cm4.S</name>
-			<type>1</type>
-			<locationURI>PARENT-2-PROJECT_LOC/src/argon/cortex_m/ar_atomics_cm4.S</locationURI>
-		</link>
-		<link>
-			<name>argon/cortex_m/ar_handlers_cm4.S</name>
-			<type>1</type>
-			<locationURI>PARENT-2-PROJECT_LOC/src/argon/cortex_m/ar_handlers_cm4.S</locationURI>
-		</link>
-		<link>
-			<name>argon/cortex_m/ar_port.cpp</name>
-			<type>1</type>
-			<locationURI>PARENT-2-PROJECT_LOC/src/argon/cortex_m/ar_port.cpp</locationURI>
-		</link>
-		<link>
-			<name>argon/cortex_m/ar_port.h</name>
-			<type>1</type>
-			<locationURI>PARENT-2-PROJECT_LOC/src/argon/cortex_m/ar_port.h</locationURI>
-		</link>
-		<link>
 			<name>argon/src/ar_channel.cpp</name>
 			<type>1</type>
 			<locationURI>PARENT-2-PROJECT_LOC/src/argon/src/ar_channel.cpp</locationURI>
@@ -394,6 +364,11 @@
 			<name>argon/src/ar_timer.cpp</name>
 			<type>1</type>
 			<locationURI>PARENT-2-PROJECT_LOC/src/argon/src/ar_timer.cpp</locationURI>
+		</link>
+		<link>
+			<name>argon/src/cortex_m</name>
+			<type>2</type>
+			<locationURI>virtual:/virtual</locationURI>
 		</link>
 		<link>
 			<name>devices/MK22FA12/MK22FA12.h</name>
@@ -529,6 +504,31 @@
 			<name>sdmmc/src/fsl_sdmmc.c</name>
 			<type>1</type>
 			<locationURI>PARENT-2-PROJECT_LOC/src/sdmmc/src/fsl_sdmmc.c</locationURI>
+		</link>
+		<link>
+			<name>argon/src/cortex_m/ar_asm_macros.h</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/src/argon/src/cortex_m/ar_asm_macros.h</locationURI>
+		</link>
+		<link>
+			<name>argon/src/cortex_m/ar_atomics_cm4.S</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/src/argon/src/cortex_m/ar_atomics_cm4.S</locationURI>
+		</link>
+		<link>
+			<name>argon/src/cortex_m/ar_handlers_cm4.S</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/src/argon/src/cortex_m/ar_handlers_cm4.S</locationURI>
+		</link>
+		<link>
+			<name>argon/src/cortex_m/ar_port.cpp</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/src/argon/src/cortex_m/ar_port.cpp</locationURI>
+		</link>
+		<link>
+			<name>argon/src/cortex_m/ar_port.h</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/src/argon/src/cortex_m/ar_port.h</locationURI>
 		</link>
 		<link>
 			<name>devices/MK22FA12/gcc/MK22FN1M0Axxx12_flash.ld</name>
