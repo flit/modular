@@ -116,6 +116,7 @@ public:
     Pot();
     ~Pot()=default;
 
+    void set_noise(uint32_t noise) { _noise = noise; }
     void set_hysteresis(uint32_t percent);
 
     uint32_t process(uint32_t value);
@@ -128,6 +129,7 @@ protected:
     MovingAverage<32> _avg;
     RingBuffer<uint16_t, 128> _history;
     uint32_t _hysteresis;
+    uint32_t _noise;
 };
 
 /*!
