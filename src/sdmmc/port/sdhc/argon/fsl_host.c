@@ -60,19 +60,19 @@ static volatile uint32_t g_sdInsertedFlag;
  ******************************************************************************/
 
 /* Delay some time united in milliseconds. */
-static void Delay(uint32_t milliseconds)
-{
-    uint32_t i;
-    uint32_t j;
-
-    for (i = 0; i < milliseconds; i++)
-    {
-        for (j = 0; j < 20000U; j++)
-        {
-            __asm("NOP");
-        }
-    }
-}
+//static void Delay(uint32_t milliseconds)
+//{
+//    uint32_t i;
+//    uint32_t j;
+//
+//    for (i = 0; i < milliseconds; i++)
+//    {
+//        for (j = 0; j < 20000U; j++)
+//        {
+//            __asm("NOP");
+//        }
+//    }
+//}
 
 // static void HOST_DetectCardByGpio(void)
 // {
