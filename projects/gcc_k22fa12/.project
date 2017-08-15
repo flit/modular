@@ -76,6 +76,16 @@
 			<locationURI>PARENT-2-PROJECT_LOC/src/app/adc_sequencer.h</locationURI>
 		</link>
 		<link>
+			<name>app/analog_in.cpp</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/src/app/analog_in.cpp</locationURI>
+		</link>
+		<link>
+			<name>app/analog_in.h</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/src/app/analog_in.h</locationURI>
+		</link>
+		<link>
 			<name>app/ar_config.h</name>
 			<type>1</type>
 			<locationURI>PARENT-2-PROJECT_LOC/src/app/ar_config.h</locationURI>
