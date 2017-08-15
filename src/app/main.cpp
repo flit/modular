@@ -31,7 +31,6 @@
 #include "main.h"
 #include "board.h"
 #include "pin_irq_manager.h"
-#include "file_manager.h"
 #include "wav_file.h"
 #include "utility.h"
 #include "led.h"
@@ -40,6 +39,7 @@
 #include "reader_thread.h"
 #include "adc_sequencer.h"
 #include "channel_cv_gate.h"
+#include "analog_in.h"
 #include "sampler_synth.h"
 #include "ui.h"
 #include "fsl_sd_disk.h"
@@ -59,7 +59,7 @@ using namespace slab;
 // Definitions
 //------------------------------------------------------------------------------
 
-#define ENABLE_LOAD_REPORT (1)
+#define ENABLE_LOAD_REPORT (0)
 
 //------------------------------------------------------------------------------
 // Prototypes
@@ -79,7 +79,6 @@ void init_audio_out();
 void init_fs();
 
 void scan_for_files();
-
 
 //------------------------------------------------------------------------------
 // Variables
@@ -166,18 +165,6 @@ void flash_leds()
 
 void cv_thread(void * arg)
 {
-    g_gates[0].n = 0;
-    g_pots[0].n = 0;
-    g_gates[1].n = 1;
-    g_gates[1].set_inverted(true);
-    g_pots[1].n = 1;
-    g_gates[2].n = 2;
-    g_gates[2].set_inverted(true);
-    g_pots[2].n = 2;
-    g_gates[3].n = 3;
-    g_gates[3].set_inverted(true);
-    g_pots[3].n = 3;
-
     volatile uint32_t results0[4];
     Ar::Semaphore waitSem0(nullptr, 0);
     g_adc0Sequencer.set_channels(CH2_CV_CHANNEL_MASK | CH3_CV_CHANNEL_MASK | CH1_POT_CHANNEL_MASK | CH2_POT_CHANNEL_MASK);
@@ -196,9 +183,11 @@ void cv_thread(void * arg)
     g_adc1Sequencer.start();
     while (true)
     {
+        // Wait until all new ADC samples are available.
         waitSem0.get();
         waitSem1.get();
 
+        // Process gates and trigger voices. If a voice is invalid, it will ignore the trigger.
         if (g_gates[0].process(results1[2]))
         {
             DEBUG_PRINTF(TRIG_MASK, "ch1 triggered\r\n");
@@ -220,10 +209,55 @@ void cv_thread(void * arg)
             g_voice[3].trigger();
         }
 
+        // Process pots.
         g_pots[0].process(results0[1]);
         g_pots[1].process(results0[2]);
         g_pots[2].process(results1[0]);
         g_pots[3].process(results1[1]);
+    }
+}
+
+void calibrate_pots()
+{
+    AnalogIn ch1(CH1_POT_ADC, CH1_POT_CHANNEL);
+    AnalogIn ch2(CH2_POT_ADC, CH2_POT_CHANNEL);
+    AnalogIn ch3(CH3_POT_ADC, CH3_POT_CHANNEL);
+    AnalogIn ch4(CH4_POT_ADC, CH4_POT_CHANNEL);
+    ch1.init();
+    ch2.init();
+    ch3.init();
+    ch4.init();
+
+    uint32_t reading[4];
+    uint32_t minReading[4] = { ~0ul, ~0ul, ~0ul, ~0ul };
+    uint32_t maxReading[4] = { 0 };
+    uint32_t n;
+    uint32_t i;
+
+    for (n = 0; n < 100; ++n)
+    {
+        reading[0] = ch1.read();
+        reading[1] = ch2.read();
+        reading[2] = ch3.read();
+        reading[3] = ch4.read();
+
+        for (i = 0; i < 4; ++i)
+        {
+            if (reading[i] < minReading[i])
+            {
+                minReading[i] = reading[i];
+            }
+            if (reading[i] > maxReading[i])
+            {
+                maxReading[i] = reading[i];
+            }
+        }
+    }
+
+    for (i = 0; i < 4; ++i)
+    {
+        uint32_t noise = maxReading[i] - minReading[i];
+        g_pots[i].set_noise(noise);
     }
 }
 
@@ -285,23 +319,35 @@ void init_thread(void * arg)
 {
     DEBUG_PRINTF(INIT_MASK, "\r\nSAMPLBäR Initializing...\r\n");
 
-    flash_leds();
+    // Init channel-specific objects.
+    uint32_t i;
+    for (i = 0; i < kVoiceCount; ++i)
+    {
+        g_gates[i].n = i;
+        g_pots[i].n = i;
+        g_voice[i].init(i, (int16_t *)&g_sampleBufs[i]);
+    }
 
-    g_voice[0].init(0, (int16_t *)&g_sampleBufs[0]);
-    g_voice[1].init(1, (int16_t *)&g_sampleBufs[1]);
-    g_voice[2].init(2, (int16_t *)&g_sampleBufs[2]);
-    g_voice[3].init(3, (int16_t *)&g_sampleBufs[3]);
-
+    // Init UI.
     g_ui.set_leds(g_channelLeds, &g_button1Led);
     g_ui.set_pots(g_pots);
     g_ui.init();
 
+    flash_leds();
+
+    calibrate_pots();
+
     init_dma();
     init_audio_out();
     g_readerThread.init();
-    sd_init();
-    g_fileManager.init();
 
+    // Configure SD host.
+    g_sd.host.base = SDHC;
+    g_sd.host.sourceClock_Hz = CLOCK_GetFreq(kCLOCK_CoreSysClk);
+    g_sd.usrParam.cd = kHOST_DetectCardByGpioCD;
+    SD_HostInit(&g_sd);
+
+    g_fileManager.init();
 
     g_readerThread.start();
 
@@ -311,6 +357,7 @@ void init_thread(void * arg)
         Ar::Thread::sleep(20);
     }
 
+    // Start other threads.
     g_ui.start();
     g_audioOut.start();
     g_cvThread.resume();

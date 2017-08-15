@@ -30,6 +30,7 @@
 #define _MAIN_H_
 
 #include "sampler_voice.h"
+#include "file_manager.h"
 #include "audio_defs.h"
 
 //------------------------------------------------------------------------------
@@ -48,6 +49,7 @@ enum thread_priorties : uint8_t
 };
 
 extern SamplerVoice g_voice[kVoiceCount];
+extern FileManager g_fileManager;
 
 } // namespace slab
 
