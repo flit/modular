@@ -342,9 +342,14 @@ void init_thread(void * arg)
     g_readerThread.init();
 
     // Configure SD host.
+    static sdmmchost_detect_card_t cd = {
+        .cdType = kSDMMCHOST_DetectCardByGpioCD,
+        .cdTimeOut_MS = (~0U),
+        };
+
     g_sd.host.base = SDHC;
     g_sd.host.sourceClock_Hz = CLOCK_GetFreq(kCLOCK_CoreSysClk);
-    g_sd.usrParam.cd = kHOST_DetectCardByGpioCD;
+    g_sd.usrParam.cd = &cd;
     SD_HostInit(&g_sd);
 
     g_fileManager.init();

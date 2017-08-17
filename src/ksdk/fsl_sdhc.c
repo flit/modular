@@ -199,16 +199,18 @@ static void SDHC_TransferHandleData(SDHC_Type *base, sdhc_handle_t *handle, uint
 /*!
  * @brief Handle SDIO card interrupt signal.
  *
+ * @param base SDHC peripheral base address.
  * @param handle SDHC handle.
  */
-static void SDHC_TransferHandleSdioInterrupt(sdhc_handle_t *handle);
+static void SDHC_TransferHandleSdioInterrupt(SDHC_Type *base, sdhc_handle_t *handle);
 
 /*!
  * @brief Handle SDIO block gap event.
  *
+ * @param base SDHC peripheral base address.
  * @param handle SDHC handle.
  */
-static void SDHC_TransferHandleSdioBlockGap(sdhc_handle_t *handle);
+static void SDHC_TransferHandleSdioBlockGap(SDHC_Type *base, sdhc_handle_t *handle);
 
 /*******************************************************************************
  * Variables
@@ -691,14 +693,14 @@ static void SDHC_TransferHandleCardDetect(SDHC_Type *base, sdhc_handle_t *handle
     {
         if (handle->callback.CardInserted)
         {
-            handle->callback.CardInserted(base);
+            handle->callback.CardInserted(base, handle->userData);
         }
     }
     else
     {
         if (handle->callback.CardRemoved)
         {
-            handle->callback.CardRemoved(base);
+            handle->callback.CardRemoved(base, handle->userData);
         }
     }
 }
@@ -756,19 +758,19 @@ static void SDHC_TransferHandleData(SDHC_Type *base, sdhc_handle_t *handle, uint
     }
 }
 
-static void SDHC_TransferHandleSdioInterrupt(sdhc_handle_t *handle)
+static void SDHC_TransferHandleSdioInterrupt(SDHC_Type *base, sdhc_handle_t *handle)
 {
     if (handle->callback.SdioInterrupt)
     {
-        handle->callback.SdioInterrupt();
+        handle->callback.SdioInterrupt(base, handle->userData);
     }
 }
 
-static void SDHC_TransferHandleSdioBlockGap(sdhc_handle_t *handle)
+static void SDHC_TransferHandleSdioBlockGap(SDHC_Type *base, sdhc_handle_t *handle)
 {
     if (handle->callback.SdioBlockGap)
     {
-        handle->callback.SdioBlockGap();
+        handle->callback.SdioBlockGap(base, handle->userData);
     }
 }
 
@@ -1397,11 +1399,11 @@ void SDHC_TransferHandleIRQ(SDHC_Type *base, sdhc_handle_t *handle)
     }
     if (interruptFlags & kSDHC_CardInterruptFlag)
     {
-        SDHC_TransferHandleSdioInterrupt(handle);
+        SDHC_TransferHandleSdioInterrupt(base, handle);
     }
     if (interruptFlags & kSDHC_BlockGapEventFlag)
     {
-        SDHC_TransferHandleSdioBlockGap(handle);
+        SDHC_TransferHandleSdioBlockGap(base, handle);
     }
 
     SDHC_ClearInterruptStatusFlags(base, interruptFlags);

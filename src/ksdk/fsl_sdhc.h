@@ -522,10 +522,11 @@ typedef struct _sdhc_handle sdhc_handle_t;
 /*! @brief SDHC callback functions. */
 typedef struct _sdhc_transfer_callback
 {
-    void (*CardInserted)(SDHC_Type *base); /*!< Card inserted occurs when DAT3/CD pin is for card detect */
-    void (*CardRemoved)(SDHC_Type *base);  /*!< Card removed occurs */
-    void (*SdioInterrupt)(void);           /*!< SDIO card interrupt occurs */
-    void (*SdioBlockGap)(void);            /*!< SDIO card stopped at block gap occurs */
+    void (*CardInserted)(SDHC_Type *base,
+                         void *userData); /*!< Card inserted occurs when DAT3/CD pin is for card detect */
+    void (*CardRemoved)(SDHC_Type *base, void *userData);   /*!< Card removed occurs */
+    void (*SdioInterrupt)(SDHC_Type *base, void *userData); /*!< SDIO card interrupt occurs */
+    void (*SdioBlockGap)(SDHC_Type *base, void *userData);  /*!< SDIO card stopped at block gap occurs */
     void (*TransferComplete)(SDHC_Type *base,
                              sdhc_handle_t *handle,
                              status_t status,

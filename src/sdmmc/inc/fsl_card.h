@@ -33,7 +33,7 @@
 
 #include "fsl_common.h"
 #include "fsl_specification.h"
-#include "fsl_host.h"
+#include "fsl_sdmmchost.h"
 #include "stdlib.h"
 /*!
  * @addtogroup CARD
@@ -98,6 +98,7 @@ enum _sdmmc_status
     kStatus_SDMMC_SetDriverStrengthFail = MAKE_STATUS(kStatusGroup_SDMMC, 36U),    /*!<  set driver strength fail */
     kStatus_SDMMC_SetPowerClassFail = MAKE_STATUS(kStatusGroup_SDMMC, 37U),        /*!<  set power class fail */
     kStatus_SDMMC_HostNotReady = MAKE_STATUS(kStatusGroup_SDMMC, 38U),             /*!<  host controller not ready */
+    kStatus_SDMMC_CardDetectFailed = MAKE_STATUS(kStatusGroup_SDMMC, 39U),         /*!<  card detect failed */
 };
 
 /*! @brief SD card flags */
@@ -146,7 +147,8 @@ typedef enum _card_operation_voltage
 /*! @brief card user parameter, user can define the parameter according the board, card capability */
 typedef struct _card_usr_param
 {
-    host_detect_card_type_t cd; /*!< card detect type */
+    sdmmchost_detect_card_t *cd; /*!< card detect type */
+    sdmmchost_pwr_card_t *pwr;   /*!< power control configuration */
 } card_usr_param_t;
 
 /*!
@@ -156,7 +158,7 @@ typedef struct _card_usr_param
  */
 typedef struct _sd_card
 {
-    HOST_CONFIG host; /*!< Host information */
+    SDMMCHOST_CONFIG host; /*!< Host information */
 
     card_usr_param_t usrParam;                 /*!< user parameter */
     bool isHostReady;                          /*!< use this flag to indicate if need host re-init or not*/
@@ -186,7 +188,7 @@ typedef struct _sd_card
  */
 typedef struct _sdio_card
 {
-    HOST_CONFIG host; /*!< Host information */
+    SDMMCHOST_CONFIG host; /*!< Host information */
 
     bool isHostReady;    /*!< use this flag to indicate if need host re-init or not*/
     bool memPresentFlag; /*!< indicate if memory present */
@@ -216,7 +218,7 @@ typedef struct _sdio_card
  */
 typedef struct _mmc_card
 {
-    HOST_CONFIG host; /*!< Host information */
+    SDMMCHOST_CONFIG host; /*!< Host information */
 
     bool isHostReady;                                     /*!< use this flag to indicate if need host re-init or not*/
     uint32_t busClock_Hz;                                 /*!< MMC bus clock united in Hz */
@@ -302,7 +304,7 @@ void SD_CardDeinit(sd_card_t *card);
  *
  * This function deinitializes the specific host.
  *
- * @param host host descriptor.
+ * @param card Card descriptor.
  */
 status_t SD_HostInit(sd_card_t *card);
 
@@ -312,7 +314,6 @@ status_t SD_HostInit(sd_card_t *card);
  * This function deinitializes the host.
  *
  * @param card Card descriptor.
- * @param host host descriptor
  */
 void SD_HostDeinit(sd_card_t *card);
 
@@ -323,7 +324,25 @@ void SD_HostDeinit(sd_card_t *card);
  *
  * @param host host descriptor.
  */
-void SD_HostReset(HOST_CONFIG *host);
+void SD_HostReset(SDMMCHOST_CONFIG *host);
+
+/*!
+ * @brief power on card.
+ *
+ * The power on operation depend on host or the user define power on function.
+ * @param base host base address.
+ * @param pwr user define power control configuration
+ */
+void SD_PowerOnCard(SDMMCHOST_TYPE *base, sdmmchost_pwr_card_t *pwr);
+
+/*!
+ * @brief power on card.
+ *
+ * The power off operation depend on host or the user define power on function.
+ * @param base host base address.
+ * @param pwr user define power control configuration
+ */
+void SD_PowerOffCard(SDMMCHOST_TYPE *base, sdmmchost_pwr_card_t *pwr);
 
 /*!
  * @brief sd card detect function.
@@ -331,10 +350,10 @@ void SD_HostReset(HOST_CONFIG *host);
  * Detect card through GPIO, CD, DATA3.
  *
  * @param hostBase host base address.
- * @param cd card detect type, please refer host_detect_card_type_t which is define in fsl_host.h
+ * @param cd card detect type, please refer host_detect_card_t which is define in fsl_host.h
  * @param isHostReady host read flag
  */
-status_t SD_CardDetect(HOST_TYPE *hostBase, host_detect_card_type_t cd, bool isHostReady);
+status_t SD_CardDetect(SDMMCHOST_TYPE *hostBase, sdmmchost_detect_card_t *cd, bool isHostReady);
 
 /*!
  * @brief Checks whether the card is write-protected.
@@ -470,9 +489,9 @@ void MMC_CardDeinit(mmc_card_t *card);
  *
  * This function deinitializes the specific host.
  *
- * @param host host descriptor.
+ * @param card Card descriptor.
  */
-status_t MMC_HostInit(void *host);
+status_t MMC_HostInit(mmc_card_t *card);
 
 /*!
  * @brief Deinitializes the host.
@@ -480,9 +499,8 @@ status_t MMC_HostInit(void *host);
  * This function deinitializes the host.
  *
  * @param card Card descriptor.
- * @param host host descriptor
  */
-void MMC_HostDeinit(mmc_card_t *card, void *host);
+void MMC_HostDeinit(mmc_card_t *card);
 
 /*!
  * @brief reset the host.
@@ -491,7 +509,7 @@ void MMC_HostDeinit(mmc_card_t *card, void *host);
  *
  * @param host host descriptor.
  */
-void MMC_HostReset(HOST_CONFIG *host);
+void MMC_HostReset(SDMMCHOST_CONFIG *host);
 
 /*!
  * @brief Checks if the card is read-only.
@@ -578,6 +596,107 @@ status_t MMC_SetBootConfig(mmc_card_t *card, const mmc_boot_config_t *config);
  * @name SDIO Function
  * @{
  */
+
+/*!
+ * @brief SDIO card init function
+ *
+ * @param card Card descriptor.
+ * @retval kStatus_SDMMC_GoIdleFailed
+ * @retval kStatus_SDMMC_HandShakeOperationConditionFailed
+ * @retval kStatus_SDMMC_SDIO_InvalidCard
+ * @retval kStatus_SDMMC_SDIO_InvalidVoltage
+ * @retval kStatus_SDMMC_SendRelativeAddressFailed
+ * @retval kStatus_SDMMC_SelectCardFailed
+ * @retval kStatus_SDMMC_SDIO_SwitchHighSpeedFail
+ * @retval kStatus_SDMMC_SDIO_ReadCISFail
+ * @retval kStatus_SDMMC_TransferFailed
+ * @retval kStatus_Success
+ */
+status_t SDIO_Init(sdio_card_t *card);
+
+/*!
+ * @brief SDIO card deinit, include card and host deinit.
+ *
+ * @param card Card descriptor.
+ */
+void SDIO_Deinit(sdio_card_t *card);
+
+/*!
+ * @brief Initializes the card.
+ *
+ * This function initializes the card only, make sure the host is ready when call this function,
+ * otherwise it will return kStatus_SDMMC_HostNotReady.
+ *
+ * @param card Card descriptor.
+ * @retval kStatus_SDMMC_HostNotReady host is not ready.
+ * @retval kStatus_SDMMC_GoIdleFailed Go idle failed.
+ * @retval kStatus_SDMMC_NotSupportYet Card not support.
+ * @retval kStatus_SDMMC_SendOperationConditionFailed Send operation condition failed.
+ * @retval kStatus_SDMMC_AllSendCidFailed Send CID failed.
+ * @retval kStatus_SDMMC_SendRelativeAddressFailed Send relative address failed.
+ * @retval kStatus_SDMMC_SendCsdFailed Send CSD failed.
+ * @retval kStatus_SDMMC_SelectCardFailed Send SELECT_CARD command failed.
+ * @retval kStatus_SDMMC_SendScrFailed Send SCR failed.
+ * @retval kStatus_SDMMC_SetBusWidthFailed Set bus width failed.
+ * @retval kStatus_SDMMC_SwitchHighSpeedFailed Switch high speed failed.
+ * @retval kStatus_SDMMC_SetCardBlockSizeFailed Set card block size failed.
+ * @retval kStatus_Success Operate successfully.
+ */
+status_t SDIO_CardInit(sdio_card_t *card);
+
+/*!
+ * @brief Deinitializes the card.
+ *
+ * This function deinitializes the specific card.
+ *
+ * @param card Card descriptor.
+ */
+void SDIO_CardDeinit(sdio_card_t *card);
+
+/*!
+ * @brief initialize the host.
+ *
+ * This function deinitializes the specific host.
+ *
+ * @param card Card descriptor.
+ */
+status_t SDIO_HostInit(sdio_card_t *card);
+
+/*!
+ * @brief Deinitializes the host.
+ *
+ * This function deinitializes the host.
+ *
+ * @param card Card descriptor.
+ */
+void SDIO_HostDeinit(sdio_card_t *card);
+
+/*!
+ * @brief reset the host.
+ *
+ * This function reset the specific host.
+ *
+ * @param host host descriptor.
+ */
+void SDIO_HostReset(SDMMCHOST_CONFIG *host);
+
+/*!
+ * @brief power on card.
+ *
+ * The power on operation depend on host or the user define power on function.
+ * @param base host base address.
+ * @param pwr user define power control configuration
+ */
+void SDIO_PowerOnCard(SDMMCHOST_TYPE *base, sdmmchost_pwr_card_t *pwr);
+
+/*!
+ * @brief power on card.
+ *
+ * The power off operation depend on host or the user define power on function.
+ * @param base host base address.
+ * @param pwr user define power control configuration
+ */
+void SDIO_PowerOffCard(SDMMCHOST_TYPE *base, sdmmchost_pwr_card_t *pwr);
 
 /*!
  * @brief set SDIO card to inactive state
@@ -708,23 +827,6 @@ status_t SDIO_SwitchToHighSpeed(sdio_card_t *card);
 status_t SDIO_ReadCIS(sdio_card_t *card, sdio_func_num_t func, const uint32_t *tupleList, uint32_t tupleNum);
 
 /*!
- * @brief SDIO card init function
- *
- * @param card Card descriptor.
- * @retval kStatus_SDMMC_GoIdleFailed
- * @retval kStatus_SDMMC_HandShakeOperationConditionFailed
- * @retval kStatus_SDMMC_SDIO_InvalidCard
- * @retval kStatus_SDMMC_SDIO_InvalidVoltage
- * @retval kStatus_SDMMC_SendRelativeAddressFailed
- * @retval kStatus_SDMMC_SelectCardFailed
- * @retval kStatus_SDMMC_SDIO_SwitchHighSpeedFail
- * @retval kStatus_SDMMC_SDIO_ReadCISFail
- * @retval kStatus_SDMMC_TransferFailed
- * @retval kStatus_Success
- */
-status_t SDIO_Init(sdio_card_t *card);
-
-/*!
  * @brief enable IO interrupt
  *
  * @param card Card descriptor.
@@ -767,82 +869,15 @@ status_t SDIO_SelectIO(sdio_card_t *card, sdio_func_num_t func);
 status_t SDIO_AbortIO(sdio_card_t *card, sdio_func_num_t func);
 
 /*!
- * @brief SDIO card deinit, include card and host deinit.
- *
- * @param card Card descriptor.
- */
-void SDIO_Deinit(sdio_card_t *card);
-
-/*!
- * @brief Initializes the card.
- *
- * This function initializes the card only, make sure the host is ready when call this function,
- * otherwise it will return kStatus_SDMMC_HostNotReady.
- *
- * @param card Card descriptor.
- * @retval kStatus_SDMMC_HostNotReady host is not ready.
- * @retval kStatus_SDMMC_GoIdleFailed Go idle failed.
- * @retval kStatus_SDMMC_NotSupportYet Card not support.
- * @retval kStatus_SDMMC_SendOperationConditionFailed Send operation condition failed.
- * @retval kStatus_SDMMC_AllSendCidFailed Send CID failed.
- * @retval kStatus_SDMMC_SendRelativeAddressFailed Send relative address failed.
- * @retval kStatus_SDMMC_SendCsdFailed Send CSD failed.
- * @retval kStatus_SDMMC_SelectCardFailed Send SELECT_CARD command failed.
- * @retval kStatus_SDMMC_SendScrFailed Send SCR failed.
- * @retval kStatus_SDMMC_SetBusWidthFailed Set bus width failed.
- * @retval kStatus_SDMMC_SwitchHighSpeedFailed Switch high speed failed.
- * @retval kStatus_SDMMC_SetCardBlockSizeFailed Set card block size failed.
- * @retval kStatus_Success Operate successfully.
- */
-status_t SDIO_CardInit(sd_card_t *card);
-
-/*!
- * @brief Deinitializes the card.
- *
- * This function deinitializes the specific card.
- *
- * @param card Card descriptor.
- */
-void SDIO_CardDeinit(sd_card_t *card);
-
-/*!
- * @brief initialize the host.
- *
- * This function deinitializes the specific host.
- *
- * @param host host descriptor.
- */
-status_t SDIO_HostInit(void *host);
-
-/*!
- * @brief Deinitializes the host.
- *
- * This function deinitializes the host.
- *
- * @param card Card descriptor.
- * @param host host descriptor
- */
-void SDIO_HostDeinit(sd_card_t *card, void *host);
-
-/*!
- * @brief reset the host.
- *
- * This function reset the specific host.
- *
- * @param host host descriptor.
- */
-void SDIO_HostReset(HOST_CONFIG *host);
-
-/*!
  * @brief sd card detect function.
  *
  * Detect card through GPIO, CD, DATA3.
  *
  * @param hostBase host base address.
- * @param cd card detect type, please refer host_detect_card_type_t which is define in fsl_host.h
+ * @param cd card detect type, please refer host_detect_card_t which is define in fsl_host.h
  * @param isHostReady host read flag
  */
-status_t SDIO_CardDetect(HOST_TYPE *hostBase, host_detect_card_type_t cd, bool isHostReady);
+status_t SDIO_CardDetect(SDMMCHOST_TYPE *hostBase, sdmmchost_detect_card_t *cd, bool isHostReady);
 
 /* @} */
 

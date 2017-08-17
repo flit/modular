@@ -414,7 +414,7 @@ static status_t MMC_Write(
  * @retval kStatus_SDMMC_TuningFail tuning fail
  * @retval kStatus_Success transfer success
  */
-static status_t MMC_Transfer(mmc_card_t *card, HOST_TRANSFER *content, uint32_t retry);
+static status_t MMC_Transfer(mmc_card_t *card, SDMMCHOST_TRANSFER *content, uint32_t retry);
 
 /*******************************************************************************
  * Variables
@@ -481,7 +481,7 @@ static status_t MMC_ExecuteTuning(mmc_card_t *card)
     return SDMMC_ExecuteTuning(card->host.base, card->host.transfer, kMMC_SendTuningBlock, blockSize);
 }
 
-static status_t MMC_Transfer(mmc_card_t *card, HOST_TRANSFER *content, uint32_t retry)
+static status_t MMC_Transfer(mmc_card_t *card, SDMMCHOST_TRANSFER *content, uint32_t retry)
 {
     assert(card->host.transfer);
     assert(content);
@@ -490,13 +490,13 @@ static status_t MMC_Transfer(mmc_card_t *card, HOST_TRANSFER *content, uint32_t 
     do
     {
         error = card->host.transfer(card->host.base, content);
-        if (((error == HOST_RETUNING_REQUEST) || (error == HOST_TUNING_ERROR)) &&
+        if (((error == SDMMCHOST_RETUNING_REQUEST) || (error == SDMMCHOST_TUNING_ERROR)) &&
             ((card->currentTiming == kMMC_HighSpeed200Timing) || (card->currentTiming == kMMC_HighSpeed400Timing)))
         {
             /* tuning error need reset tuning circuit */
-            if (error == HOST_TUNING_ERROR)
+            if (error == SDMMCHOST_TUNING_ERROR)
             {
-                HOST_RESET_TUNING(card->host.base, 100U);
+                SDMMCHOST_RESET_TUNING(card->host.base, 100U);
             }
             /* execute re-tuning */
             if (MMC_ExecuteTuning(card) != kStatus_Success)
@@ -535,8 +535,8 @@ static status_t MMC_WaitWriteComplete(mmc_card_t *card)
 {
     assert(card);
 
-    HOST_TRANSFER content = {0};
-    HOST_COMMAND command = {0};
+    SDMMCHOST_TRANSFER content = {0};
+    SDMMCHOST_COMMAND command = {0};
 
     command.index = kSDMMC_SendStatus;
     command.argument = card->relativeAddress << 16U;
@@ -571,8 +571,8 @@ static status_t MMC_StopTransmission(mmc_card_t *card)
 {
     assert(card);
 
-    HOST_TRANSFER content = {0};
-    HOST_COMMAND command = {0};
+    SDMMCHOST_TRANSFER content = {0};
+    SDMMCHOST_COMMAND command = {0};
 
     command.index = kSDMMC_StopTransmission;
     command.argument = 0U;
@@ -594,7 +594,7 @@ static status_t MMC_SwitchVoltage(mmc_card_t *card, uint32_t *opCode)
 {
     mmc_voltage_window_t tempVoltage = kMMC_VoltageWindowNone;
     /* Get host's voltage window. */
-    if (((kHOST_SupportV330 != HOST_NOT_SUPPORT) || (kHOST_SupportV300 != HOST_NOT_SUPPORT)) &&
+    if (((kSDMMCHOST_SupportV330 != SDMMCHOST_NOT_SUPPORT) || (kSDMMCHOST_SupportV300 != SDMMCHOST_NOT_SUPPORT)) &&
         (card->ocr & MMC_OCR_V270TO360_MASK) && ((card->hostVoltageWindowVCC == kMMC_VoltageWindowNone) ||
                                                  (card->hostVoltageWindowVCC == kMMC_VoltageWindows270to360)))
     {
@@ -603,18 +603,18 @@ static status_t MMC_SwitchVoltage(mmc_card_t *card, uint32_t *opCode)
         /* set the opcode */
         *opCode = MMC_OCR_V270TO360_MASK;
         /* power off the card first */
-        HOST_ENABLE_MMC_POWER(false);
+        SDMMCHOST_ENABLE_MMC_POWER(false);
         /* power off time */
         SDMMC_Delay(1U);
         /*switch voltage to 3.3V*/
-        HOST_SWITCH_VCC_TO_330V();
+        SDMMCHOST_SWITCH_VCC_TO_330V();
         /* repower the card */
-        HOST_ENABLE_MMC_POWER(true);
+        SDMMCHOST_ENABLE_MMC_POWER(true);
         /* meet emmc spec, wait 1ms and 74 clocks */
         SDMMC_Delay(2U);
     }
 
-    if ((kHOST_SupportV180 != HOST_NOT_SUPPORT) && (card->ocr & MMC_OCR_V170TO195_MASK) &&
+    if ((kSDMMCHOST_SupportV180 != SDMMCHOST_NOT_SUPPORT) && (card->ocr & MMC_OCR_V170TO195_MASK) &&
         ((card->hostVoltageWindowVCC == kMMC_VoltageWindowNone) ||
          (card->hostVoltageWindowVCC == kMMC_VoltageWindow170to195)))
     {
@@ -623,13 +623,13 @@ static status_t MMC_SwitchVoltage(mmc_card_t *card, uint32_t *opCode)
         /* set the opcode */
         *opCode = MMC_OCR_V170TO195_MASK;
         /* power off the card first */
-        HOST_ENABLE_MMC_POWER(false);
+        SDMMCHOST_ENABLE_MMC_POWER(false);
         /* power off time */
         SDMMC_Delay(1U);
         /* switch voltage to 1.8V */
-        HOST_SWITCH_VCC_TO_180V();
+        SDMMCHOST_SWITCH_VCC_TO_180V();
         /* repower the card */
-        HOST_ENABLE_MMC_POWER(true);
+        SDMMCHOST_ENABLE_MMC_POWER(true);
         /* meet emmc spec, wait 1ms and 74 clocks */
         SDMMC_Delay(2U);
     }
@@ -644,8 +644,8 @@ static status_t MMC_SendOperationCondition(mmc_card_t *card, uint32_t arg)
     assert(card);
     assert(card->host.transfer);
 
-    HOST_COMMAND command = {0};
-    HOST_TRANSFER content = {0};
+    SDMMCHOST_COMMAND command = {0};
+    SDMMCHOST_TRANSFER content = {0};
     status_t error;
     uint32_t i = FSL_SDMMC_MAX_VOLTAGE_RETRIES;
 
@@ -687,8 +687,8 @@ static status_t MMC_SetRelativeAddress(mmc_card_t *card)
     assert(card);
     assert(card->host.transfer);
 
-    HOST_COMMAND command = {0};
-    HOST_TRANSFER content = {0};
+    SDMMCHOST_COMMAND command = {0};
+    SDMMCHOST_TRANSFER content = {0};
 
     /* Send CMD3 with a chosen relative address, with value greater than 1 */
     command.index = kMMC_SetRelativeAddress;
@@ -814,7 +814,7 @@ static void MMC_SetMaxFrequency(mmc_card_t *card)
     frequencyUnit = g_transerSpeedFrequencyUnit[READ_MMC_TRANSFER_SPEED_FREQUENCY_UNIT(card->csd)];
     multiplierFactor = g_transerSpeedMultiplierFactor[READ_MMC_TRANSFER_SPEED_MULTIPLIER(card->csd)];
     maxBusClock_Hz = (frequencyUnit * multiplierFactor) / DIVIDER_IN_TRANSFER_SPEED;
-    card->busClock_Hz = HOST_SET_CARD_CLOCK(card->host.base, card->host.sourceClock_Hz, maxBusClock_Hz);
+    card->busClock_Hz = SDMMCHOST_SET_CARD_CLOCK(card->host.base, card->host.sourceClock_Hz, maxBusClock_Hz);
 }
 
 static status_t MMC_SetMaxEraseUnitSize(mmc_card_t *card)
@@ -857,8 +857,8 @@ static status_t MMC_SetExtendedCsdConfig(mmc_card_t *card, const mmc_extended_cs
     assert(config);
 
     uint32_t parameter = 0U;
-    HOST_COMMAND command = {0};
-    HOST_TRANSFER content = {0};
+    SDMMCHOST_COMMAND command = {0};
+    SDMMCHOST_TRANSFER content = {0};
 
     parameter |= ((uint32_t)(config->commandSet) << MMC_SWITCH_COMMAND_SET_SHIFT);
     parameter |= ((uint32_t)(config->ByteValue) << MMC_SWITCH_VALUE_SHIFT);
@@ -981,9 +981,9 @@ static status_t MMC_SendExtendedCsd(mmc_card_t *card, uint8_t *targetAddr, uint3
     assert(card);
     assert(card->host.transfer);
 
-    HOST_COMMAND command = {0};
-    HOST_TRANSFER content = {0};
-    HOST_DATA data = {0};
+    SDMMCHOST_COMMAND command = {0};
+    SDMMCHOST_TRANSFER content = {0};
+    SDMMCHOST_DATA data = {0};
     uint32_t i;
 
     command.index = kMMC_SendExtendedCsd;
@@ -1003,10 +1003,10 @@ static status_t MMC_SendExtendedCsd(mmc_card_t *card, uint8_t *targetAddr, uint3
         command.response[0U][31:8] */
         switch (card->host.config.endianMode)
         {
-            case kHOST_EndianModeLittle:
+            case kSDMMCHOST_EndianModeLittle:
                 /* Doesn't need to switch byte sequence when decode bytes as little endian sequence. */
                 break;
-            case kHOST_EndianModeBig:
+            case kSDMMCHOST_EndianModeBig:
                 /* In big endian mode, the SD bus byte transferred first is the byte stored in highest position
                 in a word which cause 4 byte's sequence in a word is not consistent with their original sequence
                 from card. */
@@ -1015,7 +1015,7 @@ static status_t MMC_SendExtendedCsd(mmc_card_t *card, uint8_t *targetAddr, uint3
                     card->rawExtendedCsd[i] = SWAP_WORD_BYTE_SEQUENCE(card->rawExtendedCsd[i]);
                 }
                 break;
-            case kHOST_EndianModeHalfWordBig:
+            case kSDMMCHOST_EndianModeHalfWordBig:
                 for (i = 0U; i < MMC_EXTENDED_CSD_BYTES / 4U; i++)
                 {
                     card->rawExtendedCsd[i] = SWAP_HALF_WROD_BYTE_SEQUENCE(card->rawExtendedCsd[i]);
@@ -1144,9 +1144,9 @@ static status_t MMC_SendTestPattern(mmc_card_t *card, uint32_t blockSize, uint32
     assert(blockSize <= FSL_SDMMC_DEFAULT_BLOCK_SIZE);
     assert(pattern);
 
-    HOST_TRANSFER content = {0};
-    HOST_COMMAND command = {0};
-    HOST_DATA data = {0};
+    SDMMCHOST_TRANSFER content = {0};
+    SDMMCHOST_COMMAND command = {0};
+    SDMMCHOST_DATA data = {0};
 
     command.index = kMMC_SendingBusTest;
     command.argument = 0U;
@@ -1176,9 +1176,9 @@ static status_t MMC_ReceiveTestPattern(mmc_card_t *card, uint32_t blockSize, uin
     assert(blockSize <= FSL_SDMMC_DEFAULT_BLOCK_SIZE);
     assert(pattern);
 
-    HOST_TRANSFER content = {0};
-    HOST_COMMAND command = {0};
-    HOST_DATA data = {0};
+    SDMMCHOST_TRANSFER content = {0};
+    SDMMCHOST_COMMAND command = {0};
+    SDMMCHOST_DATA data = {0};
 
     command.index = kMMC_BusTestRead;
     command.responseType = kCARD_ResponseTypeR1;
@@ -1236,10 +1236,10 @@ static status_t MMC_TestDataBusWidth(mmc_card_t *card, mmc_data_bus_width_t widt
     }
     switch (card->host.config.endianMode)
     {
-        case kHOST_EndianModeLittle:
+        case kSDMMCHOST_EndianModeLittle:
             /* Doesn't need to switch byte sequence when decodes bytes as little endian sequence. */
             break;
-        case kHOST_EndianModeBig:
+        case kSDMMCHOST_EndianModeBig:
             /* In big endian mode, the byte transferred first is the byte stored in highest byte position in a word
             which will cause the card receive the inverted byte sequence in a word in bus test procedure. So the
             sequence of 4 bytes stored in a word should be converted. */
@@ -1247,7 +1247,7 @@ static status_t MMC_TestDataBusWidth(mmc_card_t *card, mmc_data_bus_width_t widt
             xorMask = SWAP_WORD_BYTE_SEQUENCE(xorMask);
             xorResult = SWAP_WORD_BYTE_SEQUENCE(xorResult);
             break;
-        case kHOST_EndianModeHalfWordBig:
+        case kSDMMCHOST_EndianModeHalfWordBig:
             /* In half word big endian mode, the byte transferred first is the lower byte in the higher half word.
             0xAA55U should be converted to 0xAA550000U to set the 0x55 to be the first byte to transfer. */
             tempPattern[0] = SWAP_HALF_WROD_BYTE_SEQUENCE(tempPattern[0]);
@@ -1322,9 +1322,9 @@ static status_t MMC_SetMaxDataBusWidth(mmc_card_t *card, bool isDDR)
     status_t error = kStatus_Fail;
 
     /* Test and set the data bus width for card. */
-    if (card->host.capability.flags & kHOST_Support8BitBusWidth)
+    if (card->host.capability.flags & kSDMMCHOST_Support8BitBusWidth)
     {
-        HOST_SET_CARD_BUS_WIDTH(card->host.base, kHOST_DATABUSWIDTH8BIT);
+        SDMMCHOST_SET_CARD_BUS_WIDTH(card->host.base, kSDMMCHOST_DATABUSWIDTH8BIT);
         if ((kStatus_Success == MMC_TestDataBusWidth(card, kMMC_DataBusWidth8bit)) &&
             (kStatus_Success == MMC_SetDataBusWidth(card, kMMC_DataBusWidth8bit, isDDR)))
         {
@@ -1338,9 +1338,9 @@ static status_t MMC_SetMaxDataBusWidth(mmc_card_t *card, bool isDDR)
         return kStatus_SDMMC_SetDataBusWidthFailed;
     }
 
-    if ((error == kStatus_Fail) && (card->host.capability.flags & kHOST_Support4BitBusWidth))
+    if ((error == kStatus_Fail) && (card->host.capability.flags & kSDMMCHOST_Support4BitBusWidth))
     {
-        HOST_SET_CARD_BUS_WIDTH(card->host.base, kHOST_DATABUSWIDTH4BIT);
+        SDMMCHOST_SET_CARD_BUS_WIDTH(card->host.base, kSDMMCHOST_DATABUSWIDTH4BIT);
         if ((kStatus_Success == MMC_TestDataBusWidth(card, kMMC_DataBusWidth4bit)) &&
             (kStatus_Success == MMC_SetDataBusWidth(card, kMMC_DataBusWidth4bit, isDDR)))
         {
@@ -1360,7 +1360,7 @@ static status_t MMC_SetMaxDataBusWidth(mmc_card_t *card, bool isDDR)
     {
         card->flags |= kMMC_DataBusWidth1BitFlag;
         /* Card's data bus width will be default 1 bit mode. */
-        HOST_SET_CARD_BUS_WIDTH(card->host.base, kHOST_DATABUSWIDTH1BIT);
+        SDMMCHOST_SET_CARD_BUS_WIDTH(card->host.base, kSDMMCHOST_DATABUSWIDTH1BIT);
     }
 
     return kStatus_Success;
@@ -1403,21 +1403,21 @@ static status_t MMC_SwitchToHighSpeed(mmc_card_t *card, uint32_t freq)
     assert(card);
 
     /* check VCCQ voltage supply */
-    if (kHOST_SupportV180 != HOST_NOT_SUPPORT)
+    if (kSDMMCHOST_SupportV180 != SDMMCHOST_NOT_SUPPORT)
     {
         if ((card->hostVoltageWindowVCCQ != kMMC_VoltageWindow170to195) &&
             (card->extendedCsd.extendecCsdVersion > kMMC_ExtendedCsdRevision10))
         {
-            HOST_SWITCH_VOLTAGE180V(card->host.base, true);
+            SDMMCHOST_SWITCH_VOLTAGE180V(card->host.base, true);
             card->hostVoltageWindowVCCQ = kMMC_VoltageWindow170to195;
         }
     }
-    else if (kHOST_SupportV120 != HOST_NOT_SUPPORT)
+    else if (kSDMMCHOST_SupportV120 != SDMMCHOST_NOT_SUPPORT)
     {
         if ((card->hostVoltageWindowVCCQ != kMMC_VoltageWindow120) &&
             (card->extendedCsd.extendecCsdVersion >= kMMC_ExtendedCsdRevision16))
         {
-            HOST_SWITCH_VOLTAGE120V(card->host.base, true);
+            SDMMCHOST_SWITCH_VOLTAGE120V(card->host.base, true);
             card->hostVoltageWindowVCCQ = kMMC_VoltageWindow120;
         }
     }
@@ -1439,13 +1439,13 @@ static status_t MMC_SwitchToHighSpeed(mmc_card_t *card, uint32_t freq)
         return kStatus_SDMMC_SetDataBusWidthFailed;
     }
 
-    card->busClock_Hz = HOST_SET_CARD_CLOCK(card->host.base, card->host.sourceClock_Hz, freq);
+    card->busClock_Hz = SDMMCHOST_SET_CARD_CLOCK(card->host.base, card->host.sourceClock_Hz, freq);
     /* config io speed and strength */
-    HOST_CONFIG_MMC_IO(CARD_BUS_FREQ_100MHZ1, CARD_BUS_STRENGTH_7);
+    SDMMCHOST_CONFIG_MMC_IO(CARD_BUS_FREQ_100MHZ1, CARD_BUS_STRENGTH_7);
     /* enable DDR if needed */
     if (card->currentTiming == kMMC_HighSpeedDDR52Timing)
     {
-        HOST_ENABLE_DDR_MODE(card->host.base, true);
+        SDMMCHOST_ENABLE_DDR_MODE(card->host.base, true);
     }
 
     return kStatus_Success;
@@ -1456,19 +1456,19 @@ static status_t MMC_SwitchToHS200(mmc_card_t *card, uint32_t freq)
     assert(card);
 
     /* check VCCQ voltage supply */
-    if (kHOST_SupportV180 != HOST_NOT_SUPPORT)
+    if (kSDMMCHOST_SupportV180 != SDMMCHOST_NOT_SUPPORT)
     {
         if (card->hostVoltageWindowVCCQ != kMMC_VoltageWindow170to195)
         {
-            HOST_SWITCH_VOLTAGE180V(card->host.base, true);
+            SDMMCHOST_SWITCH_VOLTAGE180V(card->host.base, true);
             card->hostVoltageWindowVCCQ = kMMC_VoltageWindow170to195;
         }
     }
-    else if (kHOST_SupportV120 != HOST_NOT_SUPPORT)
+    else if (kSDMMCHOST_SupportV120 != SDMMCHOST_NOT_SUPPORT)
     {
         if (card->hostVoltageWindowVCCQ != kMMC_VoltageWindow120)
         {
-            HOST_SWITCH_VOLTAGE120V(card->host.base, true);
+            SDMMCHOST_SWITCH_VOLTAGE120V(card->host.base, true);
             card->hostVoltageWindowVCCQ = kMMC_VoltageWindow120;
         }
     }
@@ -1488,9 +1488,9 @@ static status_t MMC_SwitchToHS200(mmc_card_t *card, uint32_t freq)
         return kStatus_SDMMC_SwitchBusTimingFailed;
     }
 
-    card->busClock_Hz = HOST_SET_CARD_CLOCK(card->host.base, card->host.sourceClock_Hz, freq);
+    card->busClock_Hz = SDMMCHOST_SET_CARD_CLOCK(card->host.base, card->host.sourceClock_Hz, freq);
     /* config io speed and strength */
-    HOST_CONFIG_MMC_IO(CARD_BUS_FREQ_200MHZ, CARD_BUS_STRENGTH_7);
+    SDMMCHOST_CONFIG_MMC_IO(CARD_BUS_FREQ_200MHZ, CARD_BUS_STRENGTH_7);
 
     /* excute tuning for HS200 */
     if (MMC_ExecuteTuning(card) != kStatus_Success)
@@ -1514,19 +1514,19 @@ static status_t MMC_SwitchToHS400(mmc_card_t *card)
     assert(card);
 
     /* check VCCQ voltage supply */
-    if (kHOST_SupportV180 != HOST_NOT_SUPPORT)
+    if (kSDMMCHOST_SupportV180 != SDMMCHOST_NOT_SUPPORT)
     {
         if (card->hostVoltageWindowVCCQ != kMMC_VoltageWindow170to195)
         {
-            HOST_SWITCH_VOLTAGE180V(card->host.base, true);
+            SDMMCHOST_SWITCH_VOLTAGE180V(card->host.base, true);
             card->hostVoltageWindowVCCQ = kMMC_VoltageWindow170to195;
         }
     }
-    else if (kHOST_SupportV120 != HOST_NOT_SUPPORT)
+    else if (kSDMMCHOST_SupportV120 != SDMMCHOST_NOT_SUPPORT)
     {
         if (card->hostVoltageWindowVCCQ != kMMC_VoltageWindow120)
         {
-            HOST_SWITCH_VOLTAGE120V(card->host.base, true);
+            SDMMCHOST_SWITCH_VOLTAGE120V(card->host.base, true);
             card->hostVoltageWindowVCCQ = kMMC_VoltageWindow120;
         }
     }
@@ -1542,8 +1542,8 @@ static status_t MMC_SwitchToHS400(mmc_card_t *card)
     }
 
     /* switch to high speed first */
-    card->busClock_Hz = HOST_SET_CARD_CLOCK(card->host.base, card->host.sourceClock_Hz, MMC_CLOCK_52MHZ);
-    HOST_CONFIG_MMC_IO(CARD_BUS_FREQ_100MHZ1, CARD_BUS_STRENGTH_5);
+    card->busClock_Hz = SDMMCHOST_SET_CARD_CLOCK(card->host.base, card->host.sourceClock_Hz, MMC_CLOCK_52MHZ);
+    SDMMCHOST_CONFIG_MMC_IO(CARD_BUS_FREQ_100MHZ1, CARD_BUS_STRENGTH_5);
     /*switch to high speed*/
     if (kStatus_Success != MMC_SwitchHSTiming(card, kMMC_HighSpeedTiming, kMMC_DriverStrength0))
     {
@@ -1561,17 +1561,19 @@ static status_t MMC_SwitchToHS400(mmc_card_t *card)
         return kStatus_SDMMC_SwitchBusTimingFailed;
     }
     /* config to target freq */
-    card->busClock_Hz = HOST_SET_CARD_CLOCK(card->host.base, card->host.sourceClock_Hz, HOST_SUPPORT_HS400_FREQ);
+    card->busClock_Hz =
+        SDMMCHOST_SET_CARD_CLOCK(card->host.base, card->host.sourceClock_Hz, SDMMCHOST_SUPPORT_HS400_FREQ);
     /* config io speed and strength */
-    HOST_CONFIG_MMC_IO(CARD_BUS_FREQ_200MHZ, CARD_BUS_STRENGTH_7);
+    SDMMCHOST_CONFIG_MMC_IO(CARD_BUS_FREQ_200MHZ, CARD_BUS_STRENGTH_7);
     /* enable HS400 mode */
-    HOST_ENABLE_HS400_MODE(card->host.base, true);
+    SDMMCHOST_ENABLE_HS400_MODE(card->host.base, true);
     /* enable DDR mode */
-    HOST_ENABLE_DDR_MODE(card->host.base, true);
+    SDMMCHOST_ENABLE_DDR_MODE(card->host.base, true);
     /* config strobe DLL */
-    HOST_CONFIG_STROBE_DLL(card->host.base, HOST_STROBE_DLL_DELAY_TARGET, HOST_STROBE_DLL_DELAY_UPDATE_INTERVAL);
+    SDMMCHOST_CONFIG_STROBE_DLL(card->host.base, SDMMCHOST_STROBE_DLL_DELAY_TARGET,
+                                SDMMCHOST_STROBE_DLL_DELAY_UPDATE_INTERVAL);
     /* enable DLL */
-    HOST_ENABLE_STROBE_DLL(card->host.base, true);
+    SDMMCHOST_ENABLE_STROBE_DLL(card->host.base, true);
 
     return kStatus_Success;
 }
@@ -1588,19 +1590,19 @@ static status_t MMC_SelectBusTiming(mmc_card_t *card)
     {
         case kMMC_HighSpeedTimingNone:
         case kMMC_HighSpeed400Timing:
-            if ((kHOST_SupportHS400 != HOST_NOT_SUPPORT) &&
+            if ((kSDMMCHOST_SupportHS400 != SDMMCHOST_NOT_SUPPORT) &&
                 (card->flags & (kMMC_SupportHS400DDR200MHZ180VFlag | kMMC_SupportHS400DDR200MHZ120VFlag)))
             {
                 switchHS400 = true;
             }
         case kMMC_HighSpeed200Timing:
             if ((card->flags & (kMMC_SupportHS200200MHZ180VFlag | kMMC_SupportHS200200MHZ120VFlag)) &&
-                ((card->host.capability.flags & kHOST_SupportHS200)))
+                ((card->host.capability.flags & kSDMMCHOST_SupportHS200)))
             {
                 if (switchHS400)
                 {
                     /* switch to HS200 perform tuning */
-                    if (kStatus_Success != MMC_SwitchToHS200(card, HOST_SUPPORT_HS400_FREQ / 2U))
+                    if (kStatus_Success != MMC_SwitchToHS200(card, SDMMCHOST_SUPPORT_HS400_FREQ / 2U))
                     {
                         return kStatus_SDMMC_SwitchBusTimingFailed;
                     }
@@ -1612,7 +1614,7 @@ static status_t MMC_SelectBusTiming(mmc_card_t *card)
                 }
                 else
                 {
-                    if (kStatus_Success != MMC_SwitchToHS200(card, HOST_SUPPORT_HS200_FREQ))
+                    if (kStatus_Success != MMC_SwitchToHS200(card, SDMMCHOST_SUPPORT_HS200_FREQ))
                     {
                         return kStatus_SDMMC_SwitchBusTimingFailed;
                     }
@@ -1623,7 +1625,7 @@ static status_t MMC_SelectBusTiming(mmc_card_t *card)
         case kMMC_HighSpeedDDR52Timing:
 
             if ((card->flags & (kMMC_SupportHighSpeedDDR52MHZ180V300VFlag | kMMC_SupportHighSpeedDDR52MHZ120VFlag)) &&
-                (card->host.capability.flags & kHOST_SupportDDR50))
+                (card->host.capability.flags & kSDMMCHOST_SupportDDR50))
             {
                 targetFreq = MMC_CLOCK_DDR52;
                 card->currentTiming = kMMC_HighSpeedDDR52Timing;
@@ -1691,8 +1693,8 @@ static status_t MMC_AllSendCid(mmc_card_t *card)
     assert(card);
     assert(card->host.transfer);
 
-    HOST_TRANSFER content = {0};
-    HOST_COMMAND command = {0};
+    SDMMCHOST_TRANSFER content = {0};
+    SDMMCHOST_COMMAND command = {0};
 
     command.index = kSDMMC_AllSendCid;
     command.argument = 0U;
@@ -1716,8 +1718,8 @@ static status_t MMC_SendCsd(mmc_card_t *card)
     assert(card);
     assert(card->host.transfer);
 
-    HOST_COMMAND command = {0};
-    HOST_TRANSFER content = {0};
+    SDMMCHOST_COMMAND command = {0};
+    SDMMCHOST_TRANSFER content = {0};
 
     command.index = kSDMMC_SendCsd;
     command.argument = (card->relativeAddress << 16U);
@@ -1833,9 +1835,9 @@ static status_t MMC_Read(
     assert(blockSize);
     assert(blockSize == FSL_SDMMC_DEFAULT_BLOCK_SIZE);
 
-    HOST_COMMAND command = {0};
-    HOST_DATA data = {0};
-    HOST_TRANSFER content = {0};
+    SDMMCHOST_COMMAND command = {0};
+    SDMMCHOST_DATA data = {0};
+    SDMMCHOST_TRANSFER content = {0};
     status_t error;
 
     if (((card->flags & kMMC_SupportHighCapacityFlag) && (blockSize != 512U)) || (blockSize > card->blockSize) ||
@@ -1911,9 +1913,9 @@ static status_t MMC_Write(
     assert(blockSize);
     assert(blockSize == FSL_SDMMC_DEFAULT_BLOCK_SIZE);
 
-    HOST_COMMAND command = {0};
-    HOST_DATA data = {0};
-    HOST_TRANSFER content = {0};
+    SDMMCHOST_COMMAND command = {0};
+    SDMMCHOST_DATA data = {0};
+    SDMMCHOST_TRANSFER content = {0};
     status_t error;
 
     /* Check address range */
@@ -1924,7 +1926,7 @@ static status_t MMC_Write(
     }
 
     /* Wait for the card's buffer to be not full to write to improve the write performance. */
-    while ((GET_HOST_STATUS(card->host.base) & CARD_DATA0_STATUS_MASK) != CARD_DATA0_NOT_BUSY)
+    while ((GET_SDMMCHOST_STATUS(card->host.base) & CARD_DATA0_STATUS_MASK) != CARD_DATA0_NOT_BUSY)
     {
     }
 
@@ -1993,11 +1995,11 @@ status_t MMC_CardInit(mmc_card_t *card)
         return kStatus_SDMMC_HostNotReady;
     }
     /* set DATA bus width */
-    HOST_SET_CARD_BUS_WIDTH(card->host.base, kHOST_DATABUSWIDTH1BIT);
+    SDMMCHOST_SET_CARD_BUS_WIDTH(card->host.base, kSDMMCHOST_DATABUSWIDTH1BIT);
     /* Set clock to 400KHz. */
-    card->busClock_Hz = HOST_SET_CARD_CLOCK(card->host.base, card->host.sourceClock_Hz, SDMMC_CLOCK_400KHZ);
+    card->busClock_Hz = SDMMCHOST_SET_CARD_CLOCK(card->host.base, card->host.sourceClock_Hz, SDMMC_CLOCK_400KHZ);
     /* get host capability first */
-    GET_HOST_CAPABILITY(card->host.base, &(card->host.capability));
+    GET_SDMMCHOST_CAPABILITY(card->host.base, &(card->host.capability));
 
     /* Send CMD0 to reset the bus */
     if (kStatus_Success != MMC_GoIdle(card))
@@ -2104,40 +2106,46 @@ void MMC_CardDeinit(mmc_card_t *card)
     MMC_SelectCard(card, false);
 }
 
-status_t MMC_HostInit(void *host)
+status_t MMC_HostInit(mmc_card_t *card)
 {
-    return HOST_Init(host);
-}
+    assert(card);
 
-void MMC_HostDeinit(mmc_card_t *card, void *host)
-{
-    HOST_Deinit(host);
+    status_t initStatus = kStatus_Fail;
 
-    if (card != NULL)
+    if (SDMMCHOST_Init(&(card->host), NULL) == kStatus_Success)
     {
-        /* should re-init host */
-        card->isHostReady = false;
+        /* set the host status flag, after the card re-plug in, don't need init host again */
+        card->isHostReady = true;
+        initStatus = kStatus_Success;
     }
+
+    return initStatus;
 }
 
-void MMC_HostReset(HOST_CONFIG *host)
+void MMC_HostDeinit(mmc_card_t *card)
 {
-    HOST_Reset(host->base);
+    assert(card);
+
+    SDMMCHOST_Deinit(&(card->host));
+    /* should re-init host */
+    card->isHostReady = false;
+}
+
+void MMC_HostReset(SDMMCHOST_CONFIG *host)
+{
+    SDMMCHOST_Reset(host->base);
 }
 
 status_t MMC_Init(mmc_card_t *card)
 {
-    status_t error = kStatus_Success;
+    assert(card);
 
     if (!card->isHostReady)
     {
-        error = MMC_HostInit(&(card->host));
-        if (error != kStatus_Success)
+        if (MMC_HostInit(card) != kStatus_Success)
         {
-            return error;
+            return kStatus_SDMMC_HostNotReady;
         }
-        /* set the host status flag, after the card re-plug in, don't need init host again */
-        card->isHostReady = true;
     }
     else
     {
@@ -2153,7 +2161,7 @@ void MMC_Deinit(mmc_card_t *card)
     assert(card);
 
     MMC_CardDeinit(card);
-    MMC_HostDeinit(card, &(card->host));
+    MMC_HostDeinit(card);
 }
 
 bool MMC_CheckReadOnly(mmc_card_t *card)
@@ -2288,8 +2296,8 @@ status_t MMC_EraseGroups(mmc_card_t *card, uint32_t startGroup, uint32_t endGrou
 
     uint32_t startGroupAddress;
     uint32_t endGroupAddress;
-    HOST_COMMAND command = {0};
-    HOST_TRANSFER content = {0};
+    SDMMCHOST_COMMAND command = {0};
+    SDMMCHOST_TRANSFER content = {0};
 
     if (kStatus_Success != MMC_CheckEraseGroupRange(card, startGroup, endGroup))
     {
@@ -2297,7 +2305,7 @@ status_t MMC_EraseGroups(mmc_card_t *card, uint32_t startGroup, uint32_t endGrou
     }
 
     /* Wait for the card's buffer to be not full to write to improve the write performance. */
-    while ((GET_HOST_STATUS(card->host.base) & CARD_DATA0_STATUS_MASK) != CARD_DATA0_NOT_BUSY)
+    while ((GET_SDMMCHOST_STATUS(card->host.base) & CARD_DATA0_STATUS_MASK) != CARD_DATA0_NOT_BUSY)
     {
     }
 

@@ -461,14 +461,14 @@
 			<locationURI>PARENT-2-PROJECT_LOC/src/sdmmc/inc/fsl_card.h</locationURI>
 		</link>
 		<link>
-			<name>sdmmc/inc/fsl_host.h</name>
-			<type>1</type>
-			<locationURI>PARENT-2-PROJECT_LOC/src/sdmmc/inc/fsl_host.h</locationURI>
-		</link>
-		<link>
 			<name>sdmmc/inc/fsl_sdmmc.h</name>
 			<type>1</type>
 			<locationURI>PARENT-2-PROJECT_LOC/src/sdmmc/inc/fsl_sdmmc.h</locationURI>
+		</link>
+		<link>
+			<name>sdmmc/inc/fsl_sdmmchost.h</name>
+			<type>1</type>
+			<location>/Users/creed/projects/_personal/modular/src/sdmmc/inc/fsl_sdmmchost.h</location>
 		</link>
 		<link>
 			<name>sdmmc/inc/fsl_sdspi.h</name>
@@ -481,9 +481,9 @@
 			<locationURI>PARENT-2-PROJECT_LOC/src/sdmmc/inc/fsl_specification.h</locationURI>
 		</link>
 		<link>
-			<name>sdmmc/port/event.h</name>
+			<name>sdmmc/port/fsl_sdmmcevent.h</name>
 			<type>1</type>
-			<locationURI>PARENT-2-PROJECT_LOC/src/sdmmc/port/event.h</locationURI>
+			<location>/Users/creed/projects/_personal/modular/src/sdmmc/port/fsl_sdmmcevent.h</location>
 		</link>
 		<link>
 			<name>sdmmc/port/sdhc</name>
@@ -576,14 +576,14 @@
 			<locationURI>virtual:/virtual</locationURI>
 		</link>
 		<link>
-			<name>sdmmc/port/sdhc/argon/event.c</name>
+			<name>sdmmc/port/sdhc/argon/fsl_sdmmcevent.c</name>
 			<type>1</type>
-			<locationURI>PARENT-2-PROJECT_LOC/src/sdmmc/port/sdhc/argon/event.c</locationURI>
+			<location>/Users/creed/projects/_personal/modular/src/sdmmc/port/sdhc/argon/fsl_sdmmcevent.c</location>
 		</link>
 		<link>
-			<name>sdmmc/port/sdhc/argon/fsl_host.c</name>
+			<name>sdmmc/port/sdhc/argon/fsl_sdmmchost.c</name>
 			<type>1</type>
-			<locationURI>PARENT-2-PROJECT_LOC/src/sdmmc/port/sdhc/argon/fsl_host.c</locationURI>
+			<location>/Users/creed/projects/_personal/modular/src/sdmmc/port/sdhc/argon/fsl_sdmmchost.c</location>
 		</link>
 	</linkedResources>
 </projectDescription>

@@ -19,7 +19,7 @@
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
  * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
  * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
+ * DISCLAIMED. IN NO SDMMCEVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
  * ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
  * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
  * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
@@ -27,8 +27,8 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#ifndef _EVENT_H_
-#define _EVENT_H_
+#ifndef _SDMMCEVENT_H_
+#define _SDMMCEVENT_H_
 
 #include "fsl_common.h"
 
@@ -36,11 +36,11 @@
  * Definitions
  ******************************************************************************/
 /*! @brief Event type  */
-typedef enum _event
+typedef enum _sdmmc_event
 {
-    kEVENT_TransferComplete = 0U, /*!< Transfer complete event */
-    kEVENT_CardDetect = 1U,       /*!< Card detect event */
-} event_t;
+    kSDMMCEVENT_TransferComplete = 0U, /*!< Transfer complete event */
+    kSDMMCEVENT_CardDetect = 1U,       /*!< Card detect event */
+} sdmmc_event_t;
 
 /*******************************************************************************
  * API
@@ -57,7 +57,7 @@ extern "C" {
 /*!
  * @brief Initialize timer to implement wait event timeout.
  */
-void EVENT_InitTimer(void);
+void SDMMCEVENT_InitTimer(void);
 
 /* Callback function for SDHC */
 
@@ -67,7 +67,7 @@ void EVENT_InitTimer(void);
  * @retval true Create event successfully.
  * @retval false Create event failed.
  */
-bool EVENT_Create(event_t eventType);
+bool SDMMCEVENT_Create(sdmmc_event_t eventType);
 
 /*!
  * @brief Wait event.
@@ -77,7 +77,7 @@ bool EVENT_Create(event_t eventType);
  * @retval true Wait event successfully.
  * @retval false Wait event failed.
  */
-bool EVENT_Wait(event_t eventType, uint32_t timeoutMilliseconds);
+bool SDMMCEVENT_Wait(sdmmc_event_t eventType, uint32_t timeoutMilliseconds);
 
 /*!
  * @brief Notify event.
@@ -85,13 +85,13 @@ bool EVENT_Wait(event_t eventType, uint32_t timeoutMilliseconds);
  * @retval true Notify event successfully.
  * @retval false Notify event failed.
  */
-bool EVENT_Notify(event_t eventType);
+bool SDMMCEVENT_Notify(sdmmc_event_t eventType);
 
 /*!
  * @brief Delete event.
  * @param eventType The event type
  */
-void EVENT_Delete(event_t eventType);
+void SDMMCEVENT_Delete(sdmmc_event_t eventType);
 
 /* @} */
 
@@ -99,4 +99,4 @@ void EVENT_Delete(event_t eventType);
 }
 #endif
 
-#endif /* _EVENT_H_*/
+#endif /* _SDMMCEVENT_H_*/

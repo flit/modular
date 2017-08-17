@@ -403,7 +403,7 @@
 							<option id="ilg.gnuarmeclipse.managedbuild.cross.option.addtools.createlisting.1047905675" name="Create extended listing" superClass="ilg.gnuarmeclipse.managedbuild.cross.option.addtools.createlisting" value="false" valueType="boolean"/>
 							<option id="ilg.gnuarmeclipse.managedbuild.cross.option.warnings.allwarn.12428017" name="Enable all common warnings (-Wall)" superClass="ilg.gnuarmeclipse.managedbuild.cross.option.warnings.allwarn" value="true" valueType="boolean"/>
 							<option id="ilg.gnuarmeclipse.managedbuild.cross.option.warnings.toerrors.1122654402" name="Generate errors instead of warnings (-Werror)" superClass="ilg.gnuarmeclipse.managedbuild.cross.option.warnings.toerrors" value="true" valueType="boolean"/>
-							<option id="ilg.gnuarmeclipse.managedbuild.cross.option.warnings.other.266226774" superClass="ilg.gnuarmeclipse.managedbuild.cross.option.warnings.other" value="-Wno-unused-variable" valueType="string"/>
+							<option id="ilg.gnuarmeclipse.managedbuild.cross.option.warnings.other.266226774" name="Other warning flags" superClass="ilg.gnuarmeclipse.managedbuild.cross.option.warnings.other" value="-Wno-unused-variable" valueType="string"/>
 							<targetPlatform archList="all" binaryParser="org.eclipse.cdt.core.ELF" id="ilg.gnuarmeclipse.managedbuild.cross.targetPlatform.247617606" isAbstract="false" osList="all" superClass="ilg.gnuarmeclipse.managedbuild.cross.targetPlatform"/>
 							<builder autoBuildTarget="all" buildPath="${workspace_loc:/sampler_k22fa12}/Debug" cleanBuildTarget="clean" enableAutoBuild="false" enableCleanBuild="true" enabledIncrementalBuild="true" id="ilg.gnuarmeclipse.managedbuild.cross.builder.665791277" incrementalBuildTarget="all" keepEnvironmentInBuildfile="false" managedBuildOn="true" name="Gnu Make Builder" parallelBuildOn="true" parallelizationNumber="optimal" superClass="ilg.gnuarmeclipse.managedbuild.cross.builder"/>
 							<tool id="ilg.gnuarmeclipse.managedbuild.cross.tool.assembler.693296564" name="Cross ARM GNU Assembler" superClass="ilg.gnuarmeclipse.managedbuild.cross.tool.assembler">
@@ -428,6 +428,7 @@
 									<listOptionValue builtIn="false" value="&quot;${ProjDirPath}/../../src/argon/include&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${ProjDirPath}/../../src/argon/src/cortex_m&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${ProjDirPath}/../../src/sdmmc/inc&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${ProjDirPath}/../../src/sdmmc/port&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${ProjDirPath}/../../src/sdmmc/port/sdhc&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${ProjDirPath}/../../src/fatfs/src&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${ProjDirPath}/../../src/fatfs/src/fsl_sd_disk&quot;"/>
@@ -457,6 +458,7 @@
 									<listOptionValue builtIn="false" value="&quot;${ProjDirPath}/../../src/argon/include&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${ProjDirPath}/../../src/argon/src/cortex_m&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${ProjDirPath}/../../src/sdmmc/inc&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${ProjDirPath}/../../src/sdmmc/port&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${ProjDirPath}/../../src/sdmmc/port/sdhc&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${ProjDirPath}/../../src/fatfs/src&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${ProjDirPath}/../../src/fatfs/src/fsl_sd_disk&quot;"/>

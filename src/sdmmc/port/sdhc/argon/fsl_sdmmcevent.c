@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2015, Freescale Semiconductor, Inc.
- * All rights reserved.
+ * Copyright 2016-2017 NXP
  *
  * Redistribution and use in source and binary forms, with or without modification,
  * are permitted provided that the following conditions are met:
@@ -12,14 +12,14 @@
  *   list of conditions and the following disclaimer in the documentation and/or
  *   other materials provided with the distribution.
  *
- * o Neither the name of Freescale Semiconductor, Inc. nor the names of its
+ * o Neither the name of the copyright holder nor the names of its
  *   contributors may be used to endorse or promote products derived from this
  *   software without specific prior written permission.
  *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
  * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
  * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- * DISCLAIMED. IN NO EVENT SL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
+ * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
  * ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
  * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
  * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
@@ -31,7 +31,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include "argon/argon.h"
-#include "event.h"
+#include "fsl_sdmmcevent.h"
 
 /*******************************************************************************
  * Prototypes
@@ -42,7 +42,7 @@
  * @param eventType The event type
  * @return The event instance's pointer.
  */
-static ar_semaphore_t *EVENT_GetInstance(event_t eventType);
+static ar_semaphore_t *SDMMCEVENT_GetInstance(sdmmc_event_t eventType);
 
 /*******************************************************************************
  * Variables
@@ -57,16 +57,16 @@ static ar_semaphore_t g_eventCardDetect;
  * Code
  ******************************************************************************/
 
-static ar_semaphore_t *EVENT_GetInstance(event_t eventType)
+static ar_semaphore_t *SDMMCEVENT_GetInstance(sdmmc_event_t eventType)
 {
     ar_semaphore_t *event;
 
     switch (eventType)
     {
-        case kEVENT_TransferComplete:
+        case kSDMMCEVENT_TransferComplete:
             event = &g_eventTransferComplete;
             break;
-        case kEVENT_CardDetect:
+        case kSDMMCEVENT_CardDetect:
             event = &g_eventCardDetect;
             break;
         default:
@@ -77,13 +77,13 @@ static ar_semaphore_t *EVENT_GetInstance(event_t eventType)
     return event;
 }
 
-bool EVENT_Create(event_t eventType)
+bool SDMMCEVENT_Create(sdmmc_event_t eventType)
 {
-    ar_semaphore_t *event = EVENT_GetInstance(eventType);
+    ar_semaphore_t *event = SDMMCEVENT_GetInstance(eventType);
 
     if (event)
     {
-        ar_semaphore_create(event, (eventType == kEVENT_TransferComplete) ? "sdtx" : "sdcd", 0);
+        ar_semaphore_create(event, (eventType == kSDMMCEVENT_TransferComplete) ? "sdtx" : "sdcd", 0);
 
         return true;
     }
@@ -93,9 +93,9 @@ bool EVENT_Create(event_t eventType)
     }
 }
 
-bool EVENT_Wait(event_t eventType, uint32_t timeoutMilliseconds)
+bool SDMMCEVENT_Wait(sdmmc_event_t eventType, uint32_t timeoutMilliseconds)
 {
-    ar_semaphore_t *event = EVENT_GetInstance(eventType);
+    ar_semaphore_t *event = SDMMCEVENT_GetInstance(eventType);
 
     if (timeoutMilliseconds && event)
     {
@@ -114,9 +114,9 @@ bool EVENT_Wait(event_t eventType, uint32_t timeoutMilliseconds)
     }
 }
 
-bool EVENT_Notify(event_t eventType)
+bool SDMMCEVENT_Notify(sdmmc_event_t eventType)
 {
-    ar_semaphore_t *event = EVENT_GetInstance(eventType);
+    ar_semaphore_t *event = SDMMCEVENT_GetInstance(eventType);
 
     if (event)
     {
@@ -135,9 +135,9 @@ bool EVENT_Notify(event_t eventType)
     }
 }
 
-void EVENT_Delete(event_t eventType)
+void SDMMCEVENT_Delete(sdmmc_event_t eventType)
 {
-    ar_semaphore_t *event = EVENT_GetInstance(eventType);
+    ar_semaphore_t *event = SDMMCEVENT_GetInstance(eventType);
 
     if (event)
     {

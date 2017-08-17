@@ -908,7 +908,7 @@ status_t SDIO_CardInit(sdio_card_t *card)
     return kStatus_Success;
 }
 
-void inline SDIO_CardDeinit(sdio_card_t *card)
+void SDIO_CardDeinit(sdio_card_t *card)
 {
     assert(card);
 
@@ -916,30 +916,52 @@ void inline SDIO_CardDeinit(sdio_card_t *card)
     SDIO_SelectCard(card, false);
 }
 
-status_t inline SDIO_HostInit(void *host)
+status_t SDIO_HostInit(sdio_card_t *card)
 {
-    return HOST_Init(host);
-}
+    assert(card);
 
-void inline SDIO_HostDeinit(sdio_card_t *card, void *host)
-{
-    HOST_Deinit(host);
+    status_t initStatus = kStatus_Fail;
 
-    if (card != NULL)
+    if (HOST_Init(card->host, , (void *)(&(card->usrParam.cd))) == kStatus_Success)
     {
-        /* should re-init host */
-        card->isHostReady = false;
+        /* set the host status flag, after the card re-plug in, don't need init host again */
+        card->isHostReady = true;
+        initStatus = kStatus_Success;
     }
+
+    return initStatus;
 }
 
-void inline SDIO_HostReset(HOST_CONFIG *host)
+void SDIO_HostDeinit(sdio_card_t *card)
+{
+    assert(card);
+
+    HOST_Deinit(card->host);
+
+    /* should re-init host */
+    card->isHostReady = false;
+}
+
+void SDIO_HostReset(HOST_CONFIG *host)
 {
     HOST_Reset(host->base);
 }
 
-status_t SDIO_CardDetect(HOST_TYPE *hostBase, sd_card_detect_type_t cd, bool isHostReady)
+status_t SDIO_CardDetect(HOST_TYPE *hostBase, sdmmchost_detect_card_t *cd, bool isHostReady)
 {
+    assert(cd);
+
     return HOST_DetectCard(hostBase, cd, isHostReady);
+}
+
+void SDIO_PowerOnCard(HOST_TYPE *base, sdmmchost_pwr_card_t *pwr)
+{
+    HOST_PowerOnCard(base, pwr);
+}
+
+void SDIO_PowerOffCard(HOST_TYPE *base, sdmmchost_pwr_card_t *pwr)
+{
+    HOST_PowerOffCard(base, pwr);
 }
 
 status_t SDIO_Init(sdio_card_t *card)
@@ -947,28 +969,27 @@ status_t SDIO_Init(sdio_card_t *card)
     assert(card);
     assert(card->host.base);
 
-    status_t error = kStatus_Success;
-
     if (!card->isHostReady)
     {
-        error = SDIO_HostInit(&(card->host));
-        if (error != kStatus_Success)
+        if (SDIO_HostInit(card) != kStatus_Success)
         {
-            return error;
+            return kStatus_SDMMC_HostNotReady;
         }
-        /* set the host status flag, after the card re-plug in, don't need init host again */
-        card->isHostReady = true;
     }
     else
     {
         /* reset the host */
         SDIO_HostReset(&(card->host));
     }
-
+    /* power off card */
+    SDIO_PowerOffCard(card->host.base, card->usrParam.pwr);
+    /* card detect */
     if (SDIO_CardDetect(card->host.base) != kStatus_Success)
     {
-        return error;
+        return kStatus_SDMMC_CardDetectFailed;
     }
+    /* power on card */
+    SDIO_PowerOnCard(card->host.base, card->usrParam.pwr);
 
     return SDIO_CardInit(card);
 }
@@ -978,7 +999,7 @@ void SDIO_Deinit(sdio_card_t *card)
     assert(card);
 
     SDIO_CardDeinit(card);
-    SDIO_HostDeinit(card, &(card->host));
+    SDIO_HostDeinit(card);
 }
 
 status_t SDIO_EnableIOInterrupt(sdio_card_t *card, sdio_func_num_t func, bool enable)
