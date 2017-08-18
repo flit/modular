@@ -353,7 +353,12 @@ void SD_PowerOffCard(SDMMCHOST_TYPE *base, sdmmchost_pwr_card_t *pwr);
  * @param cd card detect type, please refer host_detect_card_t which is define in fsl_host.h
  * @param isHostReady host read flag
  */
-status_t SD_CardDetect(SDMMCHOST_TYPE *hostBase, sdmmchost_detect_card_t *cd, bool isHostReady);
+bool SD_IsCardPresent(sd_card_t *card);
+
+/*!
+ * @brief Wait for card to be inserted or removed.
+ */
+status_t SD_WaitForCardDetect(sd_card_t *card, bool waitForInserted);
 
 /*!
  * @brief Checks whether the card is write-protected.

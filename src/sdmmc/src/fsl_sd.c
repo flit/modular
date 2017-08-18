@@ -1703,11 +1703,14 @@ void SD_PowerOffCard(SDMMCHOST_TYPE *base, sdmmchost_pwr_card_t *pwr)
     SDMMCHOST_PowerOffCard(base, pwr);
 }
 
-status_t SD_CardDetect(SDMMCHOST_TYPE *hostBase, sdmmchost_detect_card_t *cd, bool isHostReady)
+bool SD_IsCardPresent(sd_card_t *card)
 {
-    assert(cd);
+    return SDMMCHOST_IsCardPresent(card->host.base, card->usrParam.cd);
+}
 
-    return SDMMCHOST_DetectCard(hostBase, cd, isHostReady);
+status_t SD_WaitForCardDetect(sd_card_t *card, bool waitForInserted)
+{
+    return SDMMCHOST_WaitForCardDetect(card->host.base, card->usrParam.cd, waitForInserted);
 }
 
 status_t SD_Init(sd_card_t *card)
@@ -1725,14 +1728,15 @@ status_t SD_Init(sd_card_t *card)
     {
         SD_HostReset(&(card->host));
     }
+
     /* power off card */
     SD_PowerOffCard(card->host.base, card->usrParam.pwr);
 
     /*detect card insert*/
-    if (SD_CardDetect(card->host.base, card->usrParam.cd, card->isHostReady) != kStatus_Success)
-    {
-        return kStatus_SDMMC_CardDetectFailed;
-    }
+//     if (SD_CardDetect(card->host.base, card->usrParam.cd, card->isHostReady) != kStatus_Success)
+//     {
+//         return kStatus_SDMMC_CardDetectFailed;
+//     }
     /* power on card */
     SD_PowerOnCard(card->host.base, card->usrParam.pwr);
 

@@ -679,14 +679,14 @@ static inline status_t SDMMCHOST_NotSupport(void *parameter)
 }
 
 /*!
- * @brief Detect card insert, only need for SD cases.
- * @param base the pointer to host base address
- * @param cd card detect configuration pointer
- * @param isHostReady flag indicate host is ready or not, this flag is useful when detect card through host
- * @retval kStatus_Success detect card insert
- * @retval kStatus_Fail card insert event fail
+ * @brief Return current card presence state, only need for SD cases.
  */
-status_t SDMMCHOST_DetectCard(SDMMCHOST_TYPE *base, sdmmchost_detect_card_t *cd, bool isHostReady);
+bool SDMMCHOST_IsCardPresent(SDMMCHOST_TYPE *base, sdmmchost_detect_card_t *cd);
+
+/*!
+ * @brief Wait for card to be inserted or removed.
+ */
+status_t SDMMCHOST_WaitForCardDetect(SDMMCHOST_TYPE *base, sdmmchost_detect_card_t *cd, bool waitForInserted);
 
 /*!
  * @brief Init host controller.
