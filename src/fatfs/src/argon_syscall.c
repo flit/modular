@@ -6,6 +6,7 @@
 #include "ff.h"
 #include "argon/argon.h"
 #include <stdlib.h>
+#include <assert.h>
 
 #if _FS_REENTRANT
 /*------------------------------------------------------------------------*/
@@ -21,9 +22,9 @@ int ff_cre_syncobj (	/* !=0:Function succeeded, ==0:Could not create due to any 
 )
 {
 	int ret;
-	ar_semaphore_t * sem = (ar_semaphore_t *)malloc(sizeof(ar_semaphore_t));
-	*sobj = sem;
-	ar_semaphore_create(sem, NULL, 1);
+	ar_mutex_t * mut = (ar_mutex_t *)malloc(sizeof(ar_mutex_t));
+	*sobj = mut;
+	ar_mutex_create(mut, NULL);
 	ret = (int)(*sobj != NULL);
 	return ret;
 }
@@ -40,7 +41,9 @@ int ff_del_syncobj (	/* !=0:Function succeeded, ==0:Could not delete due to any 
 )
 {
 	int ret;
-	ar_semaphore_delete(sobj);
+	assert(sobj);
+	ar_mutex_delete(sobj);
+	free(sobj);
 	ret = 1;
 	return ret;
 }
@@ -56,7 +59,7 @@ int ff_req_grant (	/* 1:Got a grant to access the volume, 0:Could not get a gran
 )
 {
 	int ret;
-	ret = (int)(ar_semaphore_get(sobj, _FS_TIMEOUT) == kArSuccess);
+	ret = (int)(ar_mutex_get(sobj, _FS_TIMEOUT) == kArSuccess);
 	return ret;
 }
 
@@ -69,7 +72,7 @@ void ff_rel_grant (
 	_SYNC_t sobj	/* Sync object to be signaled */
 )
 {
-	ar_semaphore_put(sobj);
+	ar_mutex_put(sobj);
 }
 
 #endif
