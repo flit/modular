@@ -156,9 +156,10 @@ static void SDMMCHOST_DetectCardInsertByHost(SDMMCHOST_TYPE *base, void *userDat
     SDMMCEVENT_Notify(kSDMMCEVENT_CardDetect);
     SDMMCHOST_CARD_DETECT_INSERT_INTERRUPT_DISABLE(base);
     /* application callback */
-    if (userData && ((sdmmchost_detect_card_t *)userData)->cardInserted)
+    sdmmchost_detect_card_t *detectInfo = (sdmmchost_detect_card_t *)userData;
+    if (detectInfo && detectInfo->cardInserted)
     {
-        ((sdmmchost_detect_card_t *)userData)->cardInserted();
+        detectInfo->cardInserted(true, detectInfo->userData);
     }
 }
 
@@ -167,9 +168,10 @@ static void SDMMCHOST_DetectCardRemoveByHost(SDMMCHOST_TYPE *base, void *userDat
     g_sdInsertedFlag = 0U;
     SDMMCEVENT_Notify(kSDMMCEVENT_CardDetect);
     /* application callback */
-    if (userData && ((sdmmchost_detect_card_t *)userData)->cardRemoved)
+    sdmmchost_detect_card_t *detectInfo = (sdmmchost_detect_card_t *)userData;
+    if (detectInfo && detectInfo->cardRemoved)
     {
-        ((sdmmchost_detect_card_t *)userData)->cardRemoved();
+        detectInfo->cardRemoved(false, detectInfo->userData);
     }
 }
 

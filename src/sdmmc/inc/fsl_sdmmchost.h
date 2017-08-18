@@ -610,7 +610,7 @@ enum _host_capability
 #endif
 
 /*! @brief card detect callback definition */
-typedef void (*sdmmchost_cd_callback_t)(void);
+typedef void (*sdmmchost_cd_callback_t)(bool isInserted, void *userData);
 
 /*! @brief host Endian mode
 * corresponding to driver define
@@ -639,6 +639,7 @@ typedef struct _sdmmchost_detect_card
 
     sdmmchost_cd_callback_t cardInserted; /*!< card inserted callback which is meaningful for interrupt case */
     sdmmchost_cd_callback_t cardRemoved;  /*!< card removed callback which is meaningful for interrupt case */
+    void *userData;  /*!< User data for insert and remove callbacks. */
 
 } sdmmchost_detect_card_t;
 
