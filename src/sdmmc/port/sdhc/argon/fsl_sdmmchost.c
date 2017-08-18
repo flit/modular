@@ -118,27 +118,27 @@ static void SDMMCHOST_Delay(uint32_t milliseconds)
     }
 }
 
-// static void SDMMCHOST_DetectCardByGpio(void)
-// {
-//     if (GPIO_ReadPinInput(BOARD_SDHC_CD_GPIO_BASE, BOARD_SDHC_CD_GPIO_PIN))
-// #if defined BOARD_SDHC_CD_LOGIC_RISING
-//     {
-//         g_sdInsertedFlag = 1U;
-//     }
-//     else
-//     {
-//         g_sdInsertedFlag = 0U;
-//     }
-// #else
-//     {
-//         g_sdInsertedFlag = 0U;
-//     }
-//     else
-//     {
-//         g_sdInsertedFlag = 1U;
-//     }
-// #endif
-// }
+static void SDMMCHOST_DetectCardByGpio(void)
+{
+    if (GPIO_ReadPinInput(BOARD_SDHC_CD_GPIO_BASE, BOARD_SDHC_CD_GPIO_PIN))
+#if defined BOARD_SDHC_CD_LOGIC_RISING
+    {
+        g_sdInsertedFlag = 1U;
+    }
+    else
+    {
+        g_sdInsertedFlag = 0U;
+    }
+#else
+    {
+        g_sdInsertedFlag = 0U;
+    }
+    else
+    {
+        g_sdInsertedFlag = 1U;
+    }
+#endif
+}
 
 static void SDMMCHOST_DetectCardInsertByHost(SDMMCHOST_TYPE *base, void *userData)
 {
@@ -260,13 +260,13 @@ status_t SDMMCHOST_DetectCard(SDMMCHOST_TYPE *base, sdmmchost_detect_card_t *cd,
     if (cd->cdType == kSDMMCHOST_DetectCardByGpioCD)
     {
         /* Card detection pin will generate interrupt on either eage */
-//         PORT_SetPinInterruptConfig(BOARD_SDHC_CD_PORT_BASE, BOARD_SDHC_CD_GPIO_PIN, kPORT_InterruptEitherEdge);
-//         /* Open card detection pin NVIC. */
-//         SDMMCHOST_ENABLE_IRQ(SDMMCHOST_CARD_DETECT_IRQ);
-//         /* set IRQ priority */
-//         SDMMCHOST_SET_IRQ_PRIORITY(SDMMCHOST_CARD_DETECT_IRQ, 6U);
-//         /* check card detect status */
-//         SDMMCHOST_DetectCardByGpio();
+        PORT_SetPinInterruptConfig(BOARD_SDHC_CD_PORT_BASE, BOARD_SDHC_CD_GPIO_PIN, kPORT_InterruptEitherEdge);
+        /* Open card detection pin NVIC. */
+        SDMMCHOST_ENABLE_IRQ(SDMMCHOST_CARD_DETECT_IRQ);
+        /* set IRQ priority */
+        SDMMCHOST_SET_IRQ_PRIORITY(SDMMCHOST_CARD_DETECT_IRQ, 6U);
+        /* check card detect status */
+        SDMMCHOST_DetectCardByGpio();
     }
     else if (cd->cdType == kSDMMCHOST_DetectCardByHostDATA3)
     {
