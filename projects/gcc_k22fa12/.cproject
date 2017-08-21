@@ -73,6 +73,7 @@
 									<listOptionValue builtIn="false" value="&quot;${ProjDirPath}/../../src/argon/include&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${ProjDirPath}/../../src/argon/src/cortex_m&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${ProjDirPath}/../../src/sdmmc/inc&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${ProjDirPath}/../../src/sdmmc/port&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${ProjDirPath}/../../src/sdmmc/port/sdhc&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${ProjDirPath}/../../src/fatfs/src&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${ProjDirPath}/../../src/fatfs/src/fsl_sd_disk&quot;"/>
@@ -102,6 +103,7 @@
 									<listOptionValue builtIn="false" value="&quot;${ProjDirPath}/../../src/argon/include&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${ProjDirPath}/../../src/argon/src/cortex_m&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${ProjDirPath}/../../src/sdmmc/inc&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${ProjDirPath}/../../src/sdmmc/port&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${ProjDirPath}/../../src/sdmmc/port/sdhc&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${ProjDirPath}/../../src/fatfs/src&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${ProjDirPath}/../../src/fatfs/src/fsl_sd_disk&quot;"/>
@@ -245,6 +247,7 @@
 									<listOptionValue builtIn="false" value="&quot;${ProjDirPath}/../../src/argon/include&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${ProjDirPath}/../../src/argon/src/cortex_m&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${ProjDirPath}/../../src/sdmmc/inc&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${ProjDirPath}/../../src/sdmmc/port&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${ProjDirPath}/../../src/sdmmc/port/sdhc&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${ProjDirPath}/../../src/fatfs/src&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${ProjDirPath}/../../src/fatfs/src/fsl_sd_disk&quot;"/>
@@ -269,6 +272,7 @@
 									<listOptionValue builtIn="false" value="&quot;${ProjDirPath}/../../src/argon/include&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${ProjDirPath}/../../src/argon/src/cortex_m&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${ProjDirPath}/../../src/sdmmc/inc&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${ProjDirPath}/../../src/sdmmc/port&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${ProjDirPath}/../../src/sdmmc/port/sdhc&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${ProjDirPath}/../../src/fatfs/src&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${ProjDirPath}/../../src/fatfs/src/fsl_sd_disk&quot;"/>
