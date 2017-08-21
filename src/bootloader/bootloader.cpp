@@ -89,6 +89,7 @@ void card_detect_handler(PORT_Type * port, uint32_t pin, void * userData);
 void start_app(uint32_t stack, uint32_t entry);
 void perform_update(fs::File& updateFile);
 void check_update();
+bool have_valid_app();
 void bootloader_thread(void * arg);
 
 //------------------------------------------------------------------------------
@@ -322,6 +323,11 @@ void check_update()
     }
 }
 
+bool have_valid_app()
+{
+    return (g_app->initialStack != ERASED_WORD && g_app->resetHandler != ERASED_WORD);
+}
+
 void bootloader_thread(void * arg)
 {
     DEBUG_PRINTF(INIT_MASK, "Bootloader Initializing...\r\n");
@@ -329,35 +335,71 @@ void bootloader_thread(void * arg)
     g_cardManager.init();
     g_cardManager.check_presence();
 
+    // If a card is present:
+    //  - check for and process a firmware update.
+    //  - jump to app if there is a valid vector table.
+    //  - if no app, wait until card is removed
+    //
+    // If no card:
+    //  - if valid app: jump to it
+    //  - if no app: wait for card to be inserted
 
-    // Look for a firmware update file.
-    fs::error_t result = g_fs.init();
-    if (result == fs::kSuccess)
+    while (true)
     {
-        check_update();
-    }
-    else
-    {
-        DEBUG_PRINTF(ERROR_MASK, "fs init failed: %d\r\n", result);
-    }
-
-    if (g_app->initialStack != ERASED_WORD && g_app->resetHandler != ERASED_WORD)
-    {
-        DEBUG_PRINTF(INIT_MASK, "Launching app...\r\n");
-
-        // Switch the vector table.
-        SCB->VTOR = APP_START_ADDR;
-
-        // Jump to the app.
-        start_app(g_app->initialStack, g_app->resetHandler);
-    }
-    else
-    {
-        DEBUG_PRINTF(ERROR_MASK, "no app; halting.\r\n", result);
-
-        // Spin forever.
-        while (true)
+        if (g_cardManager.is_card_present())
         {
+            // Look for a firmware update file.
+            fs::error_t result = g_fs.init();
+            if (result == fs::kSuccess)
+            {
+                check_update();
+            }
+            else
+            {
+                DEBUG_PRINTF(ERROR_MASK, "fs init failed: %d\r\n", result);
+            }
+
+            // Now jump to the app if there is one.
+            if (have_valid_app())
+            {
+                DEBUG_PRINTF(INIT_MASK, "Launching app...\r\n");
+
+                // Switch the vector table.
+                SCB->VTOR = APP_START_ADDR;
+
+                // Jump to the app.
+                start_app(g_app->initialStack, g_app->resetHandler);
+            }
+            else
+            {
+                DEBUG_PRINTF(ERROR_MASK, "no app; halting.\r\n", result);
+
+                // Wait for card to be removed.
+                while (g_cardManager.check_presence())
+                {
+                    Ar::Thread::sleep(250);
+                }
+            }
+        }
+        else
+        {
+            // Now jump to the app if there is one.
+            if (have_valid_app())
+            {
+                DEBUG_PRINTF(INIT_MASK, "Launching app...\r\n");
+
+                // Switch the vector table.
+                SCB->VTOR = APP_START_ADDR;
+
+                // Jump to the app.
+                start_app(g_app->initialStack, g_app->resetHandler);
+            }
+
+            // Wait for card to be inserted.
+            while (!g_cardManager.check_presence())
+            {
+                Ar::Thread::sleep(250);
+            }
         }
     }
 }
