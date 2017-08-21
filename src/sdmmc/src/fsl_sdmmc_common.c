@@ -28,31 +28,15 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "fsl_specification.h"
-#include "fsl_card.h"
-
+#include "fsl_sdmmc_common.h"
 /*******************************************************************************
  * Variables
  ******************************************************************************/
-SDK_ALIGN(uint32_t g_sdmmc[SDK_SIZEALIGN(SDMMC_GLOBAL_BUFFER_SIZE, SDMMC_DATA_BUFFER_ALIGN_CAHCE)],
-          MAX(SDMMC_DATA_BUFFER_ALIGN_CAHCE, SDMMCHOST_DMA_BUFFER_ADDR_ALIGN));
+SDK_ALIGN(uint32_t g_sdmmc[SDK_SIZEALIGN(SDMMC_GLOBAL_BUFFER_SIZE, SDMMC_DATA_BUFFER_ALIGN_CACHE)],
+          MAX(SDMMC_DATA_BUFFER_ALIGN_CACHE, SDMMCHOST_DMA_BUFFER_ADDR_ALIGN));
 /*******************************************************************************
  * Code
  ******************************************************************************/
-
-void SDMMC_Delay(uint32_t num)
-{
-    volatile uint32_t i, j;
-
-    for (i = 0U; i < num; i++)
-    {
-        for (j = 0U; j < 10000U; j++)
-        {
-            __asm("nop");
-        }
-    }
-}
-
 status_t SDMMC_SelectCard(SDMMCHOST_TYPE *base,
                           SDMMCHOST_TRANSFER_FUNCTION transfer,
                           uint32_t relativeAddress,
@@ -226,14 +210,14 @@ status_t SDMMC_SwitchVoltage(SDMMCHOST_TYPE *base, SDMMCHOST_TRANSFER_FUNCTION t
     /* host switch to 1.8V */
     SDMMCHOST_SWITCH_VOLTAGE180V(base, true);
 
-    SDMMC_Delay(100U);
+    SDMMCHOST_Delay(100U);
 
     /*enable sd clock*/
     SDMMCHOST_ENABLE_CARD_CLOCK(base, true);
     /*enable force clock on*/
     SDMMCHOST_FORCE_SDCLOCK_ON(base, true);
     /* dealy 1ms,not exactly correct when use while */
-    SDMMC_Delay(10U);
+    SDMMCHOST_Delay(10U);
     /*disable force clock on*/
     SDMMCHOST_FORCE_SDCLOCK_ON(base, false);
 
@@ -281,7 +265,7 @@ status_t SDMMC_ExecuteTuning(SDMMCHOST_TYPE *base,
         {
             return kStatus_SDMMC_TransferFailed;
         }
-        SDMMC_Delay(1U);
+        SDMMCHOST_Delay(1U);
 
         /*wait excute tuning bit clear*/
         if ((SDMMCHOST_EXECUTE_STANDARD_TUNING_STATUS(base) != 0U))
@@ -304,7 +288,7 @@ status_t SDMMC_ExecuteTuning(SDMMCHOST_TYPE *base,
     }
 
     /* delay to wait the host controller stable */
-    SDMMC_Delay(100U);
+    SDMMCHOST_Delay(100U);
 
     /* check tuning result*/
     if (SDMMCHOST_EXECUTE_STANDARD_TUNING_RESULT(base) == 0U)

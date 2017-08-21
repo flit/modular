@@ -32,7 +32,7 @@
 #define _FSL_SDSPI_H_
 
 #include "fsl_common.h"
-#include "fsl_specification.h"
+#include "fsl_sdmmc_spec.h"
 
 /******************************************************************************
  * Definitions

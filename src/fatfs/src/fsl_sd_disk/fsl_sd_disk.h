@@ -35,7 +35,7 @@
 #include <stdint.h>
 #include "diskio.h"
 #include "fsl_common.h"
-#include "fsl_card.h"
+#include "fsl_sd.h"
 
 /*!
  * @addtogroup SD Disk

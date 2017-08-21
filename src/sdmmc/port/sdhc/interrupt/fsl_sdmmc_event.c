@@ -28,38 +28,51 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <stdint.h>
-#include <stdbool.h>
-#include "argon/argon.h"
-#include "fsl_sdmmcevent.h"
+#include "fsl_sdmmc_event.h"
+
+/*******************************************************************************
+ * Definitions
+ ******************************************************************************/
 
 /*******************************************************************************
  * Prototypes
  ******************************************************************************/
-
 /*!
  * @brief Get event instance.
  * @param eventType The event type
  * @return The event instance's pointer.
  */
-static ar_semaphore_t *SDMMCEVENT_GetInstance(sdmmc_event_t eventType);
+static volatile uint32_t *SDMMCEVENT_GetInstance(sdmmc_event_t eventType);
 
 /*******************************************************************************
  * Variables
  ******************************************************************************/
-
-/*! @brief Transfer complete event. */
-static ar_semaphore_t g_eventTransferComplete;
 /*! @brief Card detect event. */
-static ar_semaphore_t g_eventCardDetect;
+static volatile uint32_t g_eventCardDetect;
+
+/*! @brief transfer complete event. */
+static volatile uint32_t g_eventTransferComplete;
+
+/*! @brief Time variable unites as milliseconds. */
+static volatile uint32_t g_eventTimeMilliseconds;
 
 /*******************************************************************************
  * Code
  ******************************************************************************/
-
-static ar_semaphore_t *SDMMCEVENT_GetInstance(sdmmc_event_t eventType)
+void SDMMCEVENT_InitTimer(void)
 {
-    ar_semaphore_t *event;
+    /* Set systick reload value to generate 1ms interrupt */
+    SysTick_Config(CLOCK_GetFreq(kCLOCK_CoreSysClk) / 1000U);
+}
+
+void SysTick_Handler(void)
+{
+    g_eventTimeMilliseconds++;
+}
+
+static volatile uint32_t *SDMMCEVENT_GetInstance(sdmmc_event_t eventType)
+{
+    volatile uint32_t *event;
 
     switch (eventType)
     {
@@ -79,12 +92,11 @@ static ar_semaphore_t *SDMMCEVENT_GetInstance(sdmmc_event_t eventType)
 
 bool SDMMCEVENT_Create(sdmmc_event_t eventType)
 {
-    ar_semaphore_t *event = SDMMCEVENT_GetInstance(eventType);
+    volatile uint32_t *event = SDMMCEVENT_GetInstance(eventType);
 
     if (event)
     {
-        ar_semaphore_create(event, (eventType == kSDMMCEVENT_TransferComplete) ? "sdtx" : "sdcd", 0);
-
+        *event = 0;
         return true;
     }
     else
@@ -95,18 +107,21 @@ bool SDMMCEVENT_Create(sdmmc_event_t eventType)
 
 bool SDMMCEVENT_Wait(sdmmc_event_t eventType, uint32_t timeoutMilliseconds)
 {
-    ar_semaphore_t *event = SDMMCEVENT_GetInstance(eventType);
+    uint32_t startTime;
+    uint32_t elapsedTime;
+
+    volatile uint32_t *event = SDMMCEVENT_GetInstance(eventType);
 
     if (timeoutMilliseconds && event)
     {
-        if (ar_semaphore_get(event, timeoutMilliseconds) != kArSuccess)
+        startTime = g_eventTimeMilliseconds;
+        do
         {
-            return false; /* timeout */
-        }
-        else
-        {
-            return true; /* event taken */
-        }
+            elapsedTime = (g_eventTimeMilliseconds - startTime);
+        } while ((*event == 0U) && (elapsedTime < timeoutMilliseconds));
+        *event = 0U;
+
+        return ((elapsedTime < timeoutMilliseconds) ? true : false);
     }
     else
     {
@@ -116,18 +131,12 @@ bool SDMMCEVENT_Wait(sdmmc_event_t eventType, uint32_t timeoutMilliseconds)
 
 bool SDMMCEVENT_Notify(sdmmc_event_t eventType)
 {
-    ar_semaphore_t *event = SDMMCEVENT_GetInstance(eventType);
+    volatile uint32_t *event = SDMMCEVENT_GetInstance(eventType);
 
     if (event)
     {
-        if (ar_semaphore_put(event) == kArSuccess)
-        {
-            return true;
-        }
-        else
-        {
-            return false;
-        }
+        *event = 1U;
+        return true;
     }
     else
     {
@@ -137,10 +146,20 @@ bool SDMMCEVENT_Notify(sdmmc_event_t eventType)
 
 void SDMMCEVENT_Delete(sdmmc_event_t eventType)
 {
-    ar_semaphore_t *event = SDMMCEVENT_GetInstance(eventType);
+    volatile uint32_t *event = SDMMCEVENT_GetInstance(eventType);
 
     if (event)
     {
-        ar_semaphore_delete(event);
+        *event = 0U;
+    }
+}
+
+void SDMMCEVENT_Delay(uint32_t milliseconds)
+{
+    uint32_t startTime = g_eventTimeMilliseconds;
+    uint32_t periodTime = 0;
+    while (periodTime < milliseconds)
+    {
+        periodTime = g_eventTimeMilliseconds - startTime;
     }
 }

@@ -32,7 +32,7 @@
 #include <assert.h>
 #include <stdio.h>
 #include <string.h>
-#include "fsl_card.h"
+#include "fsl_sd.h"
 #include "fsl_sd_disk.h"
 
 /*******************************************************************************

@@ -28,8 +28,8 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _FSL_SPECIFICATION_H_
-#define _FSL_SPECIFICATION_H_
+#ifndef _FSL_SDMMC_SPEC_H_
+#define _FSL_SDMMC_SPEC_H_
 
 #include <stdint.h>
 
@@ -1081,4 +1081,4 @@ typedef struct _mmc_extended_csd_config
     mmc_extended_csd_access_mode_t accessMode; /*!< Access mode */
 } mmc_extended_csd_config_t;
 
-#endif /* _FSL_SPECIFICATION_H_ */
+#endif /* _FSL_SDMMC_SPEC_H_ */

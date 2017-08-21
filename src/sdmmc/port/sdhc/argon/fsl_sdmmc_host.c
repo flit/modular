@@ -28,8 +28,8 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "fsl_sdmmchost.h"
-#include "fsl_sdmmcevent.h"
+#include "fsl_sdmmc_host.h"
+#include "fsl_sdmmc_event.h"
 #include "board.h"
 #include "fsl_port.h"
 #include "fsl_gpio.h"
@@ -43,15 +43,9 @@
  * Prototypes
  ******************************************************************************/
 /*!
- * @brief Delay function.
- * @param milliseconds delay several ms.
- */
-static void SDMMCHOST_Delay(uint32_t milliseconds);
-
-/*!
  * @brief SDMMCHOST detect card by GPIO.
  */
-// static void SDMMCHOST_DetectCardByGpio(void);
+// static void SDMMCHOST_DetectCardByGpio(const sdmmchost_detect_card_t *cd);
 
 /*!
  * @brief SDMMCHOST detect card insert status by host controller.
@@ -93,88 +87,72 @@ static void SDMMCHOST_TransferCompleteCallback(SDMMCHOST_TYPE *base,
 static void SDMMCHOST_ErrorRecovery(SDMMCHOST_TYPE *base);
 
 /*!
- * @brief Init card detect.
+ * @brief card detect deinit function.
  */
-static status_t SDMMCHOST_InitCardDetect(SDMMCHOST_TYPE *base, sdmmchost_detect_card_t *cd);
+static void SDMMCHOST_CardDetectDeinit(void);
 
 /*!
- * @brief Deinit card detect.
+ * @brief card detect deinit function.
+ * @param host base address.
+ * @param host detect card configuration.
  */
-static status_t SDMMCHOST_DeinitCardDetect(SDMMCHOST_TYPE *base);
+static status_t SDMMCHOST_CardDetectInit(SDMMCHOST_TYPE *base, const sdmmchost_detect_card_t *cd);
 
 /*******************************************************************************
  * Variables
  ******************************************************************************/
-static sdhc_handle_t g_sdhcHandle;
-static uint32_t g_sdhcAdmaTable[SDHC_ADMA_TABLE_WORDS];
-static volatile bool g_sdhcTransferSuccessFlag = true;
+static sdhc_handle_t s_sdhcHandle;
+static uint32_t s_sdhcAdmaTable[SDHC_ADMA_TABLE_WORDS];
+static volatile bool s_sdhcTransferSuccessFlag = true;
 /*! @brief Card detect flag. */
-static volatile uint32_t g_sdInsertedFlag;
+static volatile uint32_t s_sdInsertedFlag = false;
+static ar_mutex_t g_transferMutex;
 /*******************************************************************************
  * Code
  ******************************************************************************/
-
-static void SDMMCHOST_Delay(uint32_t milliseconds)
-{
-    uint32_t i;
-    uint32_t j;
-
-    for (i = 0; i < milliseconds; i++)
-    {
-        for (j = 0; j < 20000U; j++)
-        {
-            __asm("NOP");
-        }
-    }
-}
-
-static void SDMMCHOST_DetectCardByGpio(void)
-{
-    if (GPIO_ReadPinInput(BOARD_SDHC_CD_GPIO_BASE, BOARD_SDHC_CD_GPIO_PIN))
-#if defined BOARD_SDHC_CD_LOGIC_RISING
-    {
-        g_sdInsertedFlag = 1U;
-    }
-    else
-    {
-        g_sdInsertedFlag = 0U;
-    }
-#else
-    {
-        g_sdInsertedFlag = 0U;
-    }
-    else
-    {
-        g_sdInsertedFlag = 1U;
-    }
-#endif
-}
+// static void SDMMCHOST_DetectCardByGpio(const sdmmchost_detect_card_t *cd)
+// {
+//     if (GPIO_ReadPinInput(BOARD_SDHC_CD_GPIO_BASE, BOARD_SDHC_CD_GPIO_PIN) == SDMMCHOST_CARD_INSERT_CD_LEVEL)
+//     {
+//         s_sdInsertedFlag = true;
+//         if (cd && (cd->cardInserted))
+//         {
+//             cd->cardInserted(true, cd->userData);
+//         }
+//     }
+//     else
+//     {
+//         s_sdInsertedFlag = false;
+//         if (cd && (cd->cardRemoved))
+//         {
+//             cd->cardRemoved(false, cd->userData);
+//         }
+//     }
+// }
 
 static void SDMMCHOST_DetectCardInsertByHost(SDMMCHOST_TYPE *base, void *userData)
 {
-    g_sdInsertedFlag = 1U;
+    s_sdInsertedFlag = true;
     SDMMCEVENT_Notify(kSDMMCEVENT_CardDetect);
     SDMMCHOST_CARD_DETECT_INSERT_INTERRUPT_DISABLE(base);
     /* application callback */
-    sdmmchost_detect_card_t *detectInfo = (sdmmchost_detect_card_t *)userData;
-    if (detectInfo && detectInfo->cardInserted)
+    if (userData && ((sdmmchost_detect_card_t *)userData)->cardInserted)
     {
-        detectInfo->cardInserted(true, detectInfo->userData);
+        ((sdmmchost_detect_card_t *)userData)->cardInserted(true, ((sdmmchost_detect_card_t *)userData)->userData);
     }
 }
 
 static void SDMMCHOST_DetectCardRemoveByHost(SDMMCHOST_TYPE *base, void *userData)
 {
-    g_sdInsertedFlag = 0U;
-    SDMMCEVENT_Notify(kSDMMCEVENT_CardDetect);
+    s_sdInsertedFlag = false;
     /* application callback */
-    sdmmchost_detect_card_t *detectInfo = (sdmmchost_detect_card_t *)userData;
-    if (detectInfo && detectInfo->cardRemoved)
+    if (userData && ((sdmmchost_detect_card_t *)userData)->cardRemoved)
     {
-        detectInfo->cardRemoved(false, detectInfo->userData);
+        ((sdmmchost_detect_card_t *)userData)->cardRemoved(false, ((sdmmchost_detect_card_t *)userData)->userData);
     }
 }
 
+#if 0
 void CardInsertedCallback(void)
 {
 //     __BKPT(0);
@@ -193,6 +171,7 @@ void CardRemovedCallback(void)
     SDHC_ClearInterruptStatusFlags(SDHC, kSDHC_CardRemovalFlag);
     SDHC_EnableInterruptSignal(SDHC, kSDHC_CardInsertionFlag);
 }
+#endif
 
 static void SDMMCHOST_TransferCompleteCallback(SDMMCHOST_TYPE *base,
                                                sdhc_handle_t *handle,
@@ -201,11 +180,11 @@ static void SDMMCHOST_TransferCompleteCallback(SDMMCHOST_TYPE *base,
 {
     if (status == kStatus_Success)
     {
-        g_sdhcTransferSuccessFlag = true;
+        s_sdhcTransferSuccessFlag = true;
     }
     else
     {
-        g_sdhcTransferSuccessFlag = false;
+        s_sdhcTransferSuccessFlag = false;
     }
 
     SDMMCEVENT_Notify(kSDMMCEVENT_TransferComplete);
@@ -214,21 +193,21 @@ static void SDMMCHOST_TransferCompleteCallback(SDMMCHOST_TYPE *base,
 static status_t SDMMCHOST_TransferFunction(SDMMCHOST_TYPE *base, SDMMCHOST_TRANSFER *content)
 {
     status_t error = kStatus_Success;
-
+    ar_mutex_get(&g_transferMutex, kArInfiniteTimeout);
     do
     {
-        error = SDHC_TransferNonBlocking(base, &g_sdhcHandle, g_sdhcAdmaTable, SDHC_ADMA_TABLE_WORDS, content);
+        error = SDHC_TransferNonBlocking(base, &s_sdhcHandle, s_sdhcAdmaTable, SDHC_ADMA_TABLE_WORDS, content);
     } while (error == kStatus_SDHC_BusyTransferring);
 
     if ((error != kStatus_Success) ||
         (false == SDMMCEVENT_Wait(kSDMMCEVENT_TransferComplete, SDMMCHOST_TRANSFER_COMPLETE_TIMEOUT)) ||
-        (!g_sdhcTransferSuccessFlag))
+        (!s_sdhcTransferSuccessFlag))
     {
         error = kStatus_Fail;
         /* host error recovery */
         SDMMCHOST_ErrorRecovery(base);
     }
-
+    ar_mutex_put(&g_transferMutex);
     return error;
 }
 
@@ -251,39 +230,7 @@ static void SDMMCHOST_ErrorRecovery(SDMMCHOST_TYPE *base)
     }
 }
 
-// void SDMMCHOST_CARD_DETECT_GPIO_INTERRUPT_HANDLER(void)
-// {
-//     if (PORT_GetPinsInterruptFlags(BOARD_SDHC_CD_PORT_BASE) == (1U << BOARD_SDHC_CD_GPIO_PIN))
-//     {
-//         SDMMCHOST_DetectCardByGpio();
-//     }
-//     /* Clear interrupt flag.*/
-//     PORT_ClearPinsInterruptFlags(BOARD_SDHC_CD_PORT_BASE, ~0U);
-//     SDMMCEVENT_Notify(kSDMMCEVENT_CardDetect);
-// }
-
-bool SDMMCHOST_IsCardPresent(SDMMCHOST_TYPE *base, sdmmchost_detect_card_t *cd)
-{
-    return g_sdInsertedFlag;
-}
-
-status_t SDMMCHOST_WaitForCardDetect(SDMMCHOST_TYPE *base, sdmmchost_detect_card_t *cd, bool waitForInserted)
-{
-    if (g_sdInsertedFlag != waitForInserted)
-    {
-        /* Wait card inserted. */
-        do
-        {
-            if (!SDMMCEVENT_Wait(kSDMMCEVENT_CardDetect, cd->cdTimeOut_MS))
-            {
-                return kStatus_Fail;
-            }
-        } while (g_sdInsertedFlag != waitForInserted);
-    }
-    return kStatus_Success;
-}
-
-static status_t SDMMCHOST_InitCardDetect(SDMMCHOST_TYPE *base, sdmmchost_detect_card_t *cd)
+static status_t SDMMCHOST_CardDetectInit(SDMMCHOST_TYPE *base, const sdmmchost_detect_card_t *cd)
 {
     if (!SDMMCEVENT_Create(kSDMMCEVENT_CardDetect))
     {
@@ -293,13 +240,13 @@ static status_t SDMMCHOST_InitCardDetect(SDMMCHOST_TYPE *base, sdmmchost_detect_
     if (cd->cdType == kSDMMCHOST_DetectCardByGpioCD)
     {
         /* Card detection pin will generate interrupt on either eage */
-        PORT_SetPinInterruptConfig(BOARD_SDHC_CD_PORT_BASE, BOARD_SDHC_CD_GPIO_PIN, kPORT_InterruptEitherEdge);
-        /* Open card detection pin NVIC. */
-        SDMMCHOST_ENABLE_IRQ(SDMMCHOST_CARD_DETECT_IRQ);
-        /* set IRQ priority */
-        SDMMCHOST_SET_IRQ_PRIORITY(SDMMCHOST_CARD_DETECT_IRQ, 6U);
-        /* check card detect status */
-        SDMMCHOST_DetectCardByGpio();
+//         PORT_SetPinInterruptConfig(BOARD_SDHC_CD_PORT_BASE, BOARD_SDHC_CD_GPIO_PIN, kPORT_InterruptEitherEdge);
+//         /* Open card detection pin NVIC. */
+//         SDMMCHOST_ENABLE_IRQ(SDMMCHOST_CARD_DETECT_IRQ);
+//         /* set IRQ priority */
+//         SDMMCHOST_SET_IRQ_PRIORITY(SDMMCHOST_CARD_DETECT_IRQ, 6U);
+//         /* check card detect status */
+//         SDMMCHOST_DetectCardByGpio(cd);
     }
     else if (cd->cdType == kSDMMCHOST_DetectCardByHostDATA3)
     {
@@ -318,29 +265,68 @@ static status_t SDMMCHOST_InitCardDetect(SDMMCHOST_TYPE *base, sdmmchost_detect_
     return kStatus_Success;
 }
 
-static status_t SDMMCHOST_DeinitCardDetect(SDMMCHOST_TYPE *base)
+static void SDMMCHOST_CardDetectDeinit(void)
 {
     SDMMCEVENT_Delete(kSDMMCEVENT_CardDetect);
+    s_sdInsertedFlag = false;
+}
+
+void SDMMCHOST_Delay(uint32_t milliseconds)
+{
+    SDMMCEVENT_Delay(milliseconds);
+}
+
+// void SDMMCHOST_CARD_DETECT_GPIO_INTERRUPT_HANDLER(void)
+// {
+//     if (PORT_GetPinsInterruptFlags(BOARD_SDHC_CD_PORT_BASE) == (1U << BOARD_SDHC_CD_GPIO_PIN))
+//     {
+//         SDMMCHOST_DetectCardByGpio((sdmmchost_detect_card_t *)s_sdhcHandle.userData);
+//     }
+//     /* Clear interrupt flag.*/
+//     PORT_ClearPinsInterruptFlags(BOARD_SDHC_CD_PORT_BASE, ~0U);
+//     SDMMCEVENT_Notify(kSDMMCEVENT_CardDetect);
+// }
+
+status_t SDMMCHOST_WaitCardDetectStatus(SDMMCHOST_TYPE *hostBase,
+                                        const sdmmchost_detect_card_t *cd,
+                                        bool waitCardStatus)
+{
+    if (waitCardStatus != s_sdInsertedFlag)
+    {
+        /* Wait card inserted. */
+        do
+        {
+            if (!SDMMCEVENT_Wait(kSDMMCEVENT_CardDetect, cd->cdTimeOut_ms))
+            {
+                return kStatus_Fail;
+            }
+        } while (waitCardStatus != s_sdInsertedFlag);
+    }
 
     return kStatus_Success;
 }
 
-void SDMMCHOST_PowerOffCard(SDMMCHOST_TYPE *base, sdmmchost_pwr_card_t *pwr)
+bool SDMMCHOST_IsCardPresent(void)
+{
+    return s_sdInsertedFlag;
+}
+
+void SDMMCHOST_PowerOffCard(SDMMCHOST_TYPE *base, const sdmmchost_pwr_card_t *pwr)
 {
     if (pwr != NULL)
     {
         pwr->powerOff();
-        SDMMCHOST_Delay(pwr->powerOffDelay_MS);
+        SDMMCHOST_Delay(pwr->powerOffDelay_ms);
     }
 }
 
-void SDMMCHOST_PowerOnCard(SDMMCHOST_TYPE *base, sdmmchost_pwr_card_t *pwr)
+void SDMMCHOST_PowerOnCard(SDMMCHOST_TYPE *base, const sdmmchost_pwr_card_t *pwr)
 {
     /* use user define the power on function  */
     if (pwr != NULL)
     {
         pwr->powerOn();
-        SDMMCHOST_Delay(pwr->powerOnDelay_MS);
+        SDMMCHOST_Delay(pwr->powerOnDelay_ms);
     }
     else
     {
@@ -351,6 +337,8 @@ void SDMMCHOST_PowerOnCard(SDMMCHOST_TYPE *base, sdmmchost_pwr_card_t *pwr)
 
 status_t SDMMCHOST_Init(SDMMCHOST_CONFIG *host, void *userData)
 {
+    ar_mutex_create(&g_transferMutex, "sdhctx");
+
     sdhc_transfer_callback_t sdhcCallback = {0};
     sdhc_host_t *sdhcHost = (sdhc_host_t *)host;
 
@@ -366,7 +354,9 @@ status_t SDMMCHOST_Init(SDMMCHOST_CONFIG *host, void *userData)
     sdhcCallback.TransferComplete = SDMMCHOST_TransferCompleteCallback;
     sdhcCallback.CardInserted = SDMMCHOST_DetectCardInsertByHost;
     sdhcCallback.CardRemoved = SDMMCHOST_DetectCardRemoveByHost;
-    SDHC_TransferCreateHandle(sdhcHost->base, &g_sdhcHandle, &sdhcCallback, userData);
+    SDHC_TransferCreateHandle(sdhcHost->base, &s_sdhcHandle, &sdhcCallback, userData);
+
+    SDMMCHOST_CardDetectInit(sdhcHost->base, userData);
 
     /* Create transfer complete event. */
     if (false == SDMMCEVENT_Create(kSDMMCEVENT_TransferComplete))
@@ -376,11 +366,6 @@ status_t SDMMCHOST_Init(SDMMCHOST_CONFIG *host, void *userData)
 
     /* Define transfer function. */
     sdhcHost->transfer = SDMMCHOST_TransferFunction;
-
-    if (SDMMCHOST_InitCardDetect(sdhcHost->base, (sdmmchost_detect_card_t *)userData) != kStatus_Success)
-    {
-        return kStatus_Fail;
-    }
 
     return kStatus_Success;
 }
@@ -393,7 +378,8 @@ void SDMMCHOST_Reset(SDMMCHOST_TYPE *base)
 void SDMMCHOST_Deinit(void *host)
 {
     sdhc_host_t *sdhcHost = (sdhc_host_t *)host;
-    SDMMCHOST_DeinitCardDetect(sdhcHost->base);
     SDHC_Deinit(sdhcHost->base);
     SDMMCEVENT_Delete(kSDMMCEVENT_TransferComplete);
+    SDMMCHOST_CardDetectDeinit();
+    ar_mutex_delete(&g_transferMutex);
 }

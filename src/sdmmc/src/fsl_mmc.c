@@ -29,8 +29,7 @@
  */
 
 #include <string.h>
-#include "fsl_card.h"
-#include "fsl_sdmmc.h"
+#include "fsl_mmc.h"
 
 /*******************************************************************************
  * Definitons
@@ -425,7 +424,7 @@ static const uint32_t g_transerSpeedFrequencyUnit[] = {100000U, 1000000U, 100000
 static const uint32_t g_transerSpeedMultiplierFactor[] = {0U,  10U, 12U, 13U, 15U, 20U, 26U, 30U,
                                                           35U, 40U, 45U, 52U, 55U, 60U, 70U, 80U};
 /* g_sdmmc statement */
-extern uint32_t g_sdmmc[SDK_SIZEALIGN(SDMMC_GLOBAL_BUFFER_SIZE, SDMMC_DATA_BUFFER_ALIGN_CAHCE)];
+extern uint32_t g_sdmmc[SDK_SIZEALIGN(SDMMC_GLOBAL_BUFFER_SIZE, SDMMC_DATA_BUFFER_ALIGN_CACHE)];
 
 /*******************************************************************************
  * Code
@@ -605,13 +604,13 @@ static status_t MMC_SwitchVoltage(mmc_card_t *card, uint32_t *opCode)
         /* power off the card first */
         SDMMCHOST_ENABLE_MMC_POWER(false);
         /* power off time */
-        SDMMC_Delay(1U);
+        SDMMCHOST_Delay(1U);
         /*switch voltage to 3.3V*/
         SDMMCHOST_SWITCH_VCC_TO_330V();
         /* repower the card */
         SDMMCHOST_ENABLE_MMC_POWER(true);
         /* meet emmc spec, wait 1ms and 74 clocks */
-        SDMMC_Delay(2U);
+        SDMMCHOST_Delay(2U);
     }
 
     if ((kSDMMCHOST_SupportV180 != SDMMCHOST_NOT_SUPPORT) && (card->ocr & MMC_OCR_V170TO195_MASK) &&
@@ -625,13 +624,13 @@ static status_t MMC_SwitchVoltage(mmc_card_t *card, uint32_t *opCode)
         /* power off the card first */
         SDMMCHOST_ENABLE_MMC_POWER(false);
         /* power off time */
-        SDMMC_Delay(1U);
+        SDMMCHOST_Delay(1U);
         /* switch voltage to 1.8V */
         SDMMCHOST_SWITCH_VCC_TO_180V();
         /* repower the card */
         SDMMCHOST_ENABLE_MMC_POWER(true);
         /* meet emmc spec, wait 1ms and 74 clocks */
-        SDMMC_Delay(2U);
+        SDMMCHOST_Delay(2U);
     }
 
     card->hostVoltageWindowVCC = tempVoltage;
@@ -2110,16 +2109,15 @@ status_t MMC_HostInit(mmc_card_t *card)
 {
     assert(card);
 
-    status_t initStatus = kStatus_Fail;
-
-    if (SDMMCHOST_Init(&(card->host), NULL) == kStatus_Success)
+    if ((!card->isHostReady) && SDMMCHOST_Init(&(card->host), NULL) != kStatus_Success)
     {
-        /* set the host status flag, after the card re-plug in, don't need init host again */
-        card->isHostReady = true;
-        initStatus = kStatus_Success;
+        return kStatus_Fail;
     }
 
-    return initStatus;
+    /* set the host status flag, after the card re-plug in, don't need init host again */
+    card->isHostReady = true;
+
+    return kStatus_Success;
 }
 
 void MMC_HostDeinit(mmc_card_t *card)

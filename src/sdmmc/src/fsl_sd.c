@@ -28,8 +28,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "fsl_card.h"
-#include "fsl_sdmmc.h"
+#include "fsl_sd.h"
 
 /*******************************************************************************
  * Prototypes
@@ -322,7 +321,7 @@ static status_t inline SD_ExecuteTuning(sd_card_t *card);
  * Variables
  ******************************************************************************/
 /* g_sdmmc statement */
-extern uint32_t g_sdmmc[SDK_SIZEALIGN(SDMMC_GLOBAL_BUFFER_SIZE, SDMMC_DATA_BUFFER_ALIGN_CAHCE)];
+extern uint32_t g_sdmmc[SDK_SIZEALIGN(SDMMC_GLOBAL_BUFFER_SIZE, SDMMC_DATA_BUFFER_ALIGN_CACHE)];
 /*******************************************************************************
  * Code
  ******************************************************************************/
@@ -1667,16 +1666,15 @@ status_t SD_HostInit(sd_card_t *card)
 {
     assert(card);
 
-    status_t initStatus = kStatus_Fail;
-
-    if (SDMMCHOST_Init(&(card->host), (void *)(card->usrParam.cd)) == kStatus_Success)
+    if ((!card->isHostReady) && SDMMCHOST_Init(&(card->host), (void *)(card->usrParam.cd)) != kStatus_Success)
     {
-        /* set the host status flag, after the card re-plug in, don't need init host again */
-        card->isHostReady = true;
-        initStatus = kStatus_Success;
+        return kStatus_Fail;
     }
 
-    return initStatus;
+    /* set the host status flag, after the card re-plug in, don't need init host again */
+    card->isHostReady = true;
+
+    return kStatus_Success;
 }
 
 void SD_HostDeinit(sd_card_t *card)
@@ -1693,24 +1691,26 @@ void SD_HostReset(SDMMCHOST_CONFIG *host)
     SDMMCHOST_Reset(host->base);
 }
 
-void SD_PowerOnCard(SDMMCHOST_TYPE *base, sdmmchost_pwr_card_t *pwr)
+void SD_PowerOnCard(SDMMCHOST_TYPE *base, const sdmmchost_pwr_card_t *pwr)
 {
     SDMMCHOST_PowerOnCard(base, pwr);
 }
 
-void SD_PowerOffCard(SDMMCHOST_TYPE *base, sdmmchost_pwr_card_t *pwr)
+void SD_PowerOffCard(SDMMCHOST_TYPE *base, const sdmmchost_pwr_card_t *pwr)
 {
     SDMMCHOST_PowerOffCard(base, pwr);
 }
 
-bool SD_IsCardPresent(sd_card_t *card)
+status_t SD_WaitCardDetectStatus(SDMMCHOST_TYPE *hostBase, const sdmmchost_detect_card_t *cd, bool waitCardStatus)
 {
-    return SDMMCHOST_IsCardPresent(card->host.base, card->usrParam.cd);
+    assert(cd);
+
+    return SDMMCHOST_WaitCardDetectStatus(hostBase, cd, waitCardStatus);
 }
 
-status_t SD_WaitForCardDetect(sd_card_t *card, bool waitForInserted)
+bool SD_IsCardPresent(sd_card_t *card)
 {
-    return SDMMCHOST_WaitForCardDetect(card->host.base, card->usrParam.cd, waitForInserted);
+    return SDMMCHOST_IsCardPresent();
 }
 
 status_t SD_Init(sd_card_t *card)
@@ -1728,16 +1728,12 @@ status_t SD_Init(sd_card_t *card)
     {
         SD_HostReset(&(card->host));
     }
-
-    /* power off card */
     SD_PowerOffCard(card->host.base, card->usrParam.pwr);
 
-    /*detect card insert*/
-//     if (SD_CardDetect(card->host.base, card->usrParam.cd, card->isHostReady) != kStatus_Success)
-//     {
-//         return kStatus_SDMMC_CardDetectFailed;
-//     }
-    /* power on card */
+    if (SD_WaitCardDetectStatus(card->host.base, card->usrParam.cd, true) != kStatus_Success)
+    {
+        return kStatus_SDMMC_CardDetectFailed;
+    }
     SD_PowerOnCard(card->host.base, card->usrParam.pwr);
 
     return SD_CardInit(card);

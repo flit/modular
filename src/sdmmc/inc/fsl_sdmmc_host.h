@@ -28,11 +28,23 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _FSL_SDMMCHOST_H
-#define _FSL_SDMMCHOST_H
+#ifndef _FSL_SDMMC_HOST_H
+#define _FSL_SDMMC_HOST_H
 
 #include "fsl_common.h"
 #include "board.h"
+#if defined(FSL_FEATURE_SOC_SDHC_COUNT) && FSL_FEATURE_SOC_SDHC_COUNT > 0U
+#include "fsl_sdhc.h"
+#elif defined(FSL_FEATURE_SOC_SDIF_COUNT) && FSL_FEATURE_SOC_SDIF_COUNT > 0U
+#include "fsl_sdif.h"
+#elif defined(FSL_FEATURE_SOC_USDHC_COUNT) && FSL_FEATURE_SOC_USDHC_COUNT > 0U
+#include "fsl_usdhc.h"
+#if (FSL_FEATURE_SOC_IOMUXC_COUNT != 0U)
+#include "fsl_iomuxc.h"
+#else
+#include "fsl_port.h"
+#endif
+#endif
 
 /*!
  * @addtogroup CARD
@@ -42,20 +54,6 @@
 /*******************************************************************************
  * Definitions
  ******************************************************************************/
-/* Common definition for cache line size align */
-#if defined(FSL_SDK_ENABLE_DRIVER_CACHE_CONTROL) && FSL_SDK_ENABLE_DRIVER_CACHE_CONTROL
-#if defined(FSL_FEATURE_L1DCACHE_LINESIZE_BYTE)
-#if defined(FSL_FEATURE_L2DCACHE_LINESIZE_BYTE)
-#define SDMMC_DATA_BUFFER_ALIGN_CAHCE MAX(FSL_FEATURE_L1DCACHE_LINESIZE_BYTE, FSL_FEATURE_L2DCACHE_LINESIZE_BYTE)
-#else
-#define SDMMC_DATA_BUFFER_ALIGN_CAHCE FSL_FEATURE_L1DCACHE_LINESIZE_BYTE
-#endif
-#else
-#define SDMMC_DATA_BUFFER_ALIGN_CAHCE 1
-#endif
-#else
-#define SDMMC_DATA_BUFFER_ALIGN_CAHCE 1
-#endif
 
 /* Common definition for support and not support macro */
 #define SDMMCHOST_NOT_SUPPORT 0U /*!< use this define to indicate the host not support feature*/
@@ -93,16 +91,8 @@
 
 #define SDMMCHOST_ENABLE_IRQ(id) (EnableIRQ(id))
 
-/* Definitions to wrap host's difference */
-#if defined(FSL_FEATURE_SOC_SDHC_COUNT) && FSL_FEATURE_SOC_SDHC_COUNT > 0U
-/* Definition for SDHC host controller
-* These definitions are wrapper for sdmmc.
-* Host Type: SDHC
-* Support platform: Kinetis series MCU...
-*/
-
-/* include sdhc driver header file */
-#include "fsl_sdhc.h"
+/*********************************************************SDHC**********************************************************/
+#if (defined(FSL_FEATURE_SOC_SDHC_COUNT) && (FSL_FEATURE_SOC_SDHC_COUNT > 0U))
 
 /*define host baseaddr ,clk freq, IRQ number*/
 #define MMC_HOST_BASEADDR BOARD_SDHC_BASEADDR
@@ -204,7 +194,12 @@
     (SDHC_DisableInterruptSignal(base, kSDHC_CardInsertionFlag))
 #define SDMMCHOST_CARD_DETECT_REMOVE_INTERRUPT_ENABLE(base) (SDHC_EnableInterruptSignal(base, kSDHC_CardRemovalFlag))
 #define SDMMCHOST_CARD_DETECT_DATA3_ENABLE(base, flag) (SDHC_CardDetectByData3(base, flag))
-
+/* define card detect pin voltage level when card inserted */
+#if defined BOARD_SDHC_CARD_INSERT_CD_LEVEL
+#define SDMMCHOST_CARD_INSERT_CD_LEVEL BOARD_SDHC_CARD_INSERT_CD_LEVEL
+#else
+#define SDMMCHOST_CARD_INSERT_CD_LEVEL (0U)
+#endif
 /*! @brief SDHC host capability*/
 enum _host_capability
 {
@@ -245,15 +240,8 @@ enum _host_capability
  */
 #define SDHC_ADMA_TABLE_WORDS (8U)
 
-#elif defined(FSL_FEATURE_SOC_SDIF_COUNT) && FSL_FEATURE_SOC_SDIF_COUNT > 0U
-
-/* Definition for SDIF host controller
-* These definitions are wrapper for sdmmc.
-* Host Type: SDIF
-* Support platform: LPC series MCU...
-*/
-/* include sdif driver header file */
-#include "fsl_sdif.h"
+/*********************************************************SDIF**********************************************************/
+#elif(defined(FSL_FEATURE_SOC_SDIF_COUNT) && (FSL_FEATURE_SOC_SDIF_COUNT > 0U))
 
 /*define host baseaddr ,clk freq, IRQ number*/
 #define MMC_HOST_BASEADDR BOARD_SDIF_BASEADDR
@@ -393,21 +381,8 @@ enum _host_capability
 /* address align */
 #define SDMMCHOST_DMA_BUFFER_ADDR_ALIGN (4U)
 
-#elif defined(FSL_FEATURE_SOC_USDHC_COUNT) && FSL_FEATURE_SOC_USDHC_COUNT > 0U
-
-/* Definition for USDHC host controller
-* These definitions are wrapper for sdmmc.
-* Host Type: USDHC
-* Support platform: Kinetis series MCU / i.mx...
-*/
-
-/* include usdhc driver header file */
-#include "fsl_usdhc.h"
-#if (FSL_FEATURE_SOC_IOMUXC_COUNT != 0U)
-#include "fsl_iomuxc.h"
-#else
-#include "fsl_port.h"
-#endif
+/*********************************************************USDHC**********************************************************/
+#elif(defined(FSL_FEATURE_SOC_USDHC_COUNT) && (FSL_FEATURE_SOC_USDHC_COUNT > 0U))
 
 /*define host baseaddr ,clk freq, IRQ number*/
 #define MMC_HOST_BASEADDR BOARD_MMC_HOST_BASEADDR
@@ -607,7 +582,7 @@ enum _host_capability
 #define USDHC_WRITE_BURST_LEN (8U)  /*!< number of words USDHC write in a single burst */
 #define USDHC_DATA_TIMEOUT (0xFU)   /*!< data timeout counter value */
 
-#endif
+#endif /* (defined(FSL_FEATURE_SOC_SDHC_COUNT) && (FSL_FEATURE_SOC_SDHC_COUNT > 0U)) */
 
 /*! @brief card detect callback definition */
 typedef void (*sdmmchost_cd_callback_t)(bool isInserted, void *userData);
@@ -634,13 +609,13 @@ typedef enum _sdmmchost_detect_card_type
 typedef struct _sdmmchost_detect_card
 {
     sdmmchost_detect_card_type_t cdType; /*!< card detect type */
-    uint32_t cdTimeOut_MS; /*!< card detect timeout which allow 0 - 0xFFFFFFF, value 0 will return immediately, value
-                           0xFFFFFFFF will block until card is insert */
+    uint32_t cdTimeOut_ms; /*!< card detect timeout which allow 0 - 0xFFFFFFF, value 0 will return immediately, value
+          0xFFFFFFFF will block until card is insert */
 
     sdmmchost_cd_callback_t cardInserted; /*!< card inserted callback which is meaningful for interrupt case */
     sdmmchost_cd_callback_t cardRemoved;  /*!< card removed callback which is meaningful for interrupt case */
-    void *userData;  /*!< User data for insert and remove callbacks. */
 
+    void *userData; /*!< user data */
 } sdmmchost_detect_card_t;
 
 /*! @brief card power control function pointer */
@@ -650,10 +625,10 @@ typedef void (*sdmmchost_pwr_t)(void);
 typedef struct _sdmmchost_pwr_card
 {
     sdmmchost_pwr_t powerOn;  /*!< power on function pointer */
-    uint32_t powerOnDelay_MS; /*!< power on delay */
+    uint32_t powerOnDelay_ms; /*!< power on delay */
 
     sdmmchost_pwr_t powerOff;  /*!< power off function pointer */
-    uint32_t powerOffDelay_MS; /*!< power off delay */
+    uint32_t powerOffDelay_ms; /*!< power off delay */
 } sdmmchost_pwr_card_t;
 
 /*******************************************************************************
@@ -680,14 +655,23 @@ static inline status_t SDMMCHOST_NotSupport(void *parameter)
 }
 
 /*!
- * @brief Return current card presence state, only need for SD cases.
+ * @brief Detect card insert, only need for SD cases.
+ * @param base the pointer to host base address
+ * @param cd card detect configuration
+ * @param waitCardStatus status which user want to wait
+ * @retval kStatus_Success detect card insert
+ * @retval kStatus_Fail card insert event fail
  */
-bool SDMMCHOST_IsCardPresent(SDMMCHOST_TYPE *base, sdmmchost_detect_card_t *cd);
+status_t SDMMCHOST_WaitCardDetectStatus(SDMMCHOST_TYPE *hostBase,
+                                        const sdmmchost_detect_card_t *cd,
+                                        bool waitCardStatus);
 
 /*!
- * @brief Wait for card to be inserted or removed.
+ * @brief check card is present or not.
+ * @retval true card is present
+ * @retval false card is not present
  */
-status_t SDMMCHOST_WaitForCardDetect(SDMMCHOST_TYPE *base, sdmmchost_detect_card_t *cd, bool waitForInserted);
+bool SDMMCHOST_IsCardPresent(void);
 
 /*!
  * @brief Init host controller.
@@ -715,14 +699,20 @@ void SDMMCHOST_Deinit(void *host);
  * @param base host base address.
  * @param pwr depend on user define power configuration.
  */
-void SDMMCHOST_PowerOffCard(SDMMCHOST_TYPE *base, sdmmchost_pwr_card_t *pwr);
+void SDMMCHOST_PowerOffCard(SDMMCHOST_TYPE *base, const sdmmchost_pwr_card_t *pwr);
 
 /*!
  * @brief host power on card function.
  * @param base host base address.
  * @param pwr depend on user define power configuration.
  */
-void SDMMCHOST_PowerOnCard(SDMMCHOST_TYPE *base, sdmmchost_pwr_card_t *pwr);
+void SDMMCHOST_PowerOnCard(SDMMCHOST_TYPE *base, const sdmmchost_pwr_card_t *pwr);
+
+/*!
+ * @brief SDMMC host delay function.
+ * @param milliseconds delay counter.
+ */
+void SDMMCHOST_Delay(uint32_t milliseconds);
 
 /* @} */
 
@@ -730,4 +720,4 @@ void SDMMCHOST_PowerOnCard(SDMMCHOST_TYPE *base, sdmmchost_pwr_card_t *pwr);
 }
 #endif
 
-#endif
+#endif /* _FSL_SDMMC_HOST_H */
