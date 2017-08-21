@@ -132,6 +132,16 @@ protected:
     uint32_t _noise;
 };
 
+//! @brief Color options for LEDs.
+//!
+//! All LEDs are set to the same color.
+enum LEDColor : uint32_t
+{
+    kLEDOff,
+    kLEDRed,
+    kLEDYellow,
+};
+
 /*!
  * @brief
  */
@@ -171,6 +181,7 @@ protected:
     Ar::TimerWithMemberCallback<UI> _potReleaseTimer;
     LEDBase ** _channelLeds;
     LEDBase * _button1Led;
+    LEDColor _channelLedColor;
     Pot * _channelPots;
     Button _button1;
     Button _button2;
@@ -185,6 +196,9 @@ protected:
 
     void handle_blink_timer(Ar::Timer * timer);
     void handle_pot_release_timer(Ar::Timer * timer);
+
+    void set_all_channel_leds(bool on);
+    void set_channel_led_color(LEDColor newColor);
 
 };
 

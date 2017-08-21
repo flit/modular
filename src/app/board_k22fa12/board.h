@@ -66,6 +66,18 @@ const uint32_t kXtal32Freq = 32768;
 #define PIN_DAC_RESET           (1 << PIN_DAC_RESET_BIT)
 
 // LEDs
+#define PIN_CHLEDP_PORT         (PORTD)
+#define PIN_CHLEDP_GPIO         (GPIOD)
+#define PIN_CHLEDP_GPIO_BASE    (GPIOD_BASE)
+#define PIN_CHLEDP_BIT          (5)
+#define PIN_CHLEDP              (1 << PIN_CHLEDP_BIT)
+
+#define PIN_CHLEDN_PORT         (PORTD)
+#define PIN_CHLEDN_GPIO         (GPIOD)
+#define PIN_CHLEDN_GPIO_BASE    (GPIOD_BASE)
+#define PIN_CHLEDN_BIT          (4)
+#define PIN_CHLEDN              (1 << PIN_CHLEDN_BIT)
+
 #define PIN_CH1_LED_PORT        (PORTA)
 #define PIN_CH1_LED_GPIO        (GPIOA)
 #define PIN_CH1_LED_GPIO_BASE   (GPIOA_BASE)

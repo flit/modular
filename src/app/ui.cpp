@@ -164,15 +164,21 @@ void UI::init()
 {
     s_ui = this;
 
+    _channelLedColor = kLEDOff;
+
     _thread.init("ui", this, &UI::ui_thread, kUIThreadPriority, kArSuspendThread);
     _runloop.init("ui", &_thread);
+
     _eventQueue.init("events");
     _runloop.addQueue(&_eventQueue, NULL, NULL);
+
     _blinkTimer.init("blink", this, &UI::handle_blink_timer, kArPeriodicTimer, 20);
     _potReleaseTimer.init("pot-release", this, &UI::handle_pot_release_timer, kArOneShotTimer, 20);
 
     _button1.init();
     _button2.init();
+
+    set_channel_led_color(kLEDRed);
 }
 
 void UI::set_leds(LEDBase ** channelLeds, LEDBase * button1Led)
@@ -199,10 +205,7 @@ void UI::set_mode()
         _button1Led->on();
 
         // Turn off all LEDs.
-        for (n = 0; n < kVoiceCount; ++n)
-        {
-            _channelLeds[n]->off();
-        }
+        set_channel_led_color(kLEDYellow);
 
         // Select last channel being edited.
         _channelLeds[_editChannel]->on();
@@ -213,10 +216,7 @@ void UI::set_mode()
         _button1Led->off();
 
         // Restore channel LEDs to play state.
-        for (n = 0; n < kVoiceCount; ++n)
-        {
-            _channelLeds[n]->set(_voiceStates[n]);
-        }
+        set_channel_led_color(kLEDRed);
     }
 
     // Set hysteresis on all pots.
@@ -349,6 +349,105 @@ void UI::pot_did_change(Pot& pot, uint32_t value)
                 break;
         }
     }
+}
+
+void UI::set_all_channel_leds(bool state)
+{
+    uint32_t i;
+    for (i = 0; i < kVoiceCount; ++i)
+    {
+        _channelLeds[i]->set(state);
+    }
+}
+
+//! Perform safe channel LED color/state transitions. We have to be careful
+//! to not enable both the N and P FETs simultaneously. And the transitions are
+//! done such that switching colors also turns off all LEDs, so they don't all
+//! suddenly switch on/off or flicker.
+void UI::set_channel_led_color(LEDColor newColor)
+{
+    if (newColor == _channelLedColor)
+    {
+        return;
+    }
+
+    // off = P-FET off (1), N-FET off (0)
+    // red = P-FET off (1), N-FET on (1), leds on = 1
+    // yellow = P-FET on (0), N-FET off (0), leds on = 0
+    switch (newColor)
+    {
+        // Turn off LEDs.
+        case kLEDOff:
+            switch (_channelLedColor)
+            {
+                // yellow -> off
+                case kLEDYellow:
+                    // Set LEDs high.
+                    set_all_channel_leds(true);
+                    break;
+                // red -> off
+                case kLEDRed:
+                    // Set LEDs low.
+                    set_all_channel_leds(false);
+                    break;
+                default:
+                    assert(0 && "bad led transition");
+            }
+            // Turn off P-FET and N-FET.
+            GPIO_SetPinsOutput(PIN_CHLEDP_GPIO, PIN_CHLEDP);
+            GPIO_ClearPinsOutput(PIN_CHLEDN_GPIO, PIN_CHLEDN);
+            break;
+
+        // Switch to yellow.
+        case kLEDYellow:
+            switch (_channelLedColor)
+            {
+                // off -> yellow
+                case kLEDOff:
+                    break;
+                // red -> yellow
+                case kLEDRed:
+                    // Set LEDs to red off state.
+                    set_all_channel_leds(true);
+                    // Turn off N-FET.
+                    GPIO_ClearPinsOutput(PIN_CHLEDN_GPIO, PIN_CHLEDN);
+                    break;
+                default:
+                    assert(0 && "bad led transition");
+            }
+            // Set LEDs to yellow off state.
+            set_all_channel_leds(true);
+            // Turn on P-FET.
+            GPIO_ClearPinsOutput(PIN_CHLEDP_GPIO, PIN_CHLEDP);
+            break;
+
+        // Switch to red.
+        case kLEDRed:
+            switch (_channelLedColor)
+            {
+                // off -> red
+                case kLEDOff:
+                    break;
+                // yellow -> red
+                case kLEDYellow:
+                    // Set LEDs to yellow off state.
+                    set_all_channel_leds(true);
+                    // Turn off P-FET.
+                    GPIO_SetPinsOutput(PIN_CHLEDP_GPIO, PIN_CHLEDP);
+                    break;
+                default:
+                    assert(0 && "bad led transition");
+            }
+            // Set LEDs to red off state.
+            set_all_channel_leds(true);
+            // Turn on N-FET.
+            GPIO_ClearPinsOutput(PIN_CHLEDN_GPIO, PIN_CHLEDN);
+            break;
+        default:
+            assert(0 && "bad led transition");
+    }
+
+    _channelLedColor = newColor;
 }
 
 //------------------------------------------------------------------------------
