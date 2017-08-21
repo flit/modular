@@ -111,6 +111,16 @@
 			<locationURI>virtual:/virtual</locationURI>
 		</link>
 		<link>
+			<name>app/card_manager.cpp</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/src/app/card_manager.cpp</locationURI>
+		</link>
+		<link>
+			<name>app/card_manager.h</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/src/app/card_manager.h</locationURI>
+		</link>
+		<link>
 			<name>app/channel_cv_gate.cpp</name>
 			<type>1</type>
 			<locationURI>PARENT-2-PROJECT_LOC/src/app/channel_cv_gate.cpp</locationURI>
@@ -656,29 +666,29 @@
 			<locationURI>virtual:/virtual</locationURI>
 		</link>
 		<link>
-			<name>sdmmc/inc/fsl_card.h</name>
+			<name>sdmmc/inc/fsl_sd.h</name>
 			<type>1</type>
-			<locationURI>PARENT-2-PROJECT_LOC/src/sdmmc/inc/fsl_card.h</locationURI>
+			<location>PARENT-2-PROJECT_LOC/src/sdmmc/inc/fsl_sd.h</location>
 		</link>
 		<link>
-			<name>sdmmc/inc/fsl_sdmmc.h</name>
+			<name>sdmmc/inc/fsl_sdmmc_common.h</name>
 			<type>1</type>
-			<locationURI>PARENT-2-PROJECT_LOC/src/sdmmc/inc/fsl_sdmmc.h</locationURI>
+			<location>PARENT-2-PROJECT_LOC/src/sdmmc/inc/fsl_sdmmc_common.h</location>
 		</link>
 		<link>
-			<name>sdmmc/inc/fsl_sdmmchost.h</name>
+			<name>sdmmc/inc/fsl_sdmmc_host.h</name>
 			<type>1</type>
-			<locationURI>PARENT-2-PROJECT_LOC/src/sdmmc/inc/fsl_sdmmchost.h</locationURI>
+			<location>PARENT-2-PROJECT_LOC/src/sdmmc/inc/fsl_sdmmc_host.h</location>
 		</link>
 		<link>
-			<name>sdmmc/inc/fsl_specification.h</name>
+			<name>sdmmc/inc/fsl_sdmmc_spec.h</name>
 			<type>1</type>
-			<locationURI>PARENT-2-PROJECT_LOC/src/sdmmc/inc/fsl_specification.h</locationURI>
+			<location>PARENT-2-PROJECT_LOC/src/sdmmc/inc/fsl_sdmmc_spec.h</location>
 		</link>
 		<link>
-			<name>sdmmc/port/fsl_sdmmcevent.h</name>
+			<name>sdmmc/port/fsl_sdmmc_event.h</name>
 			<type>1</type>
-			<locationURI>PARENT-2-PROJECT_LOC/src/sdmmc/port/fsl_sdmmcevent.h</locationURI>
+			<location>PARENT-2-PROJECT_LOC/src/sdmmc/port/fsl_sdmmc_event.h</location>
 		</link>
 		<link>
 			<name>sdmmc/port/sdhc</name>
@@ -696,9 +706,9 @@
 			<locationURI>PARENT-2-PROJECT_LOC/src/sdmmc/src/fsl_sd.c</locationURI>
 		</link>
 		<link>
-			<name>sdmmc/src/fsl_sdmmc.c</name>
+			<name>sdmmc/src/fsl_sdmmc_common.c</name>
 			<type>1</type>
-			<locationURI>PARENT-2-PROJECT_LOC/src/sdmmc/src/fsl_sdmmc.c</locationURI>
+			<location>PARENT-2-PROJECT_LOC/src/sdmmc/src/fsl_sdmmc_common.c</location>
 		</link>
 		<link>
 			<name>argon/src/cortex_m/ar_asm_macros.h</name>
@@ -751,14 +761,14 @@
 			<locationURI>virtual:/virtual</locationURI>
 		</link>
 		<link>
-			<name>sdmmc/port/sdhc/argon/fsl_sdmmcevent.c</name>
+			<name>sdmmc/port/sdhc/argon/fsl_sdmmc_event.c</name>
 			<type>1</type>
-			<location>/Users/creed/projects/_personal/modular/src/sdmmc/port/sdhc/argon/fsl_sdmmcevent.c</location>
+			<location>PARENT-2-PROJECT_LOC/src/sdmmc/port/sdhc/argon/fsl_sdmmc_event.c</location>
 		</link>
 		<link>
-			<name>sdmmc/port/sdhc/argon/fsl_sdmmchost.c</name>
+			<name>sdmmc/port/sdhc/argon/fsl_sdmmc_host.c</name>
 			<type>1</type>
-			<location>/Users/creed/projects/_personal/modular/src/sdmmc/port/sdhc/argon/fsl_sdmmchost.c</location>
+			<location>PARENT-2-PROJECT_LOC/src/sdmmc/port/sdhc/argon/fsl_sdmmc_host.c</location>
 		</link>
 	</linkedResources>
 </projectDescription>

@@ -26,13 +26,10 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#if !defined(_MAIN_H_)
-#define _MAIN_H_
+#if !defined(_CARD_MANAGER_H_)
+#define _CARD_MANAGER_H_
 
-#include "sampler_voice.h"
-#include "card_manager.h"
-#include "file_manager.h"
-#include "audio_defs.h"
+#include <stdint.h>
 
 //------------------------------------------------------------------------------
 // Definitions
@@ -40,22 +37,28 @@
 
 namespace slab {
 
-enum thread_priorties : uint8_t
+/*!
+ * @brief
+ */
+class CardManager
 {
-    kAudioThreadPriority = 180,
-    kReaderThreadPriority = 120,
-    kCVThreadPriority = 80,
-    kUIThreadPriority = 60,
-    kInitThreadPriority = 40,
-};
+public:
+    CardManager();
+    ~CardManager()=default;
 
-extern SamplerVoice g_voice[kVoiceCount];
-extern CardManager g_cardManager;
-extern FileManager g_fileManager;
+    void init();
+
+    bool is_card_present() { return _isCardPresent; }
+
+    bool check_presence();
+
+protected:
+    bool _isCardPresent;
+};
 
 } // namespace slab
 
-#endif // _MAIN_H_
+#endif // _CARD_MANAGER_H_
 //------------------------------------------------------------------------------
 // EOF
 //------------------------------------------------------------------------------

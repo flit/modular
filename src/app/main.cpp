@@ -98,6 +98,7 @@ Ar::ThreadWithStack<2048> g_loadReportThread("load", load_thread, 0, kUIThreadPr
 
 UI g_ui;
 AudioOutput g_audioOut;
+CardManager g_cardManager;
 FileManager g_fileManager;
 SamplerSynth g_sampler;
 ReaderThread g_readerThread;
@@ -341,17 +342,8 @@ void init_thread(void * arg)
     init_audio_out();
     g_readerThread.init();
 
-    // Configure SD host.
-    static sdmmchost_detect_card_t cd = {
-        .cdType = kSDMMCHOST_DetectCardByGpioCD,
-        .cdTimeOut_MS = (~0U),
-        };
-
-    g_sd.host.base = SDHC;
-    g_sd.host.sourceClock_Hz = CLOCK_GetFreq(kCLOCK_CoreSysClk);
-    g_sd.usrParam.cd = &cd;
-    SD_HostInit(&g_sd);
-
+    // Init SD card and filesystem.
+    g_cardManager.init();
     g_fileManager.init();
 
     g_readerThread.start();

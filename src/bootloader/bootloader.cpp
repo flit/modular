@@ -31,6 +31,7 @@
 #include "board.h"
 #include "pin_irq_manager.h"
 #include "file_system.h"
+#include "card_manager.h"
 #include "utility.h"
 #include "ring_buffer.h"
 #include "led.h"
@@ -94,9 +95,12 @@ void bootloader_thread(void * arg);
 // Variables
 //------------------------------------------------------------------------------
 
+namespace slab {
+
 volatile AppVectors * g_app = reinterpret_cast<volatile AppVectors *>(APP_START_ADDR);
 
 fs::FileSystem g_fs;
+CardManager g_cardManager;
 
 Ar::ThreadWithStack<4096> g_bootloaderThread("bootloader", bootloader_thread, 0, 100);
 
@@ -105,10 +109,11 @@ LED<PIN_CH2_LED_GPIO_BASE, PIN_CH2_LED> g_ch2Led;
 LED<PIN_CH3_LED_GPIO_BASE, PIN_CH3_LED> g_ch3Led;
 LED<PIN_CH4_LED_GPIO_BASE, PIN_CH4_LED> g_ch4Led;
 LEDBase * g_channelLeds[] = { &g_ch1Led, &g_ch2Led, &g_ch3Led, &g_ch4Led};
-bool g_cardPresent = false;
 
 //! Buffer to store data read from firmware update file.
 uint32_t g_sectorBuffer[FSL_FEATURE_FLASH_PFLASH_BLOCK_SECTOR_SIZE / sizeof(uint32_t)];
+
+}
 
 DEFINE_DEBUG_LOG
 
@@ -151,26 +156,6 @@ void flash_leds()
         g_channelLeds[which]->off();
     }
 
-}
-
-void card_detect_handler(PORT_Type * port, uint32_t pin, void * userData)
-{
-//     DEBUG_PRINTF(BUTTON_MASK, "card detect\r\n");
-
-    if (!g_cardPresent)
-    {
-        DEBUG_PRINTF(BUTTON_MASK, "card inserted\r\n");
-//         PORT_SetPinMux(PIN_SDHC_D3_PORT, PIN_SDHC_D3_BIT, kPORT_MuxAlt4);
-        PORT_SetPinInterruptConfig(PIN_SDHC_D3_PORT, PIN_SDHC_D3_BIT, kPORT_InterruptFallingEdge);
-    }
-    else
-    {
-        DEBUG_PRINTF(BUTTON_MASK, "card removed\r\n");
-        PORT_SetPinMux(PIN_SDHC_D3_PORT, PIN_SDHC_D3, kPORT_MuxAsGpio);
-        PORT_SetPinInterruptConfig(PIN_SDHC_D3_PORT, PIN_SDHC_D3_BIT, kPORT_InterruptRisingEdge);
-    }
-
-    g_cardPresent = !g_cardPresent;
 }
 
 void start_app(uint32_t stack, uint32_t entry)
@@ -341,17 +326,9 @@ void bootloader_thread(void * arg)
 {
     DEBUG_PRINTF(INIT_MASK, "Bootloader Initializing...\r\n");
 
-    // Configure SD host.
-    static sdmmchost_detect_card_t cd = {
-        .cdType = kSDMMCHOST_DetectCardByGpioCD,
-        .cdTimeOut_MS = (~0U),
-        };
+    g_cardManager.init();
+    g_cardManager.check_presence();
 
-    g_sd.host.base = SDHC;
-    g_sd.host.sourceClock_Hz = CLOCK_GetFreq(kCLOCK_CoreSysClk);
-    g_sd.usrParam.cd = &cd;
-
-    SD_HostInit(&g_sd);
 
     // Look for a firmware update file.
     fs::error_t result = g_fs.init();
