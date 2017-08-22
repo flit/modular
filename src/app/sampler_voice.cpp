@@ -63,12 +63,24 @@ void SampleBufferManager::init(SamplerVoice * voice, int16_t * buffer)
     _number = voice->get_number();
     _primeMutex.init("prime");
 
+    // Init invariant buffer fields.
     uint32_t i;
     for (i = 0; i < kBufferCount; ++i)
     {
         _buffer[i].number = i;
-        _buffer[i].state = SampleBuffer::State::kUnused;
         _buffer[i].data = &buffer[i * kBufferSize];
+    }
+
+    set_file(0);
+}
+
+//! @brief Reset all buffers to unused.
+void SampleBufferManager::_reset_buffers()
+{
+    uint32_t i;
+    for (i = 0; i < kBufferCount; ++i)
+    {
+        _buffer[i].state = SampleBuffer::State::kUnused;
         _buffer[i].startFrame = 0;
         _buffer[i].frameCount = kBufferSize;
         _buffer[i].readHead = 0;
@@ -82,12 +94,17 @@ void SampleBufferManager::set_file(uint32_t totalFrames)
     _totalSamples = totalFrames;
     _endSample = totalFrames;
     _activeBufferCount = min(round_up_div(_totalSamples, kBufferSize), kBufferCount);
+    _currentBuffer = nullptr;
     _samplesPlayed = 0;
     _samplesRead = 0;
     _samplesQueued = 0;
     _didReadFileStart = false;
     _waitingForFileStart = true;
     _isReady = false;
+    _reset_buffers();
+
+    // Go ahead and prime.
+    prime();
 }
 
 void SampleBufferManager::prime()
@@ -97,7 +114,7 @@ void SampleBufferManager::prime()
 
     // Reset state.
     _samplesPlayed = _startSample;
-    _samplesRead = _didReadFileStart ? _startSample + kBufferSize : _startSample;
+    _samplesRead = _didReadFileStart ? min(_startSample + kBufferSize, _totalSamples) : _startSample;
     _samplesQueued = _samplesRead;
 
     // Clear buffers queues.
@@ -106,8 +123,11 @@ void SampleBufferManager::prime()
     _emptyBuffers.clear();
 
     // Playing will start from the file start buffer.
-    _currentBuffer = &_buffer[0];
-    _buffer[0].readHead = 0;
+    if (_activeBufferCount)
+    {
+        _currentBuffer = &_buffer[0];
+        _buffer[0].readHead = 0;
+    }
 
     // Queue up the rest of the available buffers to be filled.
     uint32_t i = _didReadFileStart ? 1 : 0;
@@ -293,14 +313,23 @@ void SamplerVoice::init(uint32_t n, int16_t * buffer)
 {
     _number = n;
     _manager.init(this, buffer);
+    clear_file();
 }
 
 void SamplerVoice::set_file(WaveFile& file)
 {
+    _reset_voice();
     _wav = file;
     _data = _wav.get_audio_data();
-    _isPlaying = false;
-    _manager.set_file(_data.get_frames());
+    _manager.set_file(_data.get_frames()); // This wil prime the manager.
+}
+
+void SamplerVoice::clear_file()
+{
+    _reset_voice();
+    _wav = WaveFile();
+    _data = WaveFile::AudioDataStream();
+    _manager.set_file(0);
 }
 
 void SamplerVoice::_reset_voice()
@@ -319,7 +348,7 @@ void SamplerVoice::prime()
 void SamplerVoice::trigger()
 {
     // Ignore the trigger if the manager isn't ready to play.
-    if (!_manager.is_ready())
+    if (!is_valid() || !_manager.is_ready())
     {
         return;
     }

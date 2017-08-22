@@ -320,6 +320,11 @@ void init_thread(void * arg)
 {
     DEBUG_PRINTF(INIT_MASK, "\r\nSAMPLBäR Initializing...\r\n");
 
+    flash_leds();
+
+    // Must init reader thread before initing voices.
+    g_readerThread.init();
+
     // Init channel-specific objects.
     uint32_t i;
     for (i = 0; i < kVoiceCount; ++i)
@@ -334,25 +339,16 @@ void init_thread(void * arg)
     g_ui.set_pots(g_pots);
     g_ui.init();
 
-    flash_leds();
-
     calibrate_pots();
 
     init_dma();
     init_audio_out();
-    g_readerThread.init();
 
     // Init SD card and filesystem.
     g_cardManager.init();
     g_fileManager.init();
 
     g_readerThread.start();
-
-    // Wait until reader thread has filled all buffers.
-    while (g_readerThread.get_pending_count())
-    {
-        Ar::Thread::sleep(20);
-    }
 
     // Start other threads.
     g_ui.start();

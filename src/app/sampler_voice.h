@@ -124,6 +124,8 @@ protected:
     bool _didReadFileStart;
     bool _waitingForFileStart;
     bool _isReady;
+
+    void _reset_buffers();
 };
 
 /*!
@@ -137,6 +139,7 @@ public:
 
     void init(uint32_t n, int16_t * buffer);
     void set_file(WaveFile & file);
+    void clear_file();
 
     uint32_t get_number() const { return _number; }
     bool is_valid() const { return _wav.is_valid(); }

@@ -77,6 +77,7 @@ void FileManager::scan_for_files()
 
             bool inited = (wav.parse() == fs::kSuccess);
 
+            // @todo check sample rate
             if (inited && wav.get_channels() <= 2)
             {
                 uint32_t channel = info.fname[0] - '1';
@@ -93,8 +94,6 @@ void FileManager::scan_for_files()
                         wav.get_channels(),
                         wav.get_frame_size(),
                         frameCount);
-
-                    g_voice[channel].prime();
                 }
             }
             else
