@@ -44,7 +44,7 @@
 /*!
  * @brief SDMMCHOST detect card by GPIO.
  */
-static void SDMMCHOST_DetectCardByGpio(sdmmchost_detect_card_t *cd);
+static void SDMMCHOST_DetectCardByGpio(const sdmmchost_detect_card_t *cd);
 
 /*!
  * @brief SDMMCHOST detect card insert status by host controller.
@@ -87,7 +87,7 @@ extern volatile uint32_t s_timeMilliseconds;
 /*******************************************************************************
  * Code
  ******************************************************************************/
-static void SDMMCHOST_DetectCardByGpio(sdmmchost_detect_card_t *cd)
+static void SDMMCHOST_DetectCardByGpio(const sdmmchost_detect_card_t *cd)
 {
     if (GPIO_ReadPinInput(BOARD_SDHC_CD_GPIO_BASE, BOARD_SDHC_CD_GPIO_PIN) == SDMMCHOST_CARD_INSERT_CD_LEVEL)
     {
@@ -150,11 +150,18 @@ static void SDMMCHOST_ErrorRecovery(SDMMCHOST_TYPE *base)
 
 static status_t SDMMCHOST_CardDetectInit(SDMMCHOST_TYPE *base, const sdmmchost_detect_card_t *cd)
 {
-    if (cd->cdType == kSDMMCHOST_DetectCardByGpioCD)
+    sdmmchost_detect_card_type_t cdType = kSDMMCHOST_DetectCardByGpioCD;
+
+    if (cd != NULL)
+    {
+        cdType = cd->cdType;
+    }
+
+    if (cdType == kSDMMCHOST_DetectCardByGpioCD)
     {
         SDMMCHOST_DetectCardByGpio(cd);
     }
-    else if (cd->cdType == kSDMMCHOST_DetectCardByHostDATA3)
+    else if (cdType == kSDMMCHOST_DetectCardByHostDATA3)
     {
         /* enable card detect through DATA3 */
         SDMMCHOST_CARD_DETECT_DATA3_ENABLE(base, true);
@@ -182,12 +189,19 @@ void SDMMCHOST_Delay(uint32_t milliseconds)
 
 status_t SDMMCHOST_WaitCardDetectStatus(SDMMCHOST_TYPE *base, const sdmmchost_detect_card_t *cd, bool waitCardStatus)
 {
+    sdmmchost_detect_card_type_t cdType = kSDMMCHOST_DetectCardByGpioCD;
+
+    if (cd != NULL)
+    {
+        cdType = cd->cdType;
+    }
+
     if (waitCardStatus != s_sdInsertedFlag)
     {
         /* Wait card inserted. */
         do
         {
-            if (cd->cdType != kSDMMCHOST_DetectCardByGpioCD)
+            if (cdType != kSDMMCHOST_DetectCardByGpioCD)
             {
                 SDMMCHOST_DetectCardInsertByHost(base);
             }

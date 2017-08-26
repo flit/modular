@@ -50,7 +50,7 @@
  * @param eventType The event type
  * @return The event instance's pointer.
  */
-static volatile SemaphoreHandle_t *SDMMCEVENT_GetInstance(sdmmc_event_t eventType);
+static SemaphoreHandle_t *SDMMCEVENT_GetInstance(sdmmc_event_t eventType);
 
 /*******************************************************************************
  * Variables
@@ -63,9 +63,9 @@ static SemaphoreHandle_t g_eventCardDetect;
 /*******************************************************************************
  * Code
  ******************************************************************************/
-static volatile SemaphoreHandle_t *SDMMCEVENT_GetInstance(sdmmc_event_t eventType)
+static SemaphoreHandle_t *SDMMCEVENT_GetInstance(sdmmc_event_t eventType)
 {
-    volatile SemaphoreHandle_t *event;
+    SemaphoreHandle_t *event;
 
     switch (eventType)
     {
@@ -85,7 +85,7 @@ static volatile SemaphoreHandle_t *SDMMCEVENT_GetInstance(sdmmc_event_t eventTyp
 
 bool SDMMCEVENT_Create(sdmmc_event_t eventType)
 {
-    volatile SemaphoreHandle_t *event = SDMMCEVENT_GetInstance(eventType);
+    SemaphoreHandle_t *event = SDMMCEVENT_GetInstance(eventType);
 
     if (event)
     {
@@ -106,7 +106,7 @@ bool SDMMCEVENT_Create(sdmmc_event_t eventType)
 bool SDMMCEVENT_Wait(sdmmc_event_t eventType, uint32_t timeoutMilliseconds)
 {
     uint32_t timeoutTicks;
-    volatile SemaphoreHandle_t *event = SDMMCEVENT_GetInstance(eventType);
+    SemaphoreHandle_t *event = SDMMCEVENT_GetInstance(eventType);
 
     if (timeoutMilliseconds && event)
     {
@@ -135,7 +135,7 @@ bool SDMMCEVENT_Wait(sdmmc_event_t eventType, uint32_t timeoutMilliseconds)
 
 bool SDMMCEVENT_Notify(sdmmc_event_t eventType)
 {
-    volatile SemaphoreHandle_t *event = SDMMCEVENT_GetInstance(eventType);
+    SemaphoreHandle_t *event = SDMMCEVENT_GetInstance(eventType);
     BaseType_t xHigherPriorityTaskWoken = pdFALSE;
     BaseType_t xResult = pdFAIL;
 
@@ -160,7 +160,7 @@ bool SDMMCEVENT_Notify(sdmmc_event_t eventType)
 
 void SDMMCEVENT_Delete(sdmmc_event_t eventType)
 {
-    volatile SemaphoreHandle_t *event = SDMMCEVENT_GetInstance(eventType);
+    SemaphoreHandle_t *event = SDMMCEVENT_GetInstance(eventType);
 
     if (event)
     {

@@ -1703,8 +1703,6 @@ void SD_PowerOffCard(SDMMCHOST_TYPE *base, const sdmmchost_pwr_card_t *pwr)
 
 status_t SD_WaitCardDetectStatus(SDMMCHOST_TYPE *hostBase, const sdmmchost_detect_card_t *cd, bool waitCardStatus)
 {
-    assert(cd);
-
     return SDMMCHOST_WaitCardDetectStatus(hostBase, cd, waitCardStatus);
 }
 

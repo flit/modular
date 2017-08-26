@@ -948,8 +948,6 @@ void SDIO_HostReset(SDMMCHOST_CONFIG *host)
 
 status_t SDIO_WaitCardDetectStatus(SDMMCHOST_TYPE *hostBase, const sdmmchost_detect_card_t *cd, bool waitCardStatus)
 {
-    assert(cd);
-
     return SDMMCHOST_WaitCardDetectStatus(hostBase, cd, waitCardStatus);
 }
 

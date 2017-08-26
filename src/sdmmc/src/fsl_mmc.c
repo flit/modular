@@ -1929,6 +1929,12 @@ static status_t MMC_Write(
     {
     }
 
+    /* Wait for the card write process complete because of that card read process and write process use one buffer. */
+    if (kStatus_Success != MMC_WaitWriteComplete(card))
+    {
+        return kStatus_SDMMC_WaitWriteCompleteFailed;
+    }
+
     data.blockSize = blockSize;
     data.blockCount = blockCount;
     data.txData = (const uint32_t *)buffer;

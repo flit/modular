@@ -32,7 +32,6 @@
 #include <assert.h>
 #include <stdio.h>
 #include <string.h>
-#include "fsl_sd.h"
 #include "fsl_sd_disk.h"
 
 /*******************************************************************************
@@ -152,10 +151,22 @@ DSTATUS sd_disk_initialize(uint8_t physicalDrive)
         return STA_NOINIT;
     }
 
-    status_t err = SD_CardInit(&g_sd);
-    if (err != kStatus_Success)
+    if(g_sd.isHostReady)
+    {
+        /* reset host */
+        SD_HostReset(&(g_sd.host));
+    }
+    else
+    {
+        return STA_NOINIT;
+    }
+
+    if (kStatus_Success != SD_CardInit(&g_sd))
     {
         SD_CardDeinit(&g_sd);
+        memset(&g_sd, 0U, sizeof(g_sd));
+        return STA_NOINIT;
     }
-    return err;
+
+    return 0;
 }

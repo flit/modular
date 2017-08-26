@@ -44,7 +44,7 @@
 /*!
  * @brief SDMMCHOST detect card by GPIO.
  */
-static void SDMMCHOST_DetectCardByGpio(sdmmchost_detect_card_t *cd);
+static void SDMMCHOST_DetectCardByGpio(const sdmmchost_detect_card_t *cd);
 
 /*!
  * @brief SDMMCHOST detect card insert status by host controller.
@@ -107,7 +107,7 @@ static volatile bool s_sdInsertedFlag = false;
 /*******************************************************************************
  * Code
  ******************************************************************************/
-static void SDMMCHOST_DetectCardByGpio(sdmmchost_detect_card_t *cd)
+static void SDMMCHOST_DetectCardByGpio(const sdmmchost_detect_card_t *cd)
 {
     if (GPIO_ReadPinInput(BOARD_SDHC_CD_GPIO_BASE, BOARD_SDHC_CD_GPIO_PIN) == SDMMCHOST_CARD_INSERT_CD_LEVEL)
     {
@@ -210,12 +210,19 @@ static void SDMMCHOST_ErrorRecovery(SDMMCHOST_TYPE *base)
 
 static status_t SDMMCHOST_CardDetectInit(SDMMCHOST_TYPE *base, const sdmmchost_detect_card_t *cd)
 {
+    sdmmchost_detect_card_type_t cdType = kSDMMCHOST_DetectCardByGpioCD;
+
+    if (cd != NULL)
+    {
+        cdType = cd->cdType;
+    }
+
     if (!SDMMCEVENT_Create(kSDMMCEVENT_CardDetect))
     {
         return kStatus_Fail;
     }
 
-    if (cd->cdType == kSDMMCHOST_DetectCardByGpioCD)
+    if (cdType == kSDMMCHOST_DetectCardByGpioCD)
     {
         /* Card detection pin will generate interrupt on either eage */
         PORT_SetPinInterruptConfig(BOARD_SDHC_CD_PORT_BASE, BOARD_SDHC_CD_GPIO_PIN, kPORT_InterruptEitherEdge);
@@ -226,7 +233,7 @@ static status_t SDMMCHOST_CardDetectInit(SDMMCHOST_TYPE *base, const sdmmchost_d
         /* check card detect status */
         SDMMCHOST_DetectCardByGpio(cd);
     }
-    else if (cd->cdType == kSDMMCHOST_DetectCardByHostDATA3)
+    else if (cdType == kSDMMCHOST_DetectCardByHostDATA3)
     {
         /* enable card detect through DATA3 */
         SDMMCHOST_CARD_DETECT_DATA3_ENABLE(base, true);
@@ -268,12 +275,19 @@ status_t SDMMCHOST_WaitCardDetectStatus(SDMMCHOST_TYPE *hostBase,
                                         const sdmmchost_detect_card_t *cd,
                                         bool waitCardStatus)
 {
+    uint32_t timeout = SDMMCHOST_CARD_DETECT_TIMEOUT;
+
+    if (cd != NULL)
+    {
+        timeout = cd->cdTimeOut_ms;
+    }
+
     if (waitCardStatus != s_sdInsertedFlag)
     {
         /* Wait card inserted. */
         do
         {
-            if (!SDMMCEVENT_Wait(kSDMMCEVENT_CardDetect, cd->cdTimeOut_ms))
+            if (!SDMMCEVENT_Wait(kSDMMCEVENT_CardDetect, timeout))
             {
                 return kStatus_Fail;
             }
