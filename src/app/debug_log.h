@@ -49,6 +49,7 @@
 #define FILL_MASK (1<<7)
 #define TIME_MASK (1<<8)
 #define BUTTON_MASK (1<<9)
+#define MISC_MASK (1<<31)
 
 #if !defined(ENABLE_DEBUG_PRINTF)
 #define ENABLE_DEBUG_PRINTF (1)
@@ -84,7 +85,7 @@ extern slab::RingBuffer<slab::SimpleString<DEBUG_LOG_MSG_SIZE>, DEBUG_LOG_ENTRY_
 #elif ENABLE_DEBUG_PRINTF && DEBUG_PRINTF_TO_UART
 
 #define DEBUG_PRINTF(f, m, ...) do { if ((f) & DEBUG_PRINTF_MASK) { \
-        printf("[%d] " m, Microseconds::get(), ##__VA_ARGS__); \
+        printf("[%lu] " m, Microseconds::get(), ##__VA_ARGS__); \
     } } while (0)
 #define DEFINE_DEBUG_LOG
 
