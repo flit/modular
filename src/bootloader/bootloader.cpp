@@ -29,23 +29,16 @@
 
 #include "argon/argon.h"
 #include "board.h"
-#include "pin_irq_manager.h"
 #include "file_system.h"
 #include "card_manager.h"
 #include "utility.h"
-#include "ring_buffer.h"
 #include "led.h"
 #include "microseconds.h"
 #include "debug_log.h"
 #include "fsl_flash.h"
-#include "fsl_sd_disk.h"
-#include "fsl_port.h"
-#include "fsl_gpio.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
-#include <ctype.h>
-#include <utility>
 
 using namespace slab;
 
@@ -62,8 +55,11 @@ using namespace slab;
 //! Value of a word of flash that is erased.
 #define ERASED_WORD (0xffffffff)
 
-//! Unique ID for the app.
-#define APP_SIGNATURE (0x72e46273) // sbär
+//! Unique ID for the app. (sbär)
+#define APP_SIGNATURE (0x72e46273)
+
+//! Time in milliseconds LEDs are on when flashing.
+#define LED_FLASH_TIME_MS (50)
 
 //! @brief Start of the app's vector table.
 struct AppVectors
@@ -84,13 +80,13 @@ struct AppVectors
 // Prototypes
 //------------------------------------------------------------------------------
 
-void flash_leds();
-void card_detect_handler(PORT_Type * port, uint32_t pin, void * userData);
-void start_app(uint32_t stack, uint32_t entry);
+void toggle_leds();
+void start_app(volatile AppVectors * vectors);
 void perform_update(fs::File& updateFile);
 void check_update();
 bool have_valid_app();
 void bootloader_thread(void * arg);
+int main(void);
 
 //------------------------------------------------------------------------------
 // Variables
@@ -98,6 +94,7 @@ void bootloader_thread(void * arg);
 
 namespace slab {
 
+//! @brief The app's vectors.
 volatile AppVectors * g_app = reinterpret_cast<volatile AppVectors *>(APP_START_ADDR);
 
 fs::FileSystem g_fs;
@@ -110,6 +107,7 @@ LED<PIN_CH2_LED_GPIO_BASE, PIN_CH2_LED_BIT> g_ch2Led;
 LED<PIN_CH3_LED_GPIO_BASE, PIN_CH3_LED_BIT> g_ch3Led;
 LED<PIN_CH4_LED_GPIO_BASE, PIN_CH4_LED_BIT> g_ch4Led;
 LEDBase * g_channelLeds[] = { &g_ch1Led, &g_ch2Led, &g_ch3Led, &g_ch4Led};
+LED<PIN_BUTTON1_LED_GPIO_BASE, PIN_BUTTON1_LED_BIT> g_button1Led;
 
 //! Buffer to store data read from firmware update file.
 uint32_t g_sectorBuffer[FSL_FEATURE_FLASH_PFLASH_BLOCK_SECTOR_SIZE / sizeof(uint32_t)];
@@ -122,49 +120,37 @@ DEFINE_DEBUG_LOG
 // Code
 //------------------------------------------------------------------------------
 
-void flash_leds()
+void toggle_leds()
 {
+    // Assume all LEDs are in the same state.
+    bool state = !g_channelLeds[0]->is_on();
     int which;
     for (which = 0; which < 4; ++which)
     {
-        g_channelLeds[which]->on();
-        Ar::Thread::sleep(100);
-        g_channelLeds[which]->off();
+        g_channelLeds[which]->set(state);
     }
-
-    for (which = 2; which >= 0; --which)
-    {
-        g_channelLeds[which]->on();
-        Ar::Thread::sleep(100);
-        g_channelLeds[which]->off();
-    }
-
-    // sleep 100 ms
-    Ar::Thread::sleep(100);
-
-    // all on
-    for (which = 0; which < 4; ++which)
-    {
-        g_channelLeds[which]->on();
-    }
-
-    // sleep 100 ms
-    Ar::Thread::sleep(100);
-
-    // all off
-    for (which = 0; which < 4; ++which)
-    {
-        g_channelLeds[which]->off();
-    }
-
+    g_button1Led.set(state);
 }
 
-void start_app(uint32_t stack, uint32_t entry)
+void start_app(volatile AppVectors * vectors)
 {
-    asm volatile (  "mov    sp, %[stack]\n\t"
+    // Disable interrupts, then switch to the app's vector table.
+    __disable_irq();
+    SCB->VTOR = reinterpret_cast<uint32_t>(vectors);
+
+    // Load variables used in inline asm below.
+    uint32_t z = 0;
+    uint32_t stack = vectors->initialStack;
+    uint32_t entry = vectors->resetHandler;
+
+    // Switch to MSP, set MSP to the app's initial SP, then jump to app.
+    asm volatile (  "msr    control, %[z]   \n\t"
+                    "isb                    \n\t"
+                    "mov    sp, %[stack]    \n\t"
                     "bx     %[entry]"
                     :
-                    :   [stack] "l" (stack),
+                    :   [z] "l" (z),
+                        [stack] "l" (stack),
                         [entry] "l" (entry)
                     );
 }
@@ -191,6 +177,8 @@ void perform_update(fs::File& updateFile)
 
     uint32_t sectorAddress = APP_START_ADDR;
 
+    DEBUG_PRINTF(INIT_MASK, "erasing sector @ 0x%x\r\n", APP_START_ADDR);
+
     // Erase app's vector table sector without programming it.
     __disable_irq();
     status = FLASH_Erase(&flash, sectorAddress, kSectorSize, kFLASH_ApiEraseKey);
@@ -208,6 +196,8 @@ void perform_update(fs::File& updateFile)
     {
         uint32_t bytesToRead = min(remainingBytes, kSectorSize);
 
+        DEBUG_PRINTF(MISC_MASK, "reading sector @ 0x%x\r\n", sectorAddress);
+
         // Read data from update file.
         uint32_t bytesRead;
         fs::error_t err = updateFile.read(bytesToRead, g_sectorBuffer, &bytesRead);
@@ -223,6 +213,8 @@ void perform_update(fs::File& updateFile)
             memset(&((uint8_t *)g_sectorBuffer)[bytesRead], 0xff, kSectorSize - bytesRead);
         }
 
+        DEBUG_PRINTF(MISC_MASK, "erasing sector @ 0x%x\r\n", sectorAddress);
+
         // Erase this sector.
         __disable_irq();
         status = FLASH_Erase(&flash, sectorAddress, kSectorSize, kFLASH_ApiEraseKey);
@@ -233,7 +225,7 @@ void perform_update(fs::File& updateFile)
             return;
         }
 
-        DEBUG_PRINTF(INIT_MASK, "writing sector @ 0x%x\r\n", sectorAddress);
+        DEBUG_PRINTF(MISC_MASK, "writing sector @ 0x%x\r\n", sectorAddress);
 
         // Program the whole sector.
         __disable_irq();
@@ -245,9 +237,20 @@ void perform_update(fs::File& updateFile)
             return;
         }
 
+        DEBUG_PRINTF(MISC_MASK, "verifying sector @ 0x%x\r\n", sectorAddress);
+
+        // Read the programmed sector to verify its contents.
+        if (memcmp(g_sectorBuffer, (uint8_t *)sectorAddress, kSectorSize) != 0)
+        {
+            DEBUG_PRINTF(ERROR_MASK, "verify failed for sector @ 0x%x\r\n", sectorAddress);
+            return;
+        }
+
         sectorAddress += kSectorSize;
         remainingBytes -= bytesRead;
     }
+
+    DEBUG_PRINTF(INIT_MASK, "reading sector @ 0x%x\r\n", APP_START_ADDR);
 
     // Now that the rest of the image is successfully programmed, we can program the vector table sector.
     updateFile.seek(0);
@@ -270,6 +273,21 @@ void perform_update(fs::File& updateFile)
     if (status != kStatus_Success)
     {
         DEBUG_PRINTF(ERROR_MASK, "failed to program first app sector (err=%d)\r\n", status);
+        return;
+    }
+
+    DEBUG_PRINTF(INIT_MASK, "verifying sector @ 0x%x\r\n", APP_START_ADDR);
+
+    // Read the programmed sector to verify its contents.
+    if (memcmp(g_sectorBuffer, (uint8_t *)APP_START_ADDR, kSectorSize) != 0)
+    {
+        DEBUG_PRINTF(ERROR_MASK, "verify failed for first sector, erasing to prevent boot\r\n");
+
+        // Verify failed, so erase app's vector table to prevent it from booting.
+        __disable_irq();
+        FLASH_Erase(&flash, APP_START_ADDR, kSectorSize, kFLASH_ApiEraseKey);
+        __enable_irq();
+
         return;
     }
 
@@ -306,6 +324,14 @@ void check_update()
         return;
     }
 
+    // Check file size matches the size in the header.
+    uint32_t fileSize = updateFile.get_size();
+    if (fileSize != header.appSize)
+    {
+        DEBUG_PRINTF(ERROR_MASK, "mismatch between file size (%d) and size in header (%d)\r\n", fileSize, header.appSize);
+        return;
+    }
+
     // Update if either of:
     // - Update's CRC does not match existing app's CRC.
     // - There is no existing app (update CRC is highly unlikely to match 0xffffffff, but
@@ -330,8 +356,19 @@ bool have_valid_app()
 
 void bootloader_thread(void * arg)
 {
-    DEBUG_PRINTF(INIT_MASK, "Bootloader Initializing...\r\n");
+    DEBUG_PRINTF(INIT_MASK, "samplbaer bootloader initializing...\r\n");
 
+    // Configure channel LED color.
+    GPIO_WritePinOutput(PIN_CHLEDN_GPIO, PIN_CHLEDN_BIT, 0);
+    GPIO_WritePinOutput(PIN_CHLEDP_GPIO, PIN_CHLEDP_BIT, 1);
+
+    // Invert polarity of channel LEDs.
+    g_channelLeds[0]->set_polarity(true);
+    g_channelLeds[1]->set_polarity(true);
+    g_channelLeds[2]->set_polarity(true);
+    g_channelLeds[3]->set_polarity(true);
+
+    // Init SD card manager.
     g_cardManager.init();
     g_cardManager.check_presence();
 
@@ -364,11 +401,8 @@ void bootloader_thread(void * arg)
             {
                 DEBUG_PRINTF(INIT_MASK, "Launching app...\r\n");
 
-                // Switch the vector table.
-                SCB->VTOR = APP_START_ADDR;
-
                 // Jump to the app.
-                start_app(g_app->initialStack, g_app->resetHandler);
+                start_app(g_app);
             }
             else
             {
@@ -377,7 +411,8 @@ void bootloader_thread(void * arg)
                 // Wait for card to be removed.
                 while (g_cardManager.check_presence())
                 {
-                    Ar::Thread::sleep(250);
+                    toggle_leds();
+                    Ar::Thread::sleep(LED_FLASH_TIME_MS);
                 }
             }
         }
@@ -388,17 +423,15 @@ void bootloader_thread(void * arg)
             {
                 DEBUG_PRINTF(INIT_MASK, "Launching app...\r\n");
 
-                // Switch the vector table.
-                SCB->VTOR = APP_START_ADDR;
-
                 // Jump to the app.
-                start_app(g_app->initialStack, g_app->resetHandler);
+                start_app(g_app);
             }
 
             // Wait for card to be inserted.
             while (!g_cardManager.check_presence())
             {
-                Ar::Thread::sleep(250);
+                toggle_leds();
+                Ar::Thread::sleep(LED_FLASH_TIME_MS);
             }
         }
     }
