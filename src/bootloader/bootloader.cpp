@@ -98,15 +98,47 @@ protected:
     void set_all_leds(bool state);
 };
 
+//! @brief Encapsulation of the bootloader.
+//!
+//! The bootloader thread will automatically start once Argon runs.
+class Bootloader
+{
+public:
+    Bootloader();
+    ~Bootloader()=default;
+
+protected:
+    static const uint32_t kSectorSize = FSL_FEATURE_FLASH_PFLASH_BLOCK_SECTOR_SIZE;
+
+    Ar::ThreadWithStack<4096> _thread;
+
+    //! @brief The app's vectors.
+    volatile AppVectors * _app;
+
+    fs::FileSystem _fs;
+    CardManager _cardManager;
+    fs::File _updateFile;
+
+    //! Buffer to store data read from firmware update file.
+    uint32_t _sectorBuffer[kSectorSize / sizeof(uint32_t)];
+
+    flash_config_t _flash;
+
+    bool erase_sector(uint32_t sectorAddress);
+    bool program_sector(uint32_t sectorAddress);
+    bool load_sector_data(uint32_t bytesToRead);
+
+    void start_app();
+    void perform_update();
+    bool check_update();
+    bool have_valid_app();
+    void bootloader_thread();
+};
+
 //------------------------------------------------------------------------------
 // Prototypes
 //------------------------------------------------------------------------------
 
-void start_app(volatile AppVectors * vectors);
-void perform_update(fs::File& updateFile);
-void check_update();
-bool have_valid_app();
-void bootloader_thread(void * arg);
 int main(void);
 
 //------------------------------------------------------------------------------
@@ -115,14 +147,8 @@ int main(void);
 
 namespace slab {
 
-//! @brief The app's vectors.
-volatile AppVectors * g_app = reinterpret_cast<volatile AppVectors *>(APP_START_ADDR);
-
-fs::FileSystem g_fs;
-CardManager g_cardManager;
-
 LEDFlasher g_flasher;
-Ar::ThreadWithStack<4096> g_bootloaderThread("bootloader", bootloader_thread, 0, 100);
+Bootloader g_bootloader;
 
 LED<PIN_CH1_LED_GPIO_BASE, PIN_CH1_LED_BIT> g_ch1Led;
 LED<PIN_CH2_LED_GPIO_BASE, PIN_CH2_LED_BIT> g_ch2Led;
@@ -130,9 +156,6 @@ LED<PIN_CH3_LED_GPIO_BASE, PIN_CH3_LED_BIT> g_ch3Led;
 LED<PIN_CH4_LED_GPIO_BASE, PIN_CH4_LED_BIT> g_ch4Led;
 LEDBase * g_channelLeds[] = { &g_ch1Led, &g_ch2Led, &g_ch3Led, &g_ch4Led};
 LED<PIN_BUTTON1_LED_GPIO_BASE, PIN_BUTTON1_LED_BIT> g_button1Led;
-
-//! Buffer to store data read from firmware update file.
-uint32_t g_sectorBuffer[FSL_FEATURE_FLASH_PFLASH_BLOCK_SECTOR_SIZE / sizeof(uint32_t)];
 
 }
 
@@ -200,16 +223,22 @@ void LEDFlasher::flasher_thread()
     }
 }
 
-void start_app(volatile AppVectors * vectors)
+Bootloader::Bootloader()
+:   _thread("bootloader", this, &Bootloader::bootloader_thread, 100, kArStartThread),
+    _app(reinterpret_cast<volatile AppVectors *>(APP_START_ADDR))
+{
+}
+
+void Bootloader::start_app()
 {
     // Disable interrupts, then switch to the app's vector table.
     __disable_irq();
-    SCB->VTOR = reinterpret_cast<uint32_t>(vectors);
+    SCB->VTOR = reinterpret_cast<uint32_t>(_app);
 
     // Load variables used in inline asm below.
     uint32_t z = 0;
-    uint32_t stack = vectors->initialStack;
-    uint32_t entry = vectors->resetHandler;
+    uint32_t stack = _app->initialStack;
+    uint32_t entry = _app->resetHandler;
 
     // Switch to MSP, set MSP to the app's initial SP, then jump to app.
     asm volatile (  "msr    control, %[z]   \n\t"
@@ -223,11 +252,86 @@ void start_app(volatile AppVectors * vectors)
                     );
 }
 
-void perform_update(fs::File& updateFile)
+//! @brief Erases the specified sector of flash.
+bool Bootloader::erase_sector(uint32_t sectorAddress)
 {
-    const uint32_t kSectorSize = FSL_FEATURE_FLASH_PFLASH_BLOCK_SECTOR_SIZE;
+    DEBUG_PRINTF(MISC_MASK, "erasing sector @ 0x%x\r\n", sectorAddress);
 
-    uint32_t remainingBytes = updateFile.get_size();
+    __disable_irq();
+    status_t status = FLASH_Erase(&_flash, sectorAddress, kSectorSize, kFLASH_ApiEraseKey);
+    __enable_irq();
+    if (status != kStatus_Success)
+    {
+        DEBUG_PRINTF(ERROR_MASK, "failed to erase sector @ 0x%x (err=%d)\r\n", sectorAddress, status);
+        return false;
+    }
+    return true;
+}
+
+//! @brief Programs flash and performs readback verify.
+bool Bootloader::program_sector(uint32_t sectorAddress)
+{
+    DEBUG_PRINTF(MISC_MASK, "writing sector @ 0x%x\r\n", sectorAddress);
+
+    // Program the whole sector.
+    __disable_irq();
+    status_t status = FLASH_ProgramSection(&_flash, sectorAddress, _sectorBuffer, kSectorSize);
+    __enable_irq();
+    if (status != kStatus_Success)
+    {
+        DEBUG_PRINTF(ERROR_MASK, "failed to program sector @ 0x%x (err=%d)\r\n", sectorAddress, status);
+        return false;
+    }
+
+    DEBUG_PRINTF(MISC_MASK, "verifying sector @ 0x%x\r\n", sectorAddress);
+
+    // Read the programmed sector to verify its contents.
+    if (memcmp(_sectorBuffer, (uint8_t *)sectorAddress, kSectorSize) != 0)
+    {
+        DEBUG_PRINTF(ERROR_MASK, "verify failed for sector @ 0x%x\r\n", sectorAddress);
+        return false;
+    }
+
+    return true;
+}
+
+//! @brief Reads the next @a bytesToRead bytes from the update file.
+bool Bootloader::load_sector_data(uint32_t bytesToRead)
+{
+    // Read data from update file.
+    uint32_t bytesRead;
+    fs::error_t err = _updateFile.read(bytesToRead, _sectorBuffer, &bytesRead);
+    if (err || bytesRead != bytesToRead)
+    {
+        DEBUG_PRINTF(ERROR_MASK, "failed to read data from file\r\n");
+        return false;
+    }
+
+    // Fill trailing portion of the sector with fs.
+    if (bytesRead < kSectorSize)
+    {
+        memset(&((uint8_t *)_sectorBuffer)[bytesRead], 0xff, kSectorSize - bytesRead);
+    }
+
+    return true;
+}
+
+//! @brief Copy the firmware update to flash.
+//!
+//! The first step is to erase the app's vector table sector. This sector will not be
+//! programmed until all other sectors are successfully programmed, so that the app is
+//! not made bootable until it is fully ready to go.
+//!
+//! For each sector, the data is read from the file into a temporary buffer. Then the
+//! flash sector is erased and programmed. After programming, the flash contents are
+//! verified against the file data still in the temporary buffer.
+//!
+//! The last step is to read, program, and verify the vector table sector that was erased
+//! in the first step. If the verify fails, then the sector is erased again so that we
+//! don't try to boot a corrupted app.
+void Bootloader::perform_update()
+{
+    uint32_t remainingBytes = _updateFile.get_size();
     if (remainingBytes < kSectorSize)
     {
         DEBUG_PRINTF(ERROR_MASK, "update image is too small (only %d bytes)\r\n", remainingBytes);
@@ -235,194 +339,137 @@ void perform_update(fs::File& updateFile)
     }
 
     // Init flash driver.
-    flash_config_t flash = {0};
-    status_t status = FLASH_Init(&flash);
+    memset(&_flash, 0, sizeof(_flash));
+    status_t status = FLASH_Init(&_flash);
     if (status != kStatus_Success)
     {
         DEBUG_PRINTF(ERROR_MASK, "failed to init flash driver (err=%d)\r\n", status);
         return;
     }
 
-    uint32_t sectorAddress = APP_START_ADDR;
-
-    DEBUG_PRINTF(INIT_MASK, "erasing sector @ 0x%x\r\n", APP_START_ADDR);
-
-    // Erase app's vector table sector without programming it.
-    __disable_irq();
-    status = FLASH_Erase(&flash, sectorAddress, kSectorSize, kFLASH_ApiEraseKey);
-    __enable_irq();
-    if (status != kStatus_Success)
+    // First erase app's vector table sector without programming it.
+    if (!erase_sector(APP_START_ADDR))
     {
-        DEBUG_PRINTF(ERROR_MASK, "failed to erase first sector (err=%d)\r\n", status);
         return;
     }
-    sectorAddress += kSectorSize;
+
+    uint32_t sectorAddress = APP_START_ADDR + kSectorSize;
     remainingBytes -= kSectorSize;
-    updateFile.seek(kSectorSize);
+    _updateFile.seek(kSectorSize);
 
     while (remainingBytes)
     {
         uint32_t bytesToRead = min(remainingBytes, kSectorSize);
 
-        DEBUG_PRINTF(MISC_MASK, "reading sector @ 0x%x\r\n", sectorAddress);
-
         // Read data from update file.
-        uint32_t bytesRead;
-        fs::error_t err = updateFile.read(bytesToRead, g_sectorBuffer, &bytesRead);
-        if (err || bytesRead != bytesToRead)
+        if (!load_sector_data(bytesToRead))
         {
-            DEBUG_PRINTF(ERROR_MASK, "failed to read data from file\r\n");
             return;
         }
-
-        // Fill trailing portion of the sector with fs.
-        if (bytesRead < kSectorSize)
-        {
-            memset(&((uint8_t *)g_sectorBuffer)[bytesRead], 0xff, kSectorSize - bytesRead);
-        }
-
-        DEBUG_PRINTF(MISC_MASK, "erasing sector @ 0x%x\r\n", sectorAddress);
 
         // Erase this sector.
-        __disable_irq();
-        status = FLASH_Erase(&flash, sectorAddress, kSectorSize, kFLASH_ApiEraseKey);
-        __enable_irq();
-        if (status != kStatus_Success)
+        if (!erase_sector(sectorAddress))
         {
-            DEBUG_PRINTF(ERROR_MASK, "failed to erase sector @ 0x%x (err=%d)\r\n", sectorAddress, status);
             return;
         }
 
-        DEBUG_PRINTF(MISC_MASK, "writing sector @ 0x%x\r\n", sectorAddress);
-
-        // Program the whole sector.
-        __disable_irq();
-        status = FLASH_ProgramSection(&flash, sectorAddress, g_sectorBuffer, kSectorSize);
-        __enable_irq();
-        if (status != kStatus_Success)
+        // Program and verify the sector.
+        if (!program_sector(sectorAddress))
         {
-            DEBUG_PRINTF(ERROR_MASK, "failed to program sector @ 0x%x (err=%d)\r\n", sectorAddress, status);
-            return;
-        }
-
-        DEBUG_PRINTF(MISC_MASK, "verifying sector @ 0x%x\r\n", sectorAddress);
-
-        // Read the programmed sector to verify its contents.
-        if (memcmp(g_sectorBuffer, (uint8_t *)sectorAddress, kSectorSize) != 0)
-        {
-            DEBUG_PRINTF(ERROR_MASK, "verify failed for sector @ 0x%x\r\n", sectorAddress);
             return;
         }
 
         sectorAddress += kSectorSize;
-        remainingBytes -= bytesRead;
+        remainingBytes -= bytesToRead;
     }
 
     DEBUG_PRINTF(INIT_MASK, "reading sector @ 0x%x\r\n", APP_START_ADDR);
 
     // Now that the rest of the image is successfully programmed, we can program the vector table sector.
-    updateFile.seek(0);
+    _updateFile.seek(0);
 
     // Read data from update file.
-    uint32_t bytesRead;
-    fs::error_t err = updateFile.read(kSectorSize, g_sectorBuffer, &bytesRead);
-    if (err || bytesRead != kSectorSize)
+    if (!load_sector_data(kSectorSize))
     {
-        DEBUG_PRINTF(ERROR_MASK, "failed to read first sector from file\r\n");
         return;
     }
 
-    DEBUG_PRINTF(INIT_MASK, "writing sector @ 0x%x\r\n", APP_START_ADDR);
-
-    // Program the whole sector.
-    __disable_irq();
-    status = FLASH_ProgramSection(&flash, APP_START_ADDR, g_sectorBuffer, kSectorSize);
-    __enable_irq();
-    if (status != kStatus_Success)
+    // Program and verify the first sector.
+    if (!program_sector(APP_START_ADDR))
     {
-        DEBUG_PRINTF(ERROR_MASK, "failed to program first app sector (err=%d)\r\n", status);
-        return;
-    }
-
-    DEBUG_PRINTF(INIT_MASK, "verifying sector @ 0x%x\r\n", APP_START_ADDR);
-
-    // Read the programmed sector to verify its contents.
-    if (memcmp(g_sectorBuffer, (uint8_t *)APP_START_ADDR, kSectorSize) != 0)
-    {
-        DEBUG_PRINTF(ERROR_MASK, "verify failed for first sector, erasing to prevent boot\r\n");
-
         // Verify failed, so erase app's vector table to prevent it from booting.
-        __disable_irq();
-        FLASH_Erase(&flash, APP_START_ADDR, kSectorSize, kFLASH_ApiEraseKey);
-        __enable_irq();
+        erase_sector(APP_START_ADDR);
 
         return;
     }
 
     // Delete the firmware update file since it was successfully programmed.
     DEBUG_PRINTF(INIT_MASK, "update complete; deleting %s\r\n", FW_UPDATE_FILENAME);
-    updateFile.remove();
+    _updateFile.remove();
 }
 
-void check_update()
+//! @brief Check if we should perform an update.
+//!
+//! First an attempt is made to open the firmware update file. If the file is present,
+//! then the app signature in its header is checked. The size of the file is also compared
+//! against the size stored in the header, to make sure all data is present. If those
+//! checks pass, the CRC stored in the file's header is compared against the CRC in the
+//! header of the current version of the app resident in flash.
+//!
+//! Note that filesystem is assumed to already be mounted when this method is called.
+bool Bootloader::check_update()
 {
-    fs::File updateFile(FW_UPDATE_FILENAME);
-    fs::error_t err = updateFile.open();
+    _updateFile = fs::File(FW_UPDATE_FILENAME);
+    fs::error_t err = _updateFile.open();
     if (err)
     {
         DEBUG_PRINTF(ERROR_MASK, "failed to open update file\r\n");
-        return;
+        return false;
     }
     DEBUG_PRINTF(INIT_MASK, "opened firmware update file\r\n");
 
     // Read the vector table from the update file.
     AppVectors header;
     uint32_t bytesRead;
-    err = updateFile.read(sizeof(header), &header, &bytesRead);
+    err = _updateFile.read(sizeof(header), &header, &bytesRead);
     if (err || bytesRead != sizeof(header))
     {
         DEBUG_PRINTF(ERROR_MASK, "unable to read file header\r\n");
-        return;
+        return false;
     }
 
     // Check signature.
     if (header.signature != APP_SIGNATURE)
     {
         DEBUG_PRINTF(ERROR_MASK, "invalid signature in update file\r\n");
-        return;
+        return false;
     }
 
     // Check file size matches the size in the header.
-    uint32_t fileSize = updateFile.get_size();
+    uint32_t fileSize = _updateFile.get_size();
     if (fileSize != header.appSize)
     {
         DEBUG_PRINTF(ERROR_MASK, "mismatch between file size (%d) and size in header (%d)\r\n", fileSize, header.appSize);
-        return;
+        return false;
     }
 
     // Update if either of:
     // - Update's CRC does not match existing app's CRC.
     // - There is no existing app (update CRC is highly unlikely to match 0xffffffff, but
     //   it doesn't hurt to have an explicit check).
-    bool doUpdate = (header.crc32 != g_app->crc32)
-                    || (g_app->crc32 == ERASED_WORD);
-
-    if (doUpdate)
-    {
-        perform_update(updateFile);
-    }
-    else
-    {
-        DEBUG_PRINTF(INIT_MASK, "same crc; ignoring update\r\n");
-    }
+    bool doUpdate = (header.crc32 != _app->crc32)
+                    || (_app->crc32 == ERASED_WORD);
+    return doUpdate;
 }
 
-bool have_valid_app()
+bool Bootloader::have_valid_app()
 {
-    return (g_app->initialStack != ERASED_WORD && g_app->resetHandler != ERASED_WORD);
+    return (_app->initialStack != ERASED_WORD
+            && _app->resetHandler != ERASED_WORD
+            && _app->signature == APP_SIGNATURE);
 }
 
-void bootloader_thread(void * arg)
+void Bootloader::bootloader_thread()
 {
     DEBUG_PRINTF(INIT_MASK, "samplbaer bootloader initializing...\r\n");
 
@@ -430,8 +477,8 @@ void bootloader_thread(void * arg)
     g_flasher.init();
 
     // Init SD card manager.
-    g_cardManager.init();
-    g_cardManager.check_presence();
+    _cardManager.init();
+    _cardManager.check_presence();
 
     // If a card is present:
     //  - check for and process a firmware update.
@@ -444,13 +491,16 @@ void bootloader_thread(void * arg)
 
     while (true)
     {
-        if (g_cardManager.is_card_present())
+        if (_cardManager.is_card_present())
         {
             // Look for a firmware update file.
-            fs::error_t result = g_fs.mount();
+            fs::error_t result = _fs.mount();
             if (result == fs::kSuccess)
             {
-                check_update();
+                if (check_update())
+                {
+                    perform_update();
+                }
             }
             else
             {
@@ -463,18 +513,18 @@ void bootloader_thread(void * arg)
                 DEBUG_PRINTF(INIT_MASK, "Launching app...\r\n");
 
                 // Jump to the app.
-                start_app(g_app);
+                start_app();
             }
             else
             {
                 DEBUG_PRINTF(ERROR_MASK, "no app; halting.\r\n", result);
 
                 // Unmount the file system until a card is reinserted.
-                g_fs.unmount();
+                _fs.unmount();
 
                 // Wait for card to be removed.
                 g_flasher.set_flashing(true);
-                while (g_cardManager.check_presence())
+                while (_cardManager.check_presence())
                 {
                     Ar::Thread::sleep(CARD_CHECK_TIME_MS);
                 }
@@ -489,12 +539,12 @@ void bootloader_thread(void * arg)
                 DEBUG_PRINTF(INIT_MASK, "Launching app...\r\n");
 
                 // Jump to the app.
-                start_app(g_app);
+                start_app();
             }
 
             // Wait for card to be inserted.
             g_flasher.set_flashing(true);
-            while (!g_cardManager.check_presence())
+            while (!_cardManager.check_presence())
             {
                 Ar::Thread::sleep(CARD_CHECK_TIME_MS);
             }
