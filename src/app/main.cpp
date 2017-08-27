@@ -346,7 +346,7 @@ void init_thread(void * arg)
 
     // Init SD card and filesystem.
     g_cardManager.init();
-    g_fileManager.init();
+    g_fileManager.mount();
 
     g_readerThread.start();
 

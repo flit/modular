@@ -43,10 +43,11 @@ namespace slab {
 class FileManager
 {
 public:
-    FileManager() {}
-    virtual ~FileManager()=default;
+    FileManager();
+    ~FileManager()=default;
 
-    void init();
+    void mount();
+    void unmount();
 
     void scan_for_files();
 

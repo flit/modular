@@ -81,7 +81,8 @@ error_t convert_ff_err(FRESULT result)
     }
 }
 
-FileSystem::FileSystem()
+FileSystem::FileSystem(const char * dev)
+:   _dev(dev)
 {
 }
 
@@ -89,10 +90,15 @@ FileSystem::~FileSystem()
 {
 }
 
-error_t FileSystem::init(const char * path)
+error_t FileSystem::mount()
 {
     // Pass 1 for options to force immediate mounting.
-    return convert_ff_err(f_mount(&_fs, path, 1));
+    return convert_ff_err(f_mount(&_fs, _dev, 1));
+}
+
+void FileSystem::unmount()
+{
+    f_mount(NULL, _dev, 1);
 }
 
 DirectoryIterator FileSystem::open_dir(const char * path)

@@ -386,7 +386,7 @@ void bootloader_thread(void * arg)
         if (g_cardManager.is_card_present())
         {
             // Look for a firmware update file.
-            fs::error_t result = g_fs.init();
+            fs::error_t result = g_fs.mount();
             if (result == fs::kSuccess)
             {
                 check_update();
@@ -407,6 +407,9 @@ void bootloader_thread(void * arg)
             else
             {
                 DEBUG_PRINTF(ERROR_MASK, "no app; halting.\r\n", result);
+
+                // Unmount the file system until a card is reinserted.
+                g_fs.unmount();
 
                 // Wait for card to be removed.
                 while (g_cardManager.check_presence())

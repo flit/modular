@@ -39,9 +39,14 @@ using namespace slab;
 // Code
 //------------------------------------------------------------------------------
 
-void FileManager::init()
+FileManager::FileManager()
+:   _fs()
 {
-    fs::error_t res = _fs.init();
+}
+
+void FileManager::mount()
+{
+    fs::error_t res = _fs.mount();
 
     if (res == fs::kSuccess)
     {
@@ -51,6 +56,11 @@ void FileManager::init()
     {
         DEBUG_PRINTF(ERROR_MASK, "fs init failed: %lu\r\n", res);
     }
+}
+
+void FileManager::unmount()
+{
+    _fs.unmount();
 }
 
 void FileManager::scan_for_files()

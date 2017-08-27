@@ -55,7 +55,7 @@ enum fs_error : uint32_t
 using error_t = uint32_t;
 
 /*!
- * @brief
+ * @brief File object.
  */
 class File : public Stream
 {
@@ -87,7 +87,7 @@ protected:
 };
 
 /*!
- * @brief
+ * @brief Iterator over directory contents.
  */
 class DirectoryIterator
 {
@@ -104,20 +104,22 @@ protected:
 
 
 /*!
- * @brief
+ * @brief File system.
  */
 class FileSystem
 {
 public:
-    FileSystem();
+    FileSystem(const char * dev="");
     ~FileSystem();
 
-    error_t init(const char * path="");
+    error_t mount();
+    void unmount();
 
     DirectoryIterator open_dir(const char * path);
 
 protected:
     FATFS _fs;
+    const char * _dev;
 };
 
 } // namespace fs
