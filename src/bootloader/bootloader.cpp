@@ -105,10 +105,10 @@ CardManager g_cardManager;
 
 Ar::ThreadWithStack<4096> g_bootloaderThread("bootloader", bootloader_thread, 0, 100);
 
-LED<PIN_CH1_LED_GPIO_BASE, PIN_CH1_LED> g_ch1Led;
-LED<PIN_CH2_LED_GPIO_BASE, PIN_CH2_LED> g_ch2Led;
-LED<PIN_CH3_LED_GPIO_BASE, PIN_CH3_LED> g_ch3Led;
-LED<PIN_CH4_LED_GPIO_BASE, PIN_CH4_LED> g_ch4Led;
+LED<PIN_CH1_LED_GPIO_BASE, PIN_CH1_LED_BIT> g_ch1Led;
+LED<PIN_CH2_LED_GPIO_BASE, PIN_CH2_LED_BIT> g_ch2Led;
+LED<PIN_CH3_LED_GPIO_BASE, PIN_CH3_LED_BIT> g_ch3Led;
+LED<PIN_CH4_LED_GPIO_BASE, PIN_CH4_LED_BIT> g_ch4Led;
 LEDBase * g_channelLeds[] = { &g_ch1Led, &g_ch2Led, &g_ch3Led, &g_ch4Led};
 
 //! Buffer to store data read from firmware update file.

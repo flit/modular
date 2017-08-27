@@ -107,12 +107,12 @@ ChannelCVGate g_gates[kVoiceCount];
 Pot g_pots[kVoiceCount];
 AdcSequencer g_adc0Sequencer(ADC0, 2);
 AdcSequencer g_adc1Sequencer(ADC1, 4);
-LED<PIN_CH1_LED_GPIO_BASE, PIN_CH1_LED> g_ch1Led;
-LED<PIN_CH2_LED_GPIO_BASE, PIN_CH2_LED> g_ch2Led;
-LED<PIN_CH3_LED_GPIO_BASE, PIN_CH3_LED> g_ch3Led;
-LED<PIN_CH4_LED_GPIO_BASE, PIN_CH4_LED> g_ch4Led;
+LED<PIN_CH1_LED_GPIO_BASE, PIN_CH1_LED_BIT> g_ch1Led;
+LED<PIN_CH2_LED_GPIO_BASE, PIN_CH2_LED_BIT> g_ch2Led;
+LED<PIN_CH3_LED_GPIO_BASE, PIN_CH3_LED_BIT> g_ch3Led;
+LED<PIN_CH4_LED_GPIO_BASE, PIN_CH4_LED_BIT> g_ch4Led;
 LEDBase * g_channelLeds[] = { &g_ch1Led, &g_ch2Led, &g_ch3Led, &g_ch4Led};
-LED<PIN_BUTTON1_LED_GPIO_BASE, PIN_BUTTON1_LED> g_button1Led;
+LED<PIN_BUTTON1_LED_GPIO_BASE, PIN_BUTTON1_LED_BIT> g_button1Led;
 
 } // namespace slab
 

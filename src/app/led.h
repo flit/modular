@@ -49,27 +49,27 @@ public:
     virtual void off()=0;
     void set(bool state) { state ? on() : off(); }
     virtual bool is_on()=0;
-
+    virtual void set_polarity(bool polarity)=0;
 };
 
 /*!
- * @brief
+ * @brief LED template.
  */
-template <uint32_t gpio, uint32_t mask>
+template <uint32_t gpio, uint32_t pin>
 class LED : public LEDBase
 {
 public:
-    LED() : _state(false) {}
+    LED() : _state(false), _polarity(false) {}
 
     virtual void on() override
     {
-        GPIO_SetPinsOutput((GPIO_Type *)gpio, mask);
+        GPIO_WritePinOutput((GPIO_Type *)gpio, pin, true ^ _polarity);
         _state = true;
     }
 
     virtual void off() override
     {
-        GPIO_ClearPinsOutput((GPIO_Type *)gpio, mask);
+        GPIO_WritePinOutput((GPIO_Type *)gpio, pin, false ^ _polarity);
         _state = false;
     }
 
@@ -78,8 +78,14 @@ public:
         return _state;
     }
 
+    virtual void set_polarity(bool polarity) override
+    {
+        _polarity = polarity;
+    }
+
 protected:
     bool _state;
+    bool _polarity;
 };
 
 } // namespace slab
