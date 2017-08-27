@@ -54,6 +54,8 @@ public:
 
 protected:
     bool _isCardPresent;
+
+    bool get_card_status();
 };
 
 } // namespace slab

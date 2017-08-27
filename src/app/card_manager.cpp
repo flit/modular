@@ -28,46 +28,15 @@
  */
 
 #include "card_manager.h"
-#include "file_manager.h"
-#include "debug_log.h"
 #include "fsl_sd.h"
 #include "fsl_sd_disk.h"
 #include "fsl_sdmmc_common.h"
-#include "fsl_port.h"
 
 using namespace slab;
-
-void card_detect_handler(PORT_Type * port, uint32_t pin, void * userData);
-
-bool g_cardPresent = false;
-
-// namespace slab {
-// extern FileManager g_fileManager;
-// }
 
 //------------------------------------------------------------------------------
 // Code
 //------------------------------------------------------------------------------
-
-void card_detect_handler(PORT_Type * port, uint32_t pin, void * userData)
-{
-//     DEBUG_PRINTF(BUTTON_MASK, "card detect\r\n");
-
-    if (!g_cardPresent)
-    {
-        DEBUG_PRINTF(BUTTON_MASK, "card inserted\r\n");
-//         PORT_SetPinMux(PIN_SDHC_D3_PORT, PIN_SDHC_D3_BIT, kPORT_MuxAlt4);
-        PORT_SetPinInterruptConfig(PIN_SDHC_D3_PORT, PIN_SDHC_D3_BIT, kPORT_InterruptFallingEdge);
-    }
-    else
-    {
-        DEBUG_PRINTF(BUTTON_MASK, "card removed\r\n");
-        PORT_SetPinMux(PIN_SDHC_D3_PORT, PIN_SDHC_D3, kPORT_MuxAsGpio);
-        PORT_SetPinInterruptConfig(PIN_SDHC_D3_PORT, PIN_SDHC_D3_BIT, kPORT_InterruptRisingEdge);
-    }
-
-    g_cardPresent = !g_cardPresent;
-}
 
 CardManager::CardManager()
 :   _isCardPresent(false)
@@ -77,7 +46,7 @@ CardManager::CardManager()
 void CardManager::init()
 {
     // Configure SD host.
-    static sdmmchost_detect_card_t cd = {
+    static const sdmmchost_detect_card_t cd = {
         .cdType = kSDMMCHOST_DetectCardByHostDATA3,
         .cdTimeOut_ms = (~0U),
         .cardInserted = NULL,
@@ -89,22 +58,14 @@ void CardManager::init()
     g_sd.usrParam.cd = &cd;
 
     SD_HostInit(&g_sd);
-
-//     PinIrqManager::get().connect(PIN_SDHC_D3_PORT, PIN_SDHC_D3_BIT, card_detect_handler, NULL);
 }
 
 bool CardManager::check_presence()
 {
-//     g_fileManager.lock();
-
     if (_isCardPresent)
     {
-        // Send the select command.
-        status_t err = SDMMC_SelectCard(g_sd.host.base, g_sd.host.transfer, g_sd.relativeAddress, true);
-        if (err)
-        {
-            _isCardPresent = false;
-        }
+        bool response = get_card_status();
+        _isCardPresent = response;
     }
     else
     {
@@ -116,9 +77,30 @@ bool CardManager::check_presence()
         }
     }
 
-//     g_fileManager.unlock();
-
     return _isCardPresent;
+}
+
+bool CardManager::get_card_status()
+{
+    SDMMCHOST_COMMAND command{0};
+    SDMMCHOST_TRANSFER content{0};
+
+    command.index = kSDMMC_SendStatus;
+    command.argument = g_sd.relativeAddress << 16U;
+    command.responseType = kCARD_ResponseTypeR1;
+    command.responseErrorFlags = 0;
+
+    content.command = &command;
+    content.data = NULL;
+
+    status_t status = g_sd.host.transfer(g_sd.host.base, &content);
+
+    if ((kStatus_Success != status))
+    {
+        return false;
+    }
+
+    return true;
 }
 
 //------------------------------------------------------------------------------
