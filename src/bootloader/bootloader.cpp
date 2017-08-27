@@ -59,7 +59,10 @@ using namespace slab;
 #define APP_SIGNATURE (0x72e46273)
 
 //! Time in milliseconds LEDs are on when flashing.
-#define LED_FLASH_TIME_MS (50)
+#define LED_FLASH_TIME_MS (100)
+
+//! Time in milliseconds to delay between card presence checks.
+#define CARD_CHECK_TIME_MS (250)
 
 //! @brief Start of the app's vector table.
 struct AppVectors
@@ -76,11 +79,29 @@ struct AppVectors
     uint32_t appSize;
 };
 
+//! @brief Manages LED flashing.
+class LEDFlasher
+{
+public:
+    LEDFlasher();
+    ~LEDFlasher()=default;
+
+    void init();
+    void set_flashing(bool isFlashing);
+
+protected:
+    Ar::ThreadWithStack<4096> _thread;
+    volatile bool _flashing;
+    bool _state;
+
+    void flasher_thread();
+    void set_all_leds(bool state);
+};
+
 //------------------------------------------------------------------------------
 // Prototypes
 //------------------------------------------------------------------------------
 
-void toggle_leds();
 void start_app(volatile AppVectors * vectors);
 void perform_update(fs::File& updateFile);
 void check_update();
@@ -100,6 +121,7 @@ volatile AppVectors * g_app = reinterpret_cast<volatile AppVectors *>(APP_START_
 fs::FileSystem g_fs;
 CardManager g_cardManager;
 
+LEDFlasher g_flasher;
 Ar::ThreadWithStack<4096> g_bootloaderThread("bootloader", bootloader_thread, 0, 100);
 
 LED<PIN_CH1_LED_GPIO_BASE, PIN_CH1_LED_BIT> g_ch1Led;
@@ -120,16 +142,62 @@ DEFINE_DEBUG_LOG
 // Code
 //------------------------------------------------------------------------------
 
-void toggle_leds()
+LEDFlasher::LEDFlasher()
+:   _thread("leds", this, &LEDFlasher::flasher_thread, 50, kArSuspendThread),
+    _flashing(false),
+    _state(false)
 {
-    // Assume all LEDs are in the same state.
-    bool state = !g_channelLeds[0]->is_on();
+}
+
+void LEDFlasher::init()
+{
+    // Configure channel LED color.
+    GPIO_WritePinOutput(PIN_CHLEDN_GPIO, PIN_CHLEDN_BIT, 0);
+    GPIO_WritePinOutput(PIN_CHLEDP_GPIO, PIN_CHLEDP_BIT, 1);
+
+    // Invert polarity of channel LEDs.
+    g_channelLeds[0]->set_polarity(true);
+    g_channelLeds[1]->set_polarity(true);
+    g_channelLeds[2]->set_polarity(true);
+    g_channelLeds[3]->set_polarity(true);
+    set_all_leds(false);
+
+    _thread.resume();
+}
+
+void LEDFlasher::set_flashing(bool isFlashing)
+{
+    _flashing = isFlashing;
+
+    // Make sure LEDs are turned off if disabling flashing.
+    if (!_flashing && _state)
+    {
+        set_all_leds(false);
+        _state = false;
+    }
+}
+
+void LEDFlasher::set_all_leds(bool state)
+{
     int which;
-    for (which = 0; which < 4; ++which)
+    for (which = 0; which < ARRAY_SIZE(g_channelLeds); ++which)
     {
         g_channelLeds[which]->set(state);
     }
     g_button1Led.set(state);
+}
+
+void LEDFlasher::flasher_thread()
+{
+    while (true)
+    {
+        if (_flashing)
+        {
+            _state = !_state;
+            set_all_leds(_state);
+        }
+        Ar::Thread::sleep(LED_FLASH_TIME_MS);
+    }
 }
 
 void start_app(volatile AppVectors * vectors)
@@ -358,15 +426,8 @@ void bootloader_thread(void * arg)
 {
     DEBUG_PRINTF(INIT_MASK, "samplbaer bootloader initializing...\r\n");
 
-    // Configure channel LED color.
-    GPIO_WritePinOutput(PIN_CHLEDN_GPIO, PIN_CHLEDN_BIT, 0);
-    GPIO_WritePinOutput(PIN_CHLEDP_GPIO, PIN_CHLEDP_BIT, 1);
-
-    // Invert polarity of channel LEDs.
-    g_channelLeds[0]->set_polarity(true);
-    g_channelLeds[1]->set_polarity(true);
-    g_channelLeds[2]->set_polarity(true);
-    g_channelLeds[3]->set_polarity(true);
+    // Init LED flasher thread.
+    g_flasher.init();
 
     // Init SD card manager.
     g_cardManager.init();
@@ -412,11 +473,12 @@ void bootloader_thread(void * arg)
                 g_fs.unmount();
 
                 // Wait for card to be removed.
+                g_flasher.set_flashing(true);
                 while (g_cardManager.check_presence())
                 {
-                    toggle_leds();
-                    Ar::Thread::sleep(LED_FLASH_TIME_MS);
+                    Ar::Thread::sleep(CARD_CHECK_TIME_MS);
                 }
+                g_flasher.set_flashing(false);
             }
         }
         else
@@ -431,11 +493,12 @@ void bootloader_thread(void * arg)
             }
 
             // Wait for card to be inserted.
+            g_flasher.set_flashing(true);
             while (!g_cardManager.check_presence())
             {
-                toggle_leds();
-                Ar::Thread::sleep(LED_FLASH_TIME_MS);
+                Ar::Thread::sleep(CARD_CHECK_TIME_MS);
             }
+            g_flasher.set_flashing(false);
         }
     }
 }
