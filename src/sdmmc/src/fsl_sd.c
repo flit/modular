@@ -1229,6 +1229,8 @@ static status_t SD_Read(sd_card_t *card, uint8_t *buffer, uint32_t startBlock, u
     content.command = &command;
     content.data = &data;
 
+    card->isTransferring = true;
+
     error = SD_Transfer(card, &content, 1U);
     if (kStatus_Success != error)
     {
@@ -1244,6 +1246,7 @@ static status_t SD_Read(sd_card_t *card, uint8_t *buffer, uint32_t startBlock, u
         }
     }
 
+    card->isTransferring = false;
     return kStatus_Success;
 }
 
@@ -1298,6 +1301,8 @@ static status_t SD_Write(
     content.command = &command;
     content.data = &data;
 
+    card->isTransferring = true;
+
     error = SD_Transfer(card, &content, 1U);
     if (kStatus_Success != error)
     {
@@ -1313,6 +1318,7 @@ static status_t SD_Write(
         }
     }
 
+    card->isTransferring = false;
     return kStatus_Success;
 }
 
@@ -1384,6 +1390,13 @@ static status_t SD_Erase(sd_card_t *card, uint32_t startBlock, uint32_t blockCou
     }
 
     return kStatus_Success;
+}
+
+status_t SD_IsTransferring(sd_card_t *card)
+{
+    assert(card);
+
+    return card->isTransferring;
 }
 
 bool SD_CheckReadOnly(sd_card_t *card)
@@ -1536,6 +1549,7 @@ status_t SD_CardInit(sd_card_t *card)
     }
     /* reset variables */
     card->flags = 0U;
+    card->isTransferring = false;
     /* set DATA bus width */
     SDMMCHOST_SET_CARD_BUS_WIDTH(card->host.base, kSDMMCHOST_DATABUSWIDTH1BIT);
     /*set card freq to 400KHZ*/

@@ -64,8 +64,15 @@ bool CardManager::check_presence()
 {
     if (_isCardPresent)
     {
-        bool response = get_card_status();
-        _isCardPresent = response;
+        // Skip this check if a transfer is in progress so we don't interrupt it.
+        // Read and write transfers continue automaticaly until a StopTransmission
+        // command is sent. So sending a SendStatus command during a transfer can
+        // cause the response to get mixed up.
+        if (!SD_IsTransferring(&g_sd))
+        {
+            bool response = get_card_status();
+            _isCardPresent = response;
+        }
     }
     else
     {

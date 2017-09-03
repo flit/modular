@@ -87,6 +87,7 @@ typedef struct _sd_card
     sd_driver_strength_t driverStrength;        /*!< driver strength */
     sd_max_current_t maxCurrent;                /*!< card current limit */
     sdmmc_operation_voltage_t operationVoltage; /*!< card operation voltage */
+    bool isTransferring;
 } sd_card_t;
 
 /*************************************************************************************************
@@ -295,6 +296,11 @@ status_t SD_WriteBlocks(sd_card_t *card, const uint8_t *buffer, uint32_t startBl
  * @retval kStatus_Success Operate successfully.
  */
 status_t SD_EraseBlocks(sd_card_t *card, uint32_t startBlock, uint32_t blockCount);
+
+/*!
+ * @brief Returns whether a read or write transfer is ongoing.
+ */
+status_t SD_IsTransferring(sd_card_t *card);
 
 /* @} */
 
