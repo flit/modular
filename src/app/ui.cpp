@@ -46,12 +46,8 @@ using namespace slab;
 const uint32_t kAdcMax = 65536;
 const uint32_t kPotEditHysteresisPercent = 5;
 
-//------------------------------------------------------------------------------
-// Variables
-//------------------------------------------------------------------------------
-
-//! Pointer to singleton UI instance.
-UI * UI::s_ui = NULL;
+//! Interval for checking SD card presence.
+const uint32_t kCardDetectInterval_ms = 250;
 
 //------------------------------------------------------------------------------
 // Code
@@ -162,8 +158,6 @@ UI::UI()
 
 void UI::init()
 {
-    s_ui = this;
-
     _channelLedColor = kLEDOff;
 
     _thread.init("ui", this, &UI::ui_thread, kUIThreadPriority, kArSuspendThread);

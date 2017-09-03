@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016 Immo Software
+ * Copyright (c) 2017 Immo Software
  *
  * Redistribution and use in source and binary forms, with or without modification,
  * are permitted provided that the following conditions are met:
@@ -26,11 +26,10 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#if !defined(_PIN_IRQ_MANAGER_H_)
-#define _PIN_IRQ_MANAGER_H_
+#if !defined(_SINGLETON_H_)
+#define _SINGLETON_H_
 
-#include "fsl_device_registers.h"
-#include "singleton.h"
+#include <assert.h>
 
 //------------------------------------------------------------------------------
 // Definitions
@@ -39,46 +38,45 @@
 namespace slab {
 
 /*!
- * @brief
+ * @brief Base class for singleton objects.
+ *
+ * This singleton class only keeps track of the single instance, it does not
+ * allocate it for you. You must still create a global object of the superclass
+ * type. This allows for easily passing arbitrary constructor parameters and
+ * controlling where instance storage is allocated.
  */
-class PinIrqManager : public Singleton<PinIrqManager>
+template <class S>
+class Singleton
 {
 public:
-    enum {
-        kPortA,
-        kPortB,
-        kPortC,
-        kPortD,
-        kPortE,
-        kMaxPorts,
-    };
+    //! @brief Get the singleton instance.
+    static S & get()
+    {
+        assert(s_instance);
+        return *s_instance;
+    }
 
-    typedef void (*pin_callback_t)(PORT_Type * port, uint32_t pin, void * userData);
+protected:
+    //! @brief Constructor, saves the instance.
+    Singleton()
+    {
+        s_instance = static_cast<S*>(this);
+    }
 
-    PinIrqManager();
-
-    void connect(PORT_Type * port, uint32_t pin, pin_callback_t callback, void * userData);
-    void disconnect(PORT_Type * port, uint32_t pin);
-
-    void handle_irq(PORT_Type * port);
+    // Disable copy ctor and assignment operator.
+    Singleton(const Singleton<S> & other)=delete;
+    Singleton<S> & operator = (const Singleton<S> & other)=delete;
 
 private:
-    static const uint32_t kMaxPinsPerPort = 32;
-
-    struct PinInfo {
-        pin_callback_t callback;
-        void * userData;
-    };
-
-    PinInfo m_pins[kMaxPorts][kMaxPinsPerPort];
-
-    uint32_t portToIndex(PORT_Type * port);
-
+    static S * s_instance; //!< Instance pointer.
 };
+
+template <class S>
+S * Singleton<S>::s_instance = nullptr;
 
 } // namespace slab
 
-#endif // _PIN_IRQ_MANAGER_H_
+#endif // _SINGLETON_H_
 //------------------------------------------------------------------------------
 // EOF
 //------------------------------------------------------------------------------

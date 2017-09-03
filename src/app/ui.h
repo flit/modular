@@ -34,6 +34,7 @@
 #include "audio_defs.h"
 #include "moving_average.h"
 #include "callback.h"
+#include "singleton.h"
 
 //------------------------------------------------------------------------------
 // Definitions
@@ -145,11 +146,9 @@ enum LEDColor : uint32_t
 /*!
  * @brief
  */
-class UI
+class UI : public Singleton<UI>
 {
 public:
-    static UI& get() { return *s_ui; }
-
     UI();
     ~UI()=default;
 
@@ -171,8 +170,6 @@ public:
 
 protected:
     static const uint32_t kMaxEvents = 20;
-
-    static UI * s_ui;
 
     Ar::ThreadWithStack<2048> _thread;
     Ar::RunLoop _runloop;

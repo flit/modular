@@ -102,6 +102,7 @@ CardManager g_cardManager;
 FileManager g_fileManager;
 SamplerSynth g_sampler;
 ReaderThread g_readerThread;
+PinIrqManager g_pinManager;
 SamplerVoice g_voice[kVoiceCount];
 ChannelCVGate g_gates[kVoiceCount];
 Pot g_pots[kVoiceCount];

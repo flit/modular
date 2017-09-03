@@ -30,6 +30,7 @@
 #define _FILE_MANAGER_H_
 
 #include "file_system.h"
+#include "singleton.h"
 
 //------------------------------------------------------------------------------
 // Definitions
@@ -40,7 +41,7 @@ namespace slab {
 /*!
  * @brief Handles scanning filesystem to identify samples.
  */
-class FileManager
+class FileManager : public Singleton<FileManager>
 {
 public:
     FileManager();

@@ -41,8 +41,6 @@ using namespace slab;
 static const PORT_Type * kPortBases[] = PORT_BASE_PTRS;
 static const IRQn_Type kPortIrqs[] = PORT_IRQS;
 
-PinIrqManager PinIrqManager::s_manager;
-
 //------------------------------------------------------------------------------
 // Code
 //------------------------------------------------------------------------------

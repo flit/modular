@@ -29,6 +29,7 @@
 #if !defined(_CARD_MANAGER_H_)
 #define _CARD_MANAGER_H_
 
+#include "singleton.h"
 #include <stdint.h>
 
 //------------------------------------------------------------------------------
@@ -40,7 +41,7 @@ namespace slab {
 /*!
  * @brief
  */
-class CardManager
+class CardManager : public Singleton<CardManager>
 {
 public:
     CardManager();

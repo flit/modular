@@ -32,6 +32,7 @@
 #include "argon/argon.h"
 #include "sampler_voice.h"
 #include "ring_buffer.h"
+#include "singleton.h"
 
 //------------------------------------------------------------------------------
 // Definitions
@@ -92,11 +93,9 @@ protected:
  * The reader thread maintains a queue of voices that need a buffer filled. A given voice
  * may be put in the queue multiple times.
  */
-class ReaderThread
+class ReaderThread : public Singleton<ReaderThread>
 {
 public:
-    static ReaderThread * get() { return s_readerInstance; }
-
     ReaderThread();
     ~ReaderThread()=default;
 
@@ -110,8 +109,6 @@ public:
 
 protected:
     static const uint32_t kQueueSize = 16;
-
-    static ReaderThread * s_readerInstance;
 
     int16_t _readBuf[SampleBufferManager::kBufferSize * 2];
     Ar::ThreadWithStack<2048> _thread;

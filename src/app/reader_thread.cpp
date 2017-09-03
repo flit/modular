@@ -34,12 +34,6 @@
 using namespace slab;
 
 //------------------------------------------------------------------------------
-// Variables
-//------------------------------------------------------------------------------
-
-ReaderThread * ReaderThread::s_readerInstance = nullptr;
-
-//------------------------------------------------------------------------------
 // Code
 //------------------------------------------------------------------------------
 
@@ -131,9 +125,6 @@ void ReaderThread::init()
     {
         _voiceStatistics[i].init();
     }
-
-    // Record this instance.
-    s_readerInstance = this;
 }
 
 void ReaderThread::enqueue(SamplerVoice * request)
