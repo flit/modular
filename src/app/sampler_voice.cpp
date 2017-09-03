@@ -118,7 +118,7 @@ void SampleBufferManager::prime()
     _samplesQueued = _samplesRead;
 
     // Clear buffers queues.
-    ReaderThread::get()->clear_voice_queue(_voice);
+    ReaderThread::get().clear_voice_queue(_voice);
     _fullBuffers.clear();
     _emptyBuffers.clear();
 
@@ -167,7 +167,7 @@ void SampleBufferManager::queue_buffer_for_read(SampleBuffer * buffer)
     buffer->state = SampleBuffer::State::kFree;
 
     _emptyBuffers.put(buffer);
-    ReaderThread::get()->enqueue(_voice);
+    ReaderThread::get().enqueue(_voice);
 
     _samplesQueued += buffer->frameCount;
 }
