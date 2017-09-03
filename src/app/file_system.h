@@ -43,12 +43,12 @@ namespace fs {
 enum fs_error : uint32_t
 {
     kSuccess = 0,
-    kGenericError,
-    kDiskError,
-    kNameError,
-    kAccessError,
-    kInvalidError,
-    kTimeoutError,
+    kGenericError = 1,
+    kDiskError = 2,
+    kNameError = 3,
+    kAccessError = 4,
+    kInvalidError = 5,
+    kTimeoutError = 6,
 };
 
 //! @brief Filesystem error type.
