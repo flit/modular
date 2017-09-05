@@ -152,7 +152,8 @@ UI::UI()
     _button2(PIN_BUTTON2_PORT, PIN_BUTTON2_GPIO, PIN_BUTTON2_BIT, kButton2),
     _mode(kPlayMode),
     _voiceStates{0},
-    _editChannel(0)
+    _editChannel(0),
+    _isCardPresent(false)
 {
 }
 
@@ -168,6 +169,10 @@ void UI::init()
 
     _blinkTimer.init("blink", this, &UI::handle_blink_timer, kArPeriodicTimer, 20);
     _potReleaseTimer.init("pot-release", this, &UI::handle_pot_release_timer, kArOneShotTimer, 20);
+
+    _cardDetectTimer.init("card-detect", this, &UI::handle_card_detect_timer, kArPeriodicTimer, kCardDetectInterval_ms);
+    _runloop.addTimer(&_cardDetectTimer);
+    _cardDetectTimer.start();
 
     _button1.init();
     _button2.init();
@@ -222,6 +227,7 @@ void UI::set_mode()
 
 void UI::ui_thread()
 {
+    uint32_t n;
     while (true)
     {
         ar_runloop_result_t object;
@@ -231,10 +237,10 @@ void UI::ui_thread()
             assert(object.m_queue == static_cast<ar_queue_t *>(&_eventQueue));
 
             UIEvent event = _eventQueue.receive();
-//             uint32_t n;
             switch (event.event)
             {
                 case kButtonDown:
+                    // start timer for mode change and reboot
                     break;
 
                 case kButtonUp:
@@ -268,7 +274,6 @@ void UI::ui_thread()
                                 _channelLeds[_editChannel]->on();
 
                                 // Set hysteresis on all pots.
-                                uint32_t n;
                                 for (n = 0; n < kVoiceCount; ++n)
                                 {
                                     _channelPots[n].set_hysteresis(kPotEditHysteresisPercent);
@@ -283,6 +288,34 @@ void UI::ui_thread()
 
                 case kPotAdjusted:
 //                  n = event.source - kPot1;
+                    break;
+
+                case kCardInserted:
+                    if (!_isCardPresent)
+                    {
+                        _cardDetectTimer.stop();
+                        if (FileManager::get().mount())
+                        {
+                            FileManager::get().scan_for_files();
+                            _isCardPresent = true;
+                        }
+                        _cardDetectTimer.start();
+                    }
+                    break;
+
+                case kCardRemoved:
+                    if (_isCardPresent)
+                    {
+                        // Clear files in all voices. Each voice will clear pending buffers for
+                        // itself from the reader thread's queue.
+                        for (n = 0; n < kVoiceCount; ++n)
+                        {
+                            g_voice[n].clear_file();
+                            set_voice_playing(n, false);
+                        }
+                        FileManager::get().unmount();
+                        _isCardPresent = false;
+                    }
                     break;
 
                 default:
@@ -309,6 +342,22 @@ void UI::handle_blink_timer(Ar::Timer * timer)
 
 void UI::handle_pot_release_timer(Ar::Timer * timer)
 {
+}
+
+void UI::handle_card_detect_timer(Ar::Timer * timer)
+{
+    bool isPresent = CardManager::get().check_presence();
+
+    // Card inserted.
+    if (isPresent && !_isCardPresent)
+    {
+        send_event(UIEvent(kCardInserted));
+    }
+    // Card removed.
+    else if (!isPresent && _isCardPresent)
+    {
+        send_event(UIEvent(kCardRemoved));
+    }
 }
 
 void UI::pot_did_change(Pot& pot, uint32_t value)

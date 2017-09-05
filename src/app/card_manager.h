@@ -39,7 +39,7 @@
 namespace slab {
 
 /*!
- * @brief
+ * @brief Manages the SD card and card insertion/removal detection.
  */
 class CardManager : public Singleton<CardManager>
 {

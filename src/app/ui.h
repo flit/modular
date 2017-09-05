@@ -48,16 +48,19 @@ enum UIMode : uint32_t
     kEditMode,
 };
 
-enum UIEventType : uint32_t
+enum UIEventType : uint16_t
 {
     kButtonDown,
     kButtonUp,
     kPotAdjusted,
     kPotStopped,
+    kCardInserted,
+    kCardRemoved,
 };
 
-enum UIEventSource : uint32_t
+enum UIEventSource : uint16_t
 {
+    kNoEventSource,
     kButton1,
     kButton2,
     kPot1,
@@ -73,7 +76,7 @@ struct UIEvent
     float value;
 
     UIEvent() {}
-    UIEvent(UIEventType theEvent, UIEventSource theSource, float theValue=0)
+    UIEvent(UIEventType theEvent, UIEventSource theSource=kNoEventSource, float theValue=0)
     :   event(theEvent),
         source(theSource),
         value(theValue)
@@ -171,11 +174,12 @@ public:
 protected:
     static const uint32_t kMaxEvents = 20;
 
-    Ar::ThreadWithStack<2048> _thread;
+    Ar::ThreadWithStack<4096> _thread;
     Ar::RunLoop _runloop;
     Ar::StaticQueue<UIEvent, kMaxEvents> _eventQueue;
     Ar::TimerWithMemberCallback<UI> _blinkTimer;
     Ar::TimerWithMemberCallback<UI> _potReleaseTimer;
+    Ar::TimerWithMemberCallback<UI> _cardDetectTimer;
     LEDBase ** _channelLeds;
     LEDBase * _button1Led;
     LEDColor _channelLedColor;
@@ -185,6 +189,7 @@ protected:
     UIMode _mode;
     bool _voiceStates[kVoiceCount];
     uint32_t _editChannel;
+    bool _isCardPresent;
 
     void ui_thread();
 
@@ -193,6 +198,7 @@ protected:
 
     void handle_blink_timer(Ar::Timer * timer);
     void handle_pot_release_timer(Ar::Timer * timer);
+    void handle_card_detect_timer(Ar::Timer * timer);
 
     void set_all_channel_leds(bool on);
     void set_channel_led_color(LEDColor newColor);

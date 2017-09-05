@@ -335,20 +335,18 @@ void init_thread(void * arg)
         g_voice[i].init(i, (int16_t *)&g_sampleBufs[i]);
     }
 
-    // Init UI.
-    g_ui.set_leds(g_channelLeds, &g_button1Led);
-    g_ui.set_pots(g_pots);
-    g_ui.init();
-
     calibrate_pots();
 
     init_dma();
     init_audio_out();
 
+    // Init UI.
+    g_ui.set_leds(g_channelLeds, &g_button1Led);
+    g_ui.set_pots(g_pots);
+    g_ui.init();
+
     // Init SD card and filesystem.
     g_cardManager.init();
-    g_cardManager.check_presence();
-    g_fileManager.mount();
 
     g_readerThread.start();
 

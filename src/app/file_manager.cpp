@@ -44,18 +44,11 @@ FileManager::FileManager()
 {
 }
 
-void FileManager::mount()
+bool FileManager::mount()
 {
     fs::error_t res = _fs.mount();
 
-    if (res == fs::kSuccess)
-    {
-        scan_for_files();
-    }
-    else
-    {
-        DEBUG_PRINTF(ERROR_MASK, "fs init failed: %lu\r\n", res);
-    }
+    return (res == fs::kSuccess);
 }
 
 void FileManager::unmount()

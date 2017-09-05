@@ -29,6 +29,7 @@
 
 #include "reader_thread.h"
 #include "main.h"
+#include "ui.h"
 #include "debug_log.h"
 
 using namespace slab;
@@ -96,6 +97,8 @@ void ReaderStatistics::add(uint32_t voiceNumber, uint32_t bufferNumber, uint32_t
     _bins[n].update<false>(elapsed);
 }
 
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
 ReaderThread::ReaderThread()
 :   _thread(),
     _sem(),
@@ -120,11 +123,13 @@ void ReaderThread::init()
         add_free_node(&_nodes[i]);
     }
 
+#if DEBUG
     _statistics.init();
     for (i = 0; i < kVoiceCount; ++i)
     {
         _voiceStatistics[i].init();
     }
+#endif
 }
 
 void ReaderThread::enqueue(SamplerVoice * request)
@@ -366,6 +371,7 @@ void ReaderThread::fill_buffer(SamplerVoice * voice)
     if (!stream.seek(request->startFrame * frameSize))
     {
         DEBUG_PRINTF(ERROR_MASK, "R: seek error (b%i v%lu)\r\n", request->number, voice->get_number());
+        UI::get().send_event(UIEvent(kCardRemoved));
         return;
     }
     uint32_t bytesRead;
@@ -373,6 +379,7 @@ void ReaderThread::fill_buffer(SamplerVoice * voice)
     if (status != fs::kSuccess)
     {
         DEBUG_PRINTF(ERROR_MASK, "R: read error = %lu (b%i v%lu)\r\n", status, request->number, voice->get_number());
+        UI::get().send_event(UIEvent(kCardRemoved));
         return;
     }
     uint32_t stop = Microseconds::get();

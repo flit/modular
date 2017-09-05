@@ -49,8 +49,8 @@ void CardManager::init()
     static const sdmmchost_detect_card_t cd = {
         .cdType = kSDMMCHOST_DetectCardByHostDATA3,
         .cdTimeOut_ms = (~0U),
-        .cardInserted = NULL,
-        .cardRemoved = NULL,
+        .cardInserted = nullptr,
+        .cardRemoved = nullptr,
         };
 
     g_sd.host.base = SDHC;
@@ -60,6 +60,7 @@ void CardManager::init()
     SD_HostInit(&g_sd);
 }
 
+//!
 bool CardManager::check_presence()
 {
     if (_isCardPresent)
@@ -102,12 +103,7 @@ bool CardManager::get_card_status()
 
     status_t status = g_sd.host.transfer(g_sd.host.base, &content);
 
-    if ((kStatus_Success != status))
-    {
-        return false;
-    }
-
-    return true;
+    return (status == kStatus_Success);
 }
 
 //------------------------------------------------------------------------------

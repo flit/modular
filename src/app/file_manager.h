@@ -47,7 +47,7 @@ public:
     FileManager();
     ~FileManager()=default;
 
-    void mount();
+    bool mount();
     void unmount();
 
     void scan_for_files();
