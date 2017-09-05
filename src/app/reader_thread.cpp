@@ -296,8 +296,6 @@ SamplerVoice * ReaderThread::dequeue()
 
 ReaderThread::QueueNode * ReaderThread::get_free_node()
 {
-    Ar::Mutex::Guard guard(_queueLock);
-
     QueueNode * node = _free;
     if (node)
     {
@@ -308,8 +306,6 @@ ReaderThread::QueueNode * ReaderThread::get_free_node()
 
 void ReaderThread::add_free_node(QueueNode * node)
 {
-    Ar::Mutex::Guard guard(_queueLock);
-
     node->voice = nullptr;
     node->previous = nullptr;
     node->next = _free;
