@@ -35,6 +35,7 @@
 #include "utility.h"
 #include "fsl_gpio.h"
 #include "fsl_port.h"
+#include "fsl_sd_disk.h"
 #include <assert.h>
 
 using namespace slab;
@@ -153,7 +154,8 @@ UI::UI()
     _mode(kPlayMode),
     _voiceStates{0},
     _editChannel(0),
-    _isCardPresent(false)
+    _isCardPresent(false),
+    _debounceCardDetect(false)
 {
 }
 
@@ -293,7 +295,6 @@ void UI::ui_thread()
                 case kCardInserted:
                     if (!_isCardPresent)
                     {
-                        _cardDetectTimer.stop();
                         if (FileManager::get().mount())
                         {
                             FileManager::get().scan_for_files();
@@ -314,7 +315,9 @@ void UI::ui_thread()
                             set_voice_playing(n, false);
                         }
                         FileManager::get().unmount();
+                        SD_HostReset(&g_sd.host);
                         _isCardPresent = false;
+                        _cardDetectTimer.start();
                     }
                     break;
 
@@ -346,17 +349,30 @@ void UI::handle_pot_release_timer(Ar::Timer * timer)
 
 void UI::handle_card_detect_timer(Ar::Timer * timer)
 {
+    // Detect change in card presence. If a change is detected, set the debounce flag
+    // and exit. We'll process the debounce next time this timer fires.
     bool isPresent = CardManager::get().check_presence();
-
-    // Card inserted.
-    if (isPresent && !_isCardPresent)
+    if (!_debounceCardDetect)
     {
-        send_event(UIEvent(kCardInserted));
+        // Set debounce flag if a change is presence is detected.
+        _debounceCardDetect = (isPresent != _isCardPresent);
     }
-    // Card removed.
-    else if (!isPresent && _isCardPresent)
+    else
     {
-        send_event(UIEvent(kCardRemoved));
+        _debounceCardDetect = false;
+
+        // Card inserted.
+        if (isPresent && !_isCardPresent)
+        {
+            _cardDetectTimer.stop();
+            send_event(UIEvent(kCardInserted));
+        }
+        // Card removed.
+        else if (!isPresent && _isCardPresent)
+        {
+            _cardDetectTimer.stop();
+            send_event(UIEvent(kCardRemoved));
+        }
     }
 }
 

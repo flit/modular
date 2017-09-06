@@ -190,6 +190,7 @@ protected:
     bool _voiceStates[kVoiceCount];
     uint32_t _editChannel;
     bool _isCardPresent;
+    bool _debounceCardDetect;
 
     void ui_thread();
 
