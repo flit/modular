@@ -49,6 +49,17 @@ enum thread_priorties : uint8_t
     kInitThreadPriority = 40,
 };
 
+//! DMA channel numbers used by the application.
+enum dma_channels : uint32_t {
+    kAudioPingDmaChannel = 0,
+    kAudioPongDmaChannel = 1,
+    kAdc0CommandDmaChannel = 2,
+    kAdc0ReadDmaChannel = 3,
+    kAdc1CommandDmaChannel = 4,
+    kAdc1ReadDmaChannel = 5,
+    kAllocatedDmaChannelCount = 6,  //!< Number of DMA channels used by the application.
+};
+
 extern SamplerVoice g_voice[kVoiceCount];
 extern CardManager g_cardManager;
 extern FileManager g_fileManager;

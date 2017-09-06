@@ -106,8 +106,8 @@ PinIrqManager g_pinManager;
 SamplerVoice g_voice[kVoiceCount];
 ChannelCVGate g_gates[kVoiceCount];
 Pot g_pots[kVoiceCount];
-AdcSequencer g_adc0Sequencer(ADC0, 2);
-AdcSequencer g_adc1Sequencer(ADC1, 4);
+AdcSequencer g_adc0Sequencer(ADC0, kAdc0CommandDmaChannel);
+AdcSequencer g_adc1Sequencer(ADC1, kAdc1CommandDmaChannel);
 LED<PIN_CH1_LED_GPIO_BASE, PIN_CH1_LED_BIT> g_ch1Led;
 LED<PIN_CH2_LED_GPIO_BASE, PIN_CH2_LED_BIT> g_ch2Led;
 LED<PIN_CH3_LED_GPIO_BASE, PIN_CH3_LED_BIT> g_ch3Led;
@@ -263,11 +263,26 @@ void calibrate_pots()
     }
 }
 
+extern "C" void DMA_Error_IRQ_Handler(void)
+{
+    uint32_t errorStatus = DMA0->ES;
+    uint32_t errorChannel = (errorStatus & DMA_ES_ERRCHN_MASK) >> DMA_ES_ERRCHN_SHIFT;
+    DEBUG_PRINTF(ERROR_MASK, "DMA error status=0x%08lx ch#%lu", errorStatus, errorChannel);
+
+    // Clear all error flags.
+    DMA0->CERR = DMA_CERR_CAEI_MASK;
+
+#if DEBUG
+    Ar::_halt();
+#endif
+}
+
 void init_dma()
 {
     // Init eDMA and DMAMUX.
     edma_config_t dmaConfig = {0};
     EDMA_GetDefaultConfig(&dmaConfig);
+    dmaConfig.enableHaltOnError = false;
     dmaConfig.enableRoundRobinArbitration = false;
     dmaConfig.enableDebugMode = true;
     EDMA_Init(DMA0, &dmaConfig);
@@ -277,14 +292,21 @@ void init_dma()
     // used for the SAI, are set to the highest priorities and have preemption enabled. Other
     // channels have preemption disabled so only the channels used for SAI can preempt.
     edma_channel_Preemption_config_t priority;
-    int channel;
+    uint32_t channel;
     for (channel = 0; channel < 16; ++channel)
     {
         priority.channelPriority = 15 - channel;
-        priority.enableChannelPreemption = (channel != 1);
-        priority.enablePreemptAbility = (channel < 2);
+        priority.enableChannelPreemption = (channel != kAudioPongDmaChannel);
+        priority.enablePreemptAbility = (channel <= kAudioPongDmaChannel);
         EDMA_SetChannelPreemptionConfig(DMA0, channel, &priority);
+
+        // Enable DMA error interrupts for channels we use.
+        if (channel <= kAllocatedDmaChannelCount)
+        {
+            EDMA_EnableChannelInterrupts(DMA0, channel, kEDMA_ErrorInterruptEnable);
+        }
     }
+
 }
 
 void init_audio_out()
