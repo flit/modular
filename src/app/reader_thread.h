@@ -104,6 +104,7 @@ public:
 
     void enqueue(SamplerVoice * request);
     void clear_voice_queue(SamplerVoice * voice);
+    void clear_all();
 
     uint32_t get_pending_count() const { return _count; }
 

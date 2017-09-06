@@ -117,14 +117,11 @@ void ReaderThread::init()
     _queueLock.init("reader");
 
     // Put all queue nodes on the free list.
-    uint32_t i;
-    for (i=0; i < kQueueSize; ++i)
-    {
-        add_free_node(&_nodes[i]);
-    }
+    clear_all();
 
 #if DEBUG
     _statistics.init();
+    uint32_t i;
     for (i = 0; i < kVoiceCount; ++i)
     {
         _voiceStatistics[i].init();
@@ -222,6 +219,24 @@ void ReaderThread::clear_voice_queue(SamplerVoice * voice)
         {
             iter = iter->next;
         }
+    }
+}
+
+void ReaderThread::clear_all()
+{
+    Ar::Mutex::Guard guard(_queueLock);
+
+    // Reset pointers and count.
+    _first = nullptr;
+    _last = nullptr;
+    _free = nullptr;
+    _count = 0;
+
+    // Put all queue nodes on the free list.
+    uint32_t i;
+    for (i=0; i < kQueueSize; ++i)
+    {
+        add_free_node(&_nodes[i]);
     }
 }
 
