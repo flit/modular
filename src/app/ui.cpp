@@ -54,11 +54,12 @@ const uint32_t kCardDetectInterval_ms = 250;
 // Code
 //------------------------------------------------------------------------------
 
-Button::Button(PORT_Type * port, GPIO_Type * gpio, uint32_t pin, UIEventSource source)
+Button::Button(PORT_Type * port, GPIO_Type * gpio, uint32_t pin, UIEventSource source, bool isInverted)
 :   _source(source),
     _port(port),
     _gpio(gpio),
     _pin(pin),
+    _isInverted(isInverted),
     _state(false),
     _timer()
 {
@@ -75,7 +76,7 @@ void Button::init()
 bool Button::read()
 {
     uint32_t value = GPIO_ReadPinInput(_gpio, _pin);
-    return (value != 0);
+    return (value != 0) ^ _isInverted;
 }
 
 void Button::handle_irq()
@@ -149,8 +150,8 @@ uint32_t Pot::process(uint32_t value)
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 UI::UI()
-:   _button1(PIN_BUTTON1_PORT, PIN_BUTTON1_GPIO, PIN_BUTTON1_BIT, kButton1),
-    _button2(PIN_BUTTON2_PORT, PIN_BUTTON2_GPIO, PIN_BUTTON2_BIT, kButton2),
+:   _button1(PIN_BUTTON1_PORT, PIN_BUTTON1_GPIO, PIN_BUTTON1_BIT, kButton1, true),
+    _button2(PIN_BUTTON2_PORT, PIN_BUTTON2_GPIO, PIN_BUTTON2_BIT, kButton2, false),
     _mode(kPlayMode),
     _voiceStates{0},
     _editChannel(0),

@@ -90,7 +90,7 @@ struct UIEvent
 class Button
 {
 public:
-    Button(PORT_Type * port, GPIO_Type * gpio, uint32_t pin, UIEventSource source);
+    Button(PORT_Type * port, GPIO_Type * gpio, uint32_t pin, UIEventSource source, bool isInverted);
     ~Button()=default;
 
     void init();
@@ -102,6 +102,7 @@ protected:
     PORT_Type * _port;
     GPIO_Type * _gpio;
     uint32_t _pin;
+    bool _isInverted;
     bool _state;
     Ar::TimerWithMemberCallback<Button> _timer;
 
