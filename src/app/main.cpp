@@ -273,7 +273,7 @@ extern "C" void DMA_Error_IRQ_Handler(void)
     DMA0->CERR = DMA_CERR_CAEI_MASK;
 
 #if DEBUG
-    Ar::_halt();
+    __BKPT(0);
 #endif
 }
 

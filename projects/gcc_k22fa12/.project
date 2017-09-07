@@ -136,6 +136,11 @@
 			<locationURI>PARENT-2-PROJECT_LOC/src/app/debug_log.h</locationURI>
 		</link>
 		<link>
+			<name>app/fault_handlers.cpp</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/src/app/fault_handlers.cpp</locationURI>
+		</link>
+		<link>
 			<name>app/file_manager.cpp</name>
 			<type>1</type>
 			<locationURI>PARENT-2-PROJECT_LOC/src/app/file_manager.cpp</locationURI>
