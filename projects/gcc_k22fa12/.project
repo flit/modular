@@ -668,27 +668,27 @@
 		<link>
 			<name>sdmmc/inc/fsl_sd.h</name>
 			<type>1</type>
-			<location>PARENT-2-PROJECT_LOC/src/sdmmc/inc/fsl_sd.h</location>
+			<locationURI>PARENT-2-PROJECT_LOC/src/sdmmc/inc/fsl_sd.h</locationURI>
 		</link>
 		<link>
 			<name>sdmmc/inc/fsl_sdmmc_common.h</name>
 			<type>1</type>
-			<location>PARENT-2-PROJECT_LOC/src/sdmmc/inc/fsl_sdmmc_common.h</location>
+			<locationURI>PARENT-2-PROJECT_LOC/src/sdmmc/inc/fsl_sdmmc_common.h</locationURI>
 		</link>
 		<link>
 			<name>sdmmc/inc/fsl_sdmmc_host.h</name>
 			<type>1</type>
-			<location>PARENT-2-PROJECT_LOC/src/sdmmc/inc/fsl_sdmmc_host.h</location>
+			<locationURI>PARENT-2-PROJECT_LOC/src/sdmmc/inc/fsl_sdmmc_host.h</locationURI>
 		</link>
 		<link>
 			<name>sdmmc/inc/fsl_sdmmc_spec.h</name>
 			<type>1</type>
-			<location>PARENT-2-PROJECT_LOC/src/sdmmc/inc/fsl_sdmmc_spec.h</location>
+			<locationURI>PARENT-2-PROJECT_LOC/src/sdmmc/inc/fsl_sdmmc_spec.h</locationURI>
 		</link>
 		<link>
 			<name>sdmmc/port/fsl_sdmmc_event.h</name>
 			<type>1</type>
-			<location>PARENT-2-PROJECT_LOC/src/sdmmc/port/fsl_sdmmc_event.h</location>
+			<locationURI>PARENT-2-PROJECT_LOC/src/sdmmc/port/fsl_sdmmc_event.h</locationURI>
 		</link>
 		<link>
 			<name>sdmmc/port/sdhc</name>
@@ -708,7 +708,7 @@
 		<link>
 			<name>sdmmc/src/fsl_sdmmc_common.c</name>
 			<type>1</type>
-			<location>PARENT-2-PROJECT_LOC/src/sdmmc/src/fsl_sdmmc_common.c</location>
+			<locationURI>PARENT-2-PROJECT_LOC/src/sdmmc/src/fsl_sdmmc_common.c</locationURI>
 		</link>
 		<link>
 			<name>argon/src/cortex_m/ar_asm_macros.h</name>
@@ -763,12 +763,12 @@
 		<link>
 			<name>sdmmc/port/sdhc/argon/fsl_sdmmc_event.c</name>
 			<type>1</type>
-			<location>PARENT-2-PROJECT_LOC/src/sdmmc/port/sdhc/argon/fsl_sdmmc_event.c</location>
+			<locationURI>PARENT-2-PROJECT_LOC/src/sdmmc/port/sdhc/argon/fsl_sdmmc_event.c</locationURI>
 		</link>
 		<link>
 			<name>sdmmc/port/sdhc/argon/fsl_sdmmc_host.c</name>
 			<type>1</type>
-			<location>PARENT-2-PROJECT_LOC/src/sdmmc/port/sdhc/argon/fsl_sdmmc_host.c</location>
+			<locationURI>PARENT-2-PROJECT_LOC/src/sdmmc/port/sdhc/argon/fsl_sdmmc_host.c</locationURI>
 		</link>
 	</linkedResources>
 </projectDescription>
