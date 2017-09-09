@@ -226,7 +226,7 @@ SampleBuffer * SampleBufferManager::dequeue_next_buffer()
     else
     {
         DEBUG_PRINTF(ERROR_MASK, "V%lu: *** NO READY BUFFERS ***\r\n", _number);
-        Ar::_halt();
+//         Ar::_halt();
         _currentBuffer = nullptr;
     }
     return _currentBuffer;
@@ -455,6 +455,10 @@ void SamplerVoice::render(int16_t * data, uint32_t frameCount)
 
                     // Get the next buffer and update locals.
                     voiceBuffer = _manager.get_current_buffer();
+                    if (!voiceBuffer)
+                    {
+                        break;
+                    }
                     bufferData = voiceBuffer->data;
                     readHead = voiceBuffer->readHead + (bufferFrameCount - readHead);
                     bufferFrameCount = voiceBuffer->frameCount;
@@ -473,7 +477,10 @@ void SamplerVoice::render(int16_t * data, uint32_t frameCount)
         _fraction = readHeadFraction;
     }
 
-    voiceBuffer->readHead = readHead;
+    if (voiceBuffer)
+    {
+        voiceBuffer->readHead = readHead;
+    }
     _lastBufferLastSample = s1;
 
     // Fill any leftover frames with silence.
@@ -484,7 +491,7 @@ void SamplerVoice::render(int16_t * data, uint32_t frameCount)
     }
 
     // Did we finish this buffer?
-    if (readHead >= bufferFrameCount)
+    if (readHead >= bufferFrameCount && voiceBuffer)
     {
         _manager.retire_buffer(voiceBuffer);
     }
