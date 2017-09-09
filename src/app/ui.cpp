@@ -45,10 +45,14 @@ using namespace slab;
 //------------------------------------------------------------------------------
 
 const uint32_t kAdcMax = 65536;
+const float kAdcLsbFloat = 1.0f / 4096.0f;
 const uint32_t kPotEditHysteresisPercent = 5;
 
 //! Interval for checking SD card presence.
 const uint32_t kCardDetectInterval_ms = 250;
+
+//! Delay for applying a change to the sample start parameter.
+const uint32_t kSampleStartPotReleaseDelay_ms = 100;
 
 //------------------------------------------------------------------------------
 // Code
@@ -138,7 +142,7 @@ uint32_t Pot::process(uint32_t value)
         if (value < hysLow || value > hysHigh)
         {
             _last = value;
-            _hysteresis = 0;
+            _hysteresis = (4) << 4;
 
             UI::get().pot_did_change(*this, value);
         }
@@ -171,15 +175,22 @@ void UI::init()
     // Invert polarity of channel LEDs.
     set_all_channel_leds_polarity(true);
 
+    // Create UI thread and its runloop.
     _thread.init("ui", this, &UI::ui_thread, kUIThreadPriority, kArSuspendThread);
     _runloop.init("ui", &_thread);
 
+    // Create event queue and add it to the runloop.
     _eventQueue.init("events");
     _runloop.addQueue(&_eventQueue, NULL, NULL);
 
+    // Create LED blink timer.
     _blinkTimer.init("blink", this, &UI::handle_blink_timer, kArPeriodicTimer, 20);
-    _potReleaseTimer.init("pot-release", this, &UI::handle_pot_release_timer, kArOneShotTimer, 20);
 
+    // Create pot edit release timer.
+    _potReleaseTimer.init("pot-release", this, &UI::handle_pot_release_timer, kArOneShotTimer, kSampleStartPotReleaseDelay_ms);
+    _runloop.addTimer(&_potReleaseTimer);
+
+    // Set up card detection timer.
     _cardDetectTimer.init("card-detect", this, &UI::handle_card_detect_timer, kArPeriodicTimer, kCardDetectInterval_ms);
     _runloop.addTimer(&_cardDetectTimer);
     _cardDetectTimer.start();
@@ -220,6 +231,8 @@ void UI::set_mode()
 
         // Select last channel being edited.
         _channelLeds[_editChannel]->on();
+
+        _lastSampleStart = -1.0f;
     }
     // Switch to play mode.
     else
@@ -361,6 +374,9 @@ void UI::handle_blink_timer(Ar::Timer * timer)
 
 void UI::handle_pot_release_timer(Ar::Timer * timer)
 {
+    _channelPots[kSampleStartPot].set_hysteresis(1);
+    g_voice[_editChannel].set_sample_start(_lastSampleStart);
+    _lastSampleStart = -1.0f;
 }
 
 void UI::handle_card_detect_timer(Ar::Timer * timer)
@@ -413,9 +429,16 @@ void UI::pot_did_change(Pot& pot, uint32_t value)
                 g_voice[_editChannel].set_pitch(fvalue);
                 break;
             case kSampleStartPot:
+            {
                 // 0..1
-                g_voice[_editChannel].set_sample_start(fvalue);
+                float delta = fabsf(fvalue - _lastSampleStart);
+                _lastSampleStart = fvalue;
+                if (delta > (kAdcLsbFloat * 16))
+                {
+                    _potReleaseTimer.start();
+                }
                 break;
+            }
             case kSampleEndPot:
                 // 0..1
                 g_voice[_editChannel].set_sample_end(fvalue);

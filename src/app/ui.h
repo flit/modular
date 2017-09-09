@@ -201,6 +201,7 @@ protected:
     uint32_t _editChannel;
     bool _isCardPresent;
     bool _debounceCardDetect;
+    float _lastSampleStart;
 
     void ui_thread();
 
