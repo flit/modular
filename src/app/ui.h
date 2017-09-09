@@ -147,6 +147,15 @@ enum LEDColor : uint32_t
     kLEDYellow,
 };
 
+//!
+enum EditPotNames : uint32_t
+{
+    kPitchPot = 0,
+    kSampleStartPot = 1,
+    kSampleEndPot = 2,
+    kEffectPot = 3,
+};
+
 /*!
  * @brief
  */

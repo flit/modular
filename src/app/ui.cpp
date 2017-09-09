@@ -407,20 +407,20 @@ void UI::pot_did_change(Pot& pot, uint32_t value)
         // In edit mode, each pot controls a different voice parameter of the selected channel.
         switch (potNumber)
         {
-            case 0:
+            case kPitchPot:
                 // Shift value from 0..1 to 0.1..2.5
                 fvalue = (fvalue * 2.4f) + 0.1f;
                 g_voice[_editChannel].set_pitch(fvalue);
                 break;
-            case 1:
+            case kSampleStartPot:
                 // 0..1
                 g_voice[_editChannel].set_sample_start(fvalue);
                 break;
-            case 2:
+            case kSampleEndPot:
                 // 0..1
                 g_voice[_editChannel].set_sample_end(fvalue);
                 break;
-            case 3:
+            case kEffectPot:
                 break;
         }
     }
