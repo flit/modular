@@ -202,11 +202,14 @@ protected:
     bool _isCardPresent;
     bool _debounceCardDetect;
     float _lastSampleStart;
+    uint32_t _selectedBank;
 
     void ui_thread();
 
     template <UIMode mode>
     void set_mode();
+
+    void load_sample_bank(uint32_t bankNumber);
 
     void handle_blink_timer(Ar::Timer * timer);
     void handle_pot_release_timer(Ar::Timer * timer);

@@ -160,7 +160,8 @@ UI::UI()
     _voiceStates{0},
     _editChannel(0),
     _isCardPresent(false),
-    _debounceCardDetect(false)
+    _debounceCardDetect(false),
+    _selectedBank(0)
 {
 }
 
@@ -294,7 +295,11 @@ void UI::ui_thread()
                             // Bank switch in play mode.
                             if (_mode == kPlayMode)
                             {
-
+                                if (++_selectedBank >= kVoiceCount)
+                                {
+                                    _selectedBank = 0;
+                                }
+                                load_sample_bank(_selectedBank);
                             }
                             // In edit mode, select next channel to edit.
                             else
@@ -328,6 +333,8 @@ void UI::ui_thread()
                         {
                             FileManager::get().scan_for_files();
                             _isCardPresent = true;
+                            _selectedBank = 0;
+                            load_sample_bank(_selectedBank);
                         }
                         _cardDetectTimer.start();
                     }
@@ -353,6 +360,24 @@ void UI::ui_thread()
                 default:
                     break;
             }
+        }
+    }
+}
+
+void UI::load_sample_bank(uint32_t bankNumber)
+{
+    SampleBank & bank = FileManager::get().get_bank(bankNumber);
+
+    uint32_t channel;
+    for (channel = 0; channel < kVoiceCount; ++channel)
+    {
+        if (bank.has_sample(channel))
+        {
+            bank.load_sample_to_voice(channel, g_voice[channel]);
+        }
+        else
+        {
+            g_voice[channel].clear_file();
         }
     }
 }

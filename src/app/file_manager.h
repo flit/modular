@@ -31,12 +31,38 @@
 
 #include "file_system.h"
 #include "singleton.h"
+#include "simple_string.h"
+#include "audio_defs.h"
+#include "sampler_voice.h"
 
 //------------------------------------------------------------------------------
 // Definitions
 //------------------------------------------------------------------------------
 
 namespace slab {
+
+/*!
+ * @brief Holds information about a bank of samples.
+ */
+class SampleBank
+{
+public:
+    using FilePath = SimpleString<_MAX_LFN + 1>;
+
+    SampleBank();
+    ~SampleBank()=default;
+
+    bool has_sample(uint32_t sampleNumber) const;
+    const FilePath & get_sample_path(uint32_t sampleNumber) const;
+
+    bool load_sample_to_voice(uint32_t sampleNumber, SamplerVoice & voice);
+
+    void clear_sample_paths();
+    void set_sample_path(uint32_t sampleNumber, FilePath & path);
+
+protected:
+    FilePath _samplePaths[kVoiceCount];
+};
 
 /*!
  * @brief Handles scanning filesystem to identify samples.
@@ -52,8 +78,17 @@ public:
 
     void scan_for_files();
 
+    bool has_bank(uint32_t bankNumber) const;
+    SampleBank & get_bank(uint32_t bankNumber) { return _banks[bankNumber]; }
+
 protected:
     fs::FileSystem _fs;
+    uint32_t _bankValidMask;
+    SampleBank _banks[4];
+    char _dirPath[_MAX_LFN + 1];
+    char _filePath[_MAX_LFN + 1];
+
+    void _scan_bank_directory(uint32_t bankNumber, const char * dirPath);
 };
 
 } // namespace slab

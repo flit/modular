@@ -41,7 +41,10 @@ template <uint32_t N>
 class SimpleString
 {
 public:
-    SimpleString() {}
+    SimpleString()
+    {
+        _string[0] = 0;
+    }
     SimpleString(const char * s)
     {
         strncpy(_string, s, N);
