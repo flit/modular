@@ -150,16 +150,18 @@ void FileManager::scan_for_files()
             continue;
         }
 
-        // Look for '[0-9]' directories.
-        if (!(isdigit(info.fname[0]) && info.fname[1] == 0))
+        char * dirName = info.lfname[0] ? info.lfname : info.fname;
+
+        // Look for '[0-9].*' directories.
+        if (!isdigit(dirName[0]))
         {
             continue;
         }
 
-        uint32_t bankNumber = info.fname[0] - '1';
+        uint32_t bankNumber = dirName[0] - '1';
         if (bankNumber < 4)
         {
-            snprintf(_dirPath, sizeof(_dirPath), "/%s", info.fname);
+            snprintf(_dirPath, sizeof(_dirPath), "/%s", dirName);
             _scan_bank_directory(bankNumber, _dirPath);
         }
     }
@@ -178,20 +180,24 @@ void FileManager::_scan_bank_directory(uint32_t bankNumber, const char * dirPath
             continue;
         }
 
-        // Look for '[0-9].wav' files.
-        if (isdigit(info.fname[0]) && info.fname[1] == '.'
-            && toupper(info.fname[2]) == 'W'
-            && toupper(info.fname[3]) == 'A'
-            && toupper(info.fname[4]) == 'V'
+        char * fileName = info.lfname[0] ? info.lfname : info.fname;
+        uint32_t fileNameLength = strlen(fileName);
+
+        // Look for '[0-9].*\.wav' files.
+        if (isdigit(fileName[0])
+            && fileName[fileNameLength - 4] == '.'
+            && toupper(fileName[fileNameLength - 3]) == 'W'
+            && toupper(fileName[fileNameLength - 2]) == 'A'
+            && toupper(fileName[fileNameLength - 1]) == 'V'
             && info.fsize > 0)
         {
-            uint32_t channel = info.fname[0] - '1';
+            uint32_t channel = fileName[0] - '1';
             if (channel >=0 && channel < kVoiceCount)
             {
                 // Mark bank as valid if there's at least one file.
                 _bankValidMask |= (1 << bankNumber);
 
-                snprintf(_filePath, sizeof(_filePath), "%s/%s", dirPath, info.fname);
+                snprintf(_filePath, sizeof(_filePath), "%s/%s", dirPath, fileName);
                 SampleBank::FilePath path(_filePath);
 
                 _banks[bankNumber].set_sample_path(channel, path);
