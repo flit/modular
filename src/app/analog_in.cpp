@@ -65,21 +65,13 @@ AnalogIn::~AnalogIn()
     }
 }
 
-void AnalogIn::init()
+void AnalogIn::init(const adc16_config_t & config)
 {
     if (!s_adcInited[m_instance])
     {
-        adc16_config_t config;
-        ADC16_GetDefaultConfig(&config);
-        config.clockSource = kADC16_ClockSourceAsynchronousClock;
-        config.enableAsynchronousClock = true;
-        config.resolution = kADC16_ResolutionSE12Bit;
-        config.longSampleMode = kADC16_LongSampleCycle6;
-        config.enableHighSpeed = true;
-        config.enableLowPower = true;
         ADC16_Init(m_base, &config);
-        ADC16_DoAutoCalibration(m_base);
         ADC16_SetHardwareAverage(m_base, kADC16_HardwareAverageCount32);
+        ADC16_DoAutoCalibration(m_base);
         EnableIRQ(m_instance == 0 ? ADC0_IRQn : ADC1_IRQn);
 
         s_adcInited[m_instance] = true;

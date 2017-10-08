@@ -47,6 +47,7 @@
 #include "fsl_dmamux.h"
 #include "fsl_port.h"
 #include "fsl_gpio.h"
+#include "fsl_adc16.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
@@ -75,6 +76,7 @@ void load_thread(void * arg);
 void flash_leds();
 
 void init_dma();
+void init_adc_config();
 void init_audio_out();
 void init_fs();
 
@@ -114,6 +116,8 @@ LED<PIN_CH3_LED_GPIO_BASE, PIN_CH3_LED_BIT> g_ch3Led;
 LED<PIN_CH4_LED_GPIO_BASE, PIN_CH4_LED_BIT> g_ch4Led;
 LEDBase * g_channelLeds[] = { &g_ch1Led, &g_ch2Led, &g_ch3Led, &g_ch4Led};
 LED<PIN_BUTTON1_LED_GPIO_BASE, PIN_BUTTON1_LED_BIT> g_button1Led;
+
+adc16_config_t g_adcConfig;
 
 } // namespace slab
 
@@ -172,14 +176,14 @@ void cv_thread(void * arg)
     g_adc0Sequencer.set_channels(CH2_CV_CHANNEL_MASK | CH3_CV_CHANNEL_MASK | CH1_POT_CHANNEL_MASK | CH2_POT_CHANNEL_MASK);
     g_adc0Sequencer.set_result_buffer((uint32_t *)&results0[0]);
     g_adc0Sequencer.set_semaphore(&waitSem0);
-    g_adc0Sequencer.init();
+    g_adc0Sequencer.init(g_adcConfig);
 
     volatile uint32_t results1[4];
     Ar::Semaphore waitSem1(nullptr, 0);
     g_adc1Sequencer.set_channels(CH1_CV_CHANNEL_MASK | CH4_CV_CHANNEL_MASK | CH3_POT_CHANNEL_MASK |  CH4_POT_CHANNEL_MASK);
     g_adc1Sequencer.set_result_buffer((uint32_t *)&results1[0]);
     g_adc1Sequencer.set_semaphore(&waitSem1);
-    g_adc1Sequencer.init();
+    g_adc1Sequencer.init(g_adcConfig);
 
     g_adc0Sequencer.start();
     g_adc1Sequencer.start();
@@ -225,10 +229,10 @@ void calibrate_pots()
     AnalogIn ch2(CH2_POT_ADC, CH2_POT_CHANNEL);
     AnalogIn ch3(CH3_POT_ADC, CH3_POT_CHANNEL);
     AnalogIn ch4(CH4_POT_ADC, CH4_POT_CHANNEL);
-    ch1.init();
-    ch2.init();
-    ch3.init();
-    ch4.init();
+    ch1.init(g_adcConfig);
+    ch2.init(g_adcConfig);
+    ch3.init(g_adcConfig);
+    ch4.init(g_adcConfig);
 
     uint32_t reading[4];
     uint32_t minReading[4] = { ~0ul, ~0ul, ~0ul, ~0ul };
@@ -309,6 +313,27 @@ void init_dma()
 
 }
 
+void init_adc_config()
+{
+    ADC16_GetDefaultConfig(&g_adcConfig);
+
+    // ADCK = 12 MHz OSC
+    // 16b = 25 cyc
+    // long sample = +16 cyc
+    // high speed = +2 cyc
+    // = 43 * 32 avg = 1376 cyc = 115 µs
+    // 4x channels = 460 µs
+    // = 2173 Hz
+    g_adcConfig.clockSource = kADC16_ClockSourceAlt2;
+    g_adcConfig.enableAsynchronousClock = false;
+    g_adcConfig.clockDivider = kADC16_ClockDivider1;
+    g_adcConfig.resolution = kADC16_ResolutionSE16Bit;
+    g_adcConfig.longSampleMode = kADC16_LongSampleCycle16;
+    g_adcConfig.enableHighSpeed = true;
+    g_adcConfig.enableLowPower = false;
+    g_adcConfig.enableContinuousConversion = false;
+}
+
 void init_audio_out()
 {
     // Reset DAC.
@@ -357,6 +382,7 @@ void init_thread(void * arg)
         g_voice[i].init(i, (int16_t *)&g_sampleBufs[i]);
     }
 
+    init_adc_config();
     calibrate_pots();
 
     init_dma();

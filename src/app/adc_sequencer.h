@@ -31,6 +31,7 @@
 
 #include "argon/argon.h"
 #include "fsl_edma.h"
+#include "fsl_adc16.h"
 
 //------------------------------------------------------------------------------
 // Definitions
@@ -62,7 +63,7 @@ public:
     void set_result_buffer(uint32_t * buffer) { _results = buffer; }
     void set_semaphore(Ar::Semaphore * sem) { _sem = sem; }
 
-    void init();
+    void init(const adc16_config_t & config);
 
     void start();
 

@@ -47,7 +47,7 @@ public:
     AnalogIn(uint32_t instance, uint32_t channel);
     ~AnalogIn();
 
-    void init();
+    void init(const adc16_config_t & config);
 
     uint32_t read();
 

@@ -61,21 +61,12 @@ AdcSequencer::AdcSequencer(ADC_Type * base, uint32_t firstDmaChannel)
 #endif // DEBUG
 }
 
-void AdcSequencer::init()
+void AdcSequencer::init(const adc16_config_t & config)
 {
     uint32_t instance = _base == ADC0 ? 0 : 1;
     s_instance[instance] = this;
 
     // Init and configure the ADC instance.
-    adc16_config_t config;
-    ADC16_GetDefaultConfig(&config);
-    config.clockSource = kADC16_ClockSourceAsynchronousClock; //kADC16_ClockSourceAlt1; // Bus clock div 2
-    config.enableAsynchronousClock = true;
-//         config.clockDivider = kADC16_ClockDivider4; // 60MHz / 2 / 4 = 7.5MHz
-    config.resolution = kADC16_ResolutionSE12Bit;
-    config.longSampleMode = kADC16_LongSampleCycle6;
-    config.enableHighSpeed = true;
-    config.enableLowPower = true;
     ADC16_Init(_base, &config);
     ADC16_SetHardwareAverage(_base, kADC16_HardwareAverageCount32);
     ADC16_DoAutoCalibration(_base);
