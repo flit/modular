@@ -129,7 +129,7 @@ void Pot::set_hysteresis(uint32_t percent)
 uint32_t Pot::process(uint32_t value)
 {
     _history.put(value);
-    value <<= 4; // 12-bit to 16-bit
+//     value <<= 4; // 12-bit to 16-bit
 
     // Set gain for this channel.
     if (value <= kAdcMax)
