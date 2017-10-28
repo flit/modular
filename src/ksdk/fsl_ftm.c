@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2015, Freescale Semiconductor, Inc.
- * All rights reserved.
+ * Copyright 2016-2017 NXP
  *
  * Redistribution and use in source and binary forms, with or without modification,
  * are permitted provided that the following conditions are met:
@@ -12,7 +12,7 @@
  *   list of conditions and the following disclaimer in the documentation and/or
  *   other materials provided with the distribution.
  *
- * o Neither the name of Freescale Semiconductor, Inc. nor the names of its
+ * o Neither the name of the copyright holder nor the names of its
  *   contributors may be used to endorse or promote products derived from this
  *   software without specific prior written permission.
  *
@@ -72,8 +72,10 @@ static void FTM_SetReloadPoints(FTM_Type *base, uint32_t reloadPoints);
 /*! @brief Pointers to FTM bases for each instance. */
 static FTM_Type *const s_ftmBases[] = FTM_BASE_PTRS;
 
+#if !(defined(FSL_SDK_DISABLE_DRIVER_CLOCK_CONTROL) && FSL_SDK_DISABLE_DRIVER_CLOCK_CONTROL)
 /*! @brief Pointers to FTM clocks for each instance. */
 static const clock_ip_name_t s_ftmClocks[] = FTM_CLOCKS;
+#endif /* FSL_SDK_DISABLE_DRIVER_CLOCK_CONTROL */
 
 /*******************************************************************************
  * Code
@@ -228,20 +230,19 @@ status_t FTM_Init(FTM_Type *base, const ftm_config_t *config)
         return kStatus_Fail;
     }
 
+#if !(defined(FSL_SDK_DISABLE_DRIVER_CLOCK_CONTROL) && FSL_SDK_DISABLE_DRIVER_CLOCK_CONTROL)
     /* Ungate the FTM clock*/
     CLOCK_EnableClock(s_ftmClocks[FTM_GetInstance(base)]);
-
+#endif /* FSL_SDK_DISABLE_DRIVER_CLOCK_CONTROL */
+   
     /* Configure the fault mode, enable FTM mode and disable write protection */
     base->MODE = FTM_MODE_FAULTM(config->faultMode) | FTM_MODE_FTMEN_MASK | FTM_MODE_WPDIS_MASK;
 
     /* Configure the update mechanism for buffered registers */
     FTM_SetPwmSync(base, config->pwmSyncMode);
 
-    if (config->reloadPoints)
-    {
-        /* Setup intermediate register reload points */
-        FTM_SetReloadPoints(base, config->reloadPoints);
-    }
+    /* Setup intermediate register reload points */
+    FTM_SetReloadPoints(base, config->reloadPoints);
 
     /* Set the clock prescale factor */
     base->SC = FTM_SC_PS(config->prescale);
@@ -269,7 +270,13 @@ status_t FTM_Init(FTM_Type *base, const ftm_config_t *config)
 #endif /* FSL_FEATURE_FTM_HAS_RELOAD_INITIALIZATION_TRIGGER */
 
     /* FTM deadtime insertion control */
-    base->DEADTIME = (FTM_DEADTIME_DTPS(config->deadTimePrescale) | FTM_DEADTIME_DTVAL(config->deadTimeValue));
+    base->DEADTIME = (0u | 
+#if defined(FSL_FEATURE_FTM_HAS_EXTENDED_DEADTIME_VALUE) && (FSL_FEATURE_FTM_HAS_EXTENDED_DEADTIME_VALUE)
+                        /* Has extended deadtime value register) */
+                        FTM_DEADTIME_DTVALEX(config->deadTimeValue >> 6) | 
+#endif /* FSL_FEATURE_FTM_HAS_EXTENDED_DEADTIME_VALUE */
+                        FTM_DEADTIME_DTPS(config->deadTimePrescale) | 
+                        FTM_DEADTIME_DTVAL(config->deadTimeValue));
 
     /* FTM fault filter value */
     reg = base->FLTCTRL;
@@ -285,8 +292,10 @@ void FTM_Deinit(FTM_Type *base)
     /* Set clock source to none to disable counter */
     base->SC &= ~(FTM_SC_CLKS_MASK);
 
+#if !(defined(FSL_SDK_DISABLE_DRIVER_CLOCK_CONTROL) && FSL_SDK_DISABLE_DRIVER_CLOCK_CONTROL)
     /* Gate the FTM clock */
     CLOCK_DisableClock(s_ftmClocks[FTM_GetInstance(base)]);
+#endif /* FSL_SDK_DISABLE_DRIVER_CLOCK_CONTROL */
 }
 
 void FTM_GetDefaultConfig(ftm_config_t *config)
@@ -327,6 +336,9 @@ status_t FTM_SetupPwm(FTM_Type *base,
                       uint32_t srcClock_Hz)
 {
     assert(chnlParams);
+    assert(srcClock_Hz);
+    assert(pwmFreq_Hz);
+    assert(numOfChnls);
 
     uint32_t mod, reg;
     uint32_t ftmClock = (srcClock_Hz / (1U << (base->SC & FTM_SC_PS_MASK)));
@@ -459,18 +471,19 @@ status_t FTM_SetupPwm(FTM_Type *base,
             reg &= ~(FTM_CnSC_MSA_MASK | FTM_CnSC_MSB_MASK | FTM_CnSC_ELSA_MASK | FTM_CnSC_ELSB_MASK);
 
             /* Setup the active level for channel n + 1 */
-            reg |= (FTM_CnSC_ELSA(chnlParams->level) | FTM_CnSC_ELSB(chnlParams->level));
+            reg |= (uint32_t)(chnlParams->level << FTM_CnSC_ELSA_SHIFT);
 
             /* Update the mode and edge level for channel n + 1*/
             base->CONTROLS[(chnlParams->chnlNumber * 2) + 1].CnSC = reg;
+
+            /* Set the combine bit for the channel pair */
+            base->COMBINE |=
+                (1U << (FTM_COMBINE_COMBINE0_SHIFT + (FTM_COMBINE_COMBINE1_SHIFT * chnlParams->chnlNumber)));
 
             /* Set the channel pair values */
             base->CONTROLS[chnlParams->chnlNumber * 2].CnV = cnvFirstEdge;
             base->CONTROLS[(chnlParams->chnlNumber * 2) + 1].CnV = cnvFirstEdge + cnv;
 
-            /* Set the combine bit for the channel pair */
-            base->COMBINE |=
-                (1U << (FTM_COMBINE_COMBINE0_SHIFT + (FTM_COMBINE_COMBINE1_SHIFT * chnlParams->chnlNumber)));
 #if defined(FSL_FEATURE_FTM_HAS_ENABLE_PWM_OUTPUT) && (FSL_FEATURE_FTM_HAS_ENABLE_PWM_OUTPUT)
             /* Set to output mode */
             FTM_SetPwmOutputEnable(base, (ftm_chnl_t)((uint8_t)chnlParams->chnlNumber * 2), true);
@@ -538,6 +551,15 @@ void FTM_SetupInputCapture(FTM_Type *base,
 {
     uint32_t reg;
 
+    /* Clear the combine bit for the channel pair */
+    base->COMBINE &= ~(1U << (FTM_COMBINE_COMBINE0_SHIFT + (FTM_COMBINE_COMBINE1_SHIFT * (chnlNumber >> 1))));
+    /* Clear the dual edge capture mode because it's it's higher priority */
+    base->COMBINE &= ~(1U << (FTM_COMBINE_DECAPEN0_SHIFT + (FTM_COMBINE_COMBINE1_SHIFT * (chnlNumber >> 1))));
+#if !(defined(FSL_FEATURE_FTM_HAS_NO_QDCTRL) && FSL_FEATURE_FTM_HAS_NO_QDCTRL)
+    /* Clear the quadrature decoder mode beacause it's higher priority */
+    base->QDCTRL &= ~FTM_QDCTRL_QUADEN_MASK;
+#endif
+
     reg = base->CONTROLS[chnlNumber].CnSC;
     reg &= ~(FTM_CnSC_MSA_MASK | FTM_CnSC_MSB_MASK | FTM_CnSC_ELSA_MASK | FTM_CnSC_ELSB_MASK);
     reg |= captureMode;
@@ -565,6 +587,15 @@ void FTM_SetupOutputCompare(FTM_Type *base,
 {
     uint32_t reg;
 
+    /* Clear the combine bit for the channel pair */
+    base->COMBINE &= ~(1U << (FTM_COMBINE_COMBINE0_SHIFT + (FTM_COMBINE_COMBINE1_SHIFT * (chnlNumber >> 1))));
+    /* Clear the dual edge capture mode because it's it's higher priority */
+    base->COMBINE &= ~(1U << (FTM_COMBINE_DECAPEN0_SHIFT + (FTM_COMBINE_COMBINE1_SHIFT * (chnlNumber >> 1))));
+#if !(defined(FSL_FEATURE_FTM_HAS_NO_QDCTRL) && FSL_FEATURE_FTM_HAS_NO_QDCTRL)
+    /* Clear the quadrature decoder mode beacause it's higher priority */
+    base->QDCTRL &= ~FTM_QDCTRL_QUADEN_MASK;
+#endif    
+    
     reg = base->CONTROLS[chnlNumber].CnSC;
     reg &= ~(FTM_CnSC_MSA_MASK | FTM_CnSC_MSB_MASK | FTM_CnSC_ELSA_MASK | FTM_CnSC_ELSB_MASK);
     reg |= compareMode;
@@ -650,7 +681,7 @@ void FTM_SetupQuadDecode(FTM_Type *base,
         reg |= FTM_FILTER_CH1FVAL(phaseBParams->phaseFilterVal);
         base->FILTER = reg;
     }
-
+#if !(defined(FSL_FEATURE_FTM_HAS_NO_QDCTRL) && FSL_FEATURE_FTM_HAS_NO_QDCTRL)
     /* Set Quadrature decode properties */
     reg = base->QDCTRL;
     reg &= ~(FTM_QDCTRL_QUADMODE_MASK | FTM_QDCTRL_PHAFLTREN_MASK | FTM_QDCTRL_PHBFLTREN_MASK | FTM_QDCTRL_PHAPOL_MASK |
@@ -661,10 +692,13 @@ void FTM_SetupQuadDecode(FTM_Type *base,
     base->QDCTRL = reg;
     /* Enable Quad decode */
     base->QDCTRL |= FTM_QDCTRL_QUADEN_MASK;
+#endif
 }
 
 void FTM_SetupFault(FTM_Type *base, ftm_fault_input_t faultNumber, const ftm_fault_param_t *faultParams)
 {
+    assert(faultParams);
+
     uint32_t reg;
 
     reg = base->FLTCTRL;
