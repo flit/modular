@@ -26,11 +26,11 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#if !defined(_LED_H_)
-#define _LED_H_
+#if !defined(_FADER_LED_H_)
+#define _FADER_LED_H_
 
 #include <stdint.h>
-#include "fsl_gpio.h"
+#include "fsl_ftm.h"
 
 //------------------------------------------------------------------------------
 // Definitions
@@ -39,59 +39,64 @@
 namespace slab {
 
 /*!
- * @brief Abstract LED base class.
- */
-class LEDBase
-{
-public:
-
-    virtual void on()=0;
-    virtual void off()=0;
-    void set(bool state) { state ? on() : off(); }
-    virtual void set_duty_cycle(uint32_t percent) { set(percent > 0); }
-    virtual bool is_on()=0;
-    virtual void set_polarity(bool polarity)=0;
-};
-
-/*!
  * @brief LED template.
  */
-template <uint32_t gpio, uint32_t pin>
-class LED : public LEDBase
+template <uintptr_t ftmBase, ftm_chnl_t channel>
+class FaderLED : public LEDBase
 {
+    static const uint32_t kPwmFreq_Hz = 24000; // 100 kHz
+
 public:
-    LED() : _state(false), _polarity(false) {}
+    FaderLED() : _polarity(false), _dutyCycle(0) {}
+
+    void init()
+    {
+        ftm_chnl_pwm_signal_param_t params;
+        params.chnlNumber = channel;
+        params.level = _polarity ? kFTM_HighTrue : kFTM_LowTrue;
+        params.dutyCyclePercent = _dutyCycle;
+        params.firstEdgeDelayPercent = 0;
+        FTM_SetupPwm((FTM_Type *)ftmBase, &params, 1, kFTM_EdgeAlignedPwm, kPwmFreq_Hz, CLOCK_GetBusClkFreq());
+    }
 
     virtual void on() override
     {
-        GPIO_WritePinOutput((GPIO_Type *)gpio, pin, true ^ _polarity);
-        _state = true;
+        set_duty_cycle(100);
     }
 
     virtual void off() override
     {
-        GPIO_WritePinOutput((GPIO_Type *)gpio, pin, false ^ _polarity);
-        _state = false;
+        set_duty_cycle(0);
+    }
+
+    virtual void set_duty_cycle(uint32_t percent) override
+    {
+        _dutyCycle = percent;
+//         FTM_UpdateChnlEdgeLevelSelect((FTM_Type *)ftmBase, channel, 0U);
+        FTM_UpdatePwmDutycycle((FTM_Type *)ftmBase, channel, kFTM_EdgeAlignedPwm, _dutyCycle);
+        FTM_SetSoftwareTrigger((FTM_Type *)ftmBase, true);
+//         FTM_UpdateChnlEdgeLevelSelect((FTM_Type *)ftmBase, channel, _polarity ? kFTM_HighTrue : kFTM_LowTrue);
     }
 
     virtual bool is_on() override
     {
-        return _state;
+        return _dutyCycle > 0;
     }
 
     virtual void set_polarity(bool polarity) override
     {
         _polarity = polarity;
+        init();
     }
 
 protected:
-    bool _state;
     bool _polarity;
+    uint8_t _dutyCycle;
 };
 
 } // namespace slab
 
-#endif // _LED_H_
+#endif // _FADER_LED_H_
 //------------------------------------------------------------------------------
 // EOF
 //------------------------------------------------------------------------------

@@ -54,6 +54,8 @@ const uint32_t kCardDetectInterval_ms = 250;
 //! Delay for applying a change to the sample start parameter.
 const uint32_t kSampleStartPotReleaseDelay_ms = 100;
 
+const int32_t kButton1LedDutyCycleDelta = 1;
+
 //------------------------------------------------------------------------------
 // Code
 //------------------------------------------------------------------------------
@@ -161,7 +163,10 @@ UI::UI()
     _editChannel(0),
     _isCardPresent(false),
     _debounceCardDetect(false),
-    _selectedBank(0)
+    _lastSampleStart(-1.0f),
+    _selectedBank(0),
+    _button1LedDutyCycle(0),
+    _button1LedDutyCycleDelta(kButton1LedDutyCycleDelta)
 {
 }
 
@@ -185,7 +190,9 @@ void UI::init()
     _runloop.addQueue(&_eventQueue, NULL, NULL);
 
     // Create LED blink timer.
-    _blinkTimer.init("blink", this, &UI::handle_blink_timer, kArPeriodicTimer, 20);
+    _blinkTimer.init("blink", this, &UI::handle_blink_timer, kArPeriodicTimer, 50);
+    _runloop.addTimer(&_blinkTimer);
+    _blinkTimer.start();
 
     // Create pot edit release timer.
     _potReleaseTimer.init("pot-release", this, &UI::handle_pot_release_timer, kArOneShotTimer, kSampleStartPotReleaseDelay_ms);
@@ -331,6 +338,7 @@ void UI::ui_thread()
                     {
                         if (FileManager::get().mount())
                         {
+                            _blinkTimer.stop();
                             FileManager::get().scan_for_files();
                             _isCardPresent = true;
                             _selectedBank = 0;
@@ -354,6 +362,10 @@ void UI::ui_thread()
                         SD_HostReset(&g_sd.host);
                         _isCardPresent = false;
                         _cardDetectTimer.start();
+
+                        _blinkTimer.start();
+//                         _button1LedDutyCycle = 0;
+//                         _button1LedDutyCycleDelta = kButton1LedDutyCycleDelta;
                     }
                     break;
 
@@ -395,6 +407,19 @@ void UI::set_voice_playing(uint32_t voice, bool state)
 
 void UI::handle_blink_timer(Ar::Timer * timer)
 {
+    // Update button1 LED duty cycle.
+    _button1LedDutyCycle += _button1LedDutyCycleDelta;
+    if (_button1LedDutyCycle <= 0)
+    {
+        _button1LedDutyCycle = 1;
+        _button1LedDutyCycleDelta = kButton1LedDutyCycleDelta;
+    }
+    else if (_button1LedDutyCycle >= 100)
+    {
+        _button1LedDutyCycle = 99;
+        _button1LedDutyCycleDelta = -kButton1LedDutyCycleDelta;
+    }
+    _button1Led->set_duty_cycle(_button1LedDutyCycle);
 }
 
 void UI::handle_pot_release_timer(Ar::Timer * timer)

@@ -136,6 +136,11 @@
 			<locationURI>PARENT-2-PROJECT_LOC/src/app/debug_log.h</locationURI>
 		</link>
 		<link>
+			<name>app/fader_led.h</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/src/app/fader_led.h</locationURI>
+		</link>
+		<link>
 			<name>app/fault_handlers.cpp</name>
 			<type>1</type>
 			<locationURI>PARENT-2-PROJECT_LOC/src/app/fault_handlers.cpp</locationURI>
@@ -364,6 +369,16 @@
 			<name>ksdk/fsl_edma.h</name>
 			<type>1</type>
 			<locationURI>PARENT-2-PROJECT_LOC/src/ksdk/fsl_edma.h</locationURI>
+		</link>
+		<link>
+			<name>ksdk/fsl_ftm.c</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/src/ksdk/fsl_ftm.c</locationURI>
+		</link>
+		<link>
+			<name>ksdk/fsl_ftm.h</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/src/ksdk/fsl_ftm.h</locationURI>
 		</link>
 		<link>
 			<name>ksdk/fsl_gpio.c</name>

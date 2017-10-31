@@ -108,6 +108,9 @@ const uint32_t kXtal32Freq = 32768;
 #define PIN_BUTTON1_LED_BIT     (3)
 #define PIN_BUTTON1_LED         (1 << PIN_BUTTON1_LED_BIT)
 
+#define BUTTON1_LED_FTM_BASE    (FTM3_BASE)
+#define BUTTON1_LED_FTM_CHANNEL (kFTM_Chnl_3)
+
 // Buttons
 #define PIN_BUTTON1_PORT        (PORTD)
 #define PIN_BUTTON1_GPIO        (GPIOD)

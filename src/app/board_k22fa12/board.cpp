@@ -105,7 +105,7 @@ void init_board()
     PORT_SetPinMux(PIN_CH2_LED_PORT, PIN_CH2_LED_BIT, kPORT_MuxAsGpio);
     PORT_SetPinMux(PIN_CH3_LED_PORT, PIN_CH3_LED_BIT, kPORT_MuxAsGpio);
     PORT_SetPinMux(PIN_CH4_LED_PORT, PIN_CH4_LED_BIT, kPORT_MuxAsGpio);
-    PORT_SetPinMux(PIN_BUTTON1_LED_PORT, PIN_BUTTON1_LED_BIT, kPORT_MuxAsGpio);
+    PORT_SetPinMux(PIN_BUTTON1_LED_PORT, PIN_BUTTON1_LED_BIT, kPORT_MuxAlt4);
 
    const gpio_pin_config_t gpioOut1 = {
        .pinDirection = kGPIO_DigitalOutput,
@@ -122,7 +122,7 @@ void init_board()
     GPIO_PinInit(PIN_CH2_LED_GPIO, PIN_CH2_LED_BIT, &gpioOut0);
     GPIO_PinInit(PIN_CH3_LED_GPIO, PIN_CH3_LED_BIT, &gpioOut0);
     GPIO_PinInit(PIN_CH4_LED_GPIO, PIN_CH4_LED_BIT, &gpioOut0);
-    GPIO_PinInit(PIN_BUTTON1_LED_GPIO, PIN_BUTTON1_LED_BIT, &gpioOut0);
+//     GPIO_PinInit(PIN_BUTTON1_LED_GPIO, PIN_BUTTON1_LED_BIT, &gpioOut0);
 
     // Buttons
     PORT_SetPinMux(PIN_BUTTON1_PORT, PIN_BUTTON1_BIT, kPORT_MuxAsGpio);

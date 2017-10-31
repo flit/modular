@@ -203,6 +203,8 @@ protected:
     bool _debounceCardDetect;
     float _lastSampleStart;
     uint32_t _selectedBank;
+    int32_t _button1LedDutyCycle;
+    int32_t _button1LedDutyCycleDelta;
 
     void ui_thread();
 

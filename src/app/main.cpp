@@ -34,6 +34,7 @@
 #include "wav_file.h"
 #include "utility.h"
 #include "led.h"
+#include "fader_led.h"
 #include "microseconds.h"
 #include "debug_log.h"
 #include "reader_thread.h"
@@ -115,7 +116,7 @@ LED<PIN_CH2_LED_GPIO_BASE, PIN_CH2_LED_BIT> g_ch2Led;
 LED<PIN_CH3_LED_GPIO_BASE, PIN_CH3_LED_BIT> g_ch3Led;
 LED<PIN_CH4_LED_GPIO_BASE, PIN_CH4_LED_BIT> g_ch4Led;
 LEDBase * g_channelLeds[] = { &g_ch1Led, &g_ch2Led, &g_ch3Led, &g_ch4Led};
-LED<PIN_BUTTON1_LED_GPIO_BASE, PIN_BUTTON1_LED_BIT> g_button1Led;
+FaderLED<BUTTON1_LED_FTM_BASE, BUTTON1_LED_FTM_CHANNEL> g_button1Led;
 
 adc16_config_t g_adcConfig;
 
@@ -387,6 +388,14 @@ void init_thread(void * arg)
 
     init_dma();
     init_audio_out();
+
+    // Init timer for button1 led.
+    ftm_config_t config;
+    FTM_GetDefaultConfig(&config);
+    config.prescale = kFTM_Prescale_Divide_16;
+    FTM_Init(FTM3, &config);
+    FTM_StartTimer(FTM3, kFTM_SystemClock);
+    g_button1Led.init();
 
     // Init UI.
     g_ui.set_leds(g_channelLeds, &g_button1Led);
