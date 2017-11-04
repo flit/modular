@@ -37,6 +37,7 @@
 #include "fsl_port.h"
 #include "fsl_sd_disk.h"
 #include <assert.h>
+#include <math.h>
 
 using namespace slab;
 
@@ -466,6 +467,18 @@ void UI::pot_did_change(Pot& pot, uint32_t value)
     // In play mode, the pots control the gain of their corresponding channel.
     if (get_mode() == kPlayMode)
     {
+        // Below a certain threshold, force gain to 0. This compensates for the physical nature
+        // of the gain pot, which may not result in an ADC value of zero when fully turnd down.
+        if (value < 15)
+        {
+            fvalue = 0.0f;
+        }
+        else
+        {
+            // Apply curve.
+            fvalue = powf(fvalue, 2.0f);
+        }
+
         g_voice[potNumber].set_gain(fvalue);
     }
     else
