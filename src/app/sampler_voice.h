@@ -124,6 +124,7 @@ protected:
     bool _didReadFileStart;
     bool _waitingForFileStart;
     bool _isReady;
+    uint32_t _preppedCount;
 
     void _reset_buffers();
 };

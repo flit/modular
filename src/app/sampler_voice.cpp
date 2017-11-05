@@ -54,7 +54,8 @@ SampleBufferManager::SampleBufferManager()
     _samplesQueued(0),
     _didReadFileStart(false),
     _waitingForFileStart(true),
-    _isReady(false)
+    _isReady(false),
+    _preppedCount(0)
 {
 }
 
@@ -102,6 +103,7 @@ void SampleBufferManager::set_file(uint32_t totalFrames)
     _didReadFileStart = false;
     _waitingForFileStart = true;
     _isReady = false;
+    _preppedCount = 0;
     _reset_buffers();
 
     // Go ahead and prime.
@@ -205,7 +207,7 @@ void SampleBufferManager::retire_buffer(SampleBuffer * buffer)
 
         // Don't queue up file start buffer for reading, and don't queue more than the active
         // number of samples.
-        if (buffer != &_buffer[0] && _samplesQueued < _endSample)
+        if (buffer->number != 0 && _samplesQueued < _endSample)
         {
             DEBUG_PRINTF(RETIRE_MASK|QUEUE_MASK, "V%lu: retire: queue b%d to read @ %lu\r\n", _number, buffer->number, _samplesPlayed);
             queue_buffer_for_read(buffer);
@@ -233,34 +235,51 @@ SampleBuffer * SampleBufferManager::dequeue_next_buffer()
     return _currentBuffer;
 }
 
+//! @todo clean up
 void SampleBufferManager::enqueue_full_buffer(SampleBuffer * buffer)
 {
     assert(buffer);
-    if (buffer == &_buffer[0])
+    bool isBuffer0 = (buffer->number == 0);
+
+    if (buffer->reread)
     {
-        _didReadFileStart = true;
-        if (_waitingForFileStart)
+        DEBUG_PRINTF(QUEUE_MASK, "V%lu: queuing b%d for reread\r\n", _number, buffer->number);
+
+        if (isBuffer0)
         {
-            _waitingForFileStart = false;
-            _isReady = true;
-        }
-        _samplesRead += buffer->frameCount;
-        buffer->state = SampleBuffer::State::kReady;
-    }
-    else
-    {
-        if (buffer->reread)
-        {
-            DEBUG_PRINTF(QUEUE_MASK, "V%lu: queuing b%d for reread\r\n", _number, buffer->number);
-            queue_buffer_for_read(buffer);
+            // If the file start buffer has to be reread, just do another prime. Need to
+            // set the buffer state to ready so prime doesn't cause another reread.
+            buffer->state = SampleBuffer::State::kReady;
+            _didReadFileStart = false;
+            prime();
         }
         else
         {
-            _samplesRead += buffer->frameCount;
+            // Queue up this buffer to be re-read instead of putting it in the full buffers queue.
+            // This call will set the buffer state appropriately.
+            queue_buffer_for_read(buffer);
+        }
+    }
+    else
+    {
+        _samplesRead += buffer->frameCount;
+        buffer->state = SampleBuffer::State::kReady;
 
-            buffer->state = SampleBuffer::State::kReady;
-            DEBUG_PRINTF(QUEUE_MASK, "V%lu: queuing b%d for play\r\n", _number, buffer->number);
-            _fullBuffers.put(buffer);
+        DEBUG_PRINTF(QUEUE_MASK, "V%lu: queuing b%d for play\r\n", _number, buffer->number);
+        _fullBuffers.put(buffer);
+
+        if (isBuffer0)
+        {
+            // Only set this flag if buffer0 actually contains the start samples.
+            assert(buffer->startFrame == _startSample);
+            _didReadFileStart = true;
+        }
+
+        // Wait until we get a full set of buffers before allowing play to start.
+        if (_waitingForFileStart && isBuffer0)// && (++_preppedCount >= _activeBufferCount))
+        {
+            _waitingForFileStart = false;
+            _isReady = true;
         }
     }
 }
@@ -273,11 +292,13 @@ void SampleBufferManager::set_start_sample(uint32_t start)
     _isReady = false;
     _didReadFileStart = false;
     _waitingForFileStart = true;
+    _preppedCount = 0;
     _startSample = start;
     if (_endSample < _startSample)
     {
         _endSample = _startSample;
     }
+    DEBUG_PRINTF(MISC_MASK, "set_start: %lu - %lu\r\n", _startSample, _endSample);
 
     _activeBufferCount = min(round_up_div(get_active_samples(), kBufferSize), kBufferCount);
 
@@ -291,6 +312,7 @@ void SampleBufferManager::set_end_sample(uint32_t end)
     assert(end >= _startSample);
 
     _endSample = end;
+    DEBUG_PRINTF(MISC_MASK, "set_end: %lu - %lu\r\n", _startSample, _endSample);
 
     _activeBufferCount = min(round_up_div(get_active_samples(), kBufferSize), kBufferCount);
 }
