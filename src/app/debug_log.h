@@ -52,7 +52,7 @@
 #define MISC_MASK (1<<31)
 
 #if !defined(ENABLE_DEBUG_PRINTF)
-#define ENABLE_DEBUG_PRINTF (1)
+#define ENABLE_DEBUG_PRINTF (DEBUG)
 #endif
 
 #if !defined(DEBUG_PRINTF_TO_UART)
