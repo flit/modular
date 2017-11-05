@@ -37,7 +37,7 @@
 #include "fsl_port.h"
 #include "fsl_sd_disk.h"
 #include <assert.h>
-#include <math.h>
+#include <cmath>
 
 using namespace slab;
 
