@@ -32,6 +32,7 @@
 #include "ui.h"
 #include "debug_log.h"
 #include "utility.h"
+#include <cmath>
 
 using namespace slab;
 
@@ -313,6 +314,7 @@ void SamplerVoice::init(uint32_t n, int16_t * buffer)
 {
     _number = n;
     _manager.init(this, buffer);
+    set_bits(32);
     clear_file();
 }
 
@@ -418,7 +420,11 @@ void SamplerVoice::render(int16_t * data, uint32_t frameCount)
             s1 = float(bufferData[readHead++]);
 
             // Apply the gain.
-            float s = s1 * _gain;
+            float s = s1;
+//             s /= 32768.0f;
+//             s = _step * floor((s * _inverseStep) + 0.5);
+            s *= _gain;
+//             s *= 32768.0f;
             *data = int16_t(s);
             data += 2;
         }
@@ -469,7 +475,11 @@ void SamplerVoice::render(int16_t * data, uint32_t frameCount)
             }
 
             // Perform simple linear interpolation, then apply the gain.
-            float s = (s0 + readHeadFraction * (s1 - s0)) * _gain;
+            float s = (s0 + readHeadFraction * (s1 - s0));
+//             s /= 32768.0f;
+//             s = _step * floor((s * _inverseStep) + 0.5);
+            s *= _gain;
+//             s *= 32768.0f;
             *data = int16_t(s);
             data += 2;
         }
@@ -501,6 +511,12 @@ void SamplerVoice::render(int16_t * data, uint32_t frameCount)
         _turnOnLedNextBuffer = false;
         UI::get().set_voice_playing(_number, true);
     }
+}
+
+void SamplerVoice::set_bits(uint32_t bits)
+{
+    _step = 2.0f * pow(0.5f, bits);
+    _inverseStep = 1.0f / _step;
 }
 
 void SamplerVoice::set_sample_start(float start)

@@ -153,6 +153,7 @@ public:
 
     void set_gain(float gain) { _gain = gain; }
     void set_pitch(float pitch) { _pitch = pitch; }
+    void set_bits(uint32_t bits);
     void set_sample_start(float start);
     void set_sample_end(float end);
 
@@ -174,6 +175,8 @@ protected:
     float _fraction;
     float _gain;
     float _pitch;
+    float _step;
+    float _inverseStep;
 
     void _reset_voice();
 };
