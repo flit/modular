@@ -44,7 +44,7 @@ namespace slab {
 template <uintptr_t ftmBase, ftm_chnl_t channel>
 class FaderLED : public LEDBase
 {
-    static const uint32_t kPwmFreq_Hz = 24000; // 100 kHz
+    static const uint32_t kPwmFreq_Hz = 30000; // 30 kHz
 
 public:
     FaderLED() : _polarity(false), _dutyCycle(0) {}
@@ -53,7 +53,7 @@ public:
     {
         ftm_chnl_pwm_signal_param_t params;
         params.chnlNumber = channel;
-        params.level = _polarity ? kFTM_HighTrue : kFTM_LowTrue;
+        params.level = _polarity ? kFTM_LowTrue : kFTM_HighTrue;
         params.dutyCyclePercent = _dutyCycle;
         params.firstEdgeDelayPercent = 0;
         FTM_SetupPwm((FTM_Type *)ftmBase, &params, 1, kFTM_EdgeAlignedPwm, kPwmFreq_Hz, CLOCK_GetBusClkFreq());
@@ -72,10 +72,8 @@ public:
     virtual void set_duty_cycle(uint32_t percent) override
     {
         _dutyCycle = percent;
-//         FTM_UpdateChnlEdgeLevelSelect((FTM_Type *)ftmBase, channel, 0U);
         FTM_UpdatePwmDutycycle((FTM_Type *)ftmBase, channel, kFTM_EdgeAlignedPwm, _dutyCycle);
         FTM_SetSoftwareTrigger((FTM_Type *)ftmBase, true);
-//         FTM_UpdateChnlEdgeLevelSelect((FTM_Type *)ftmBase, channel, _polarity ? kFTM_HighTrue : kFTM_LowTrue);
     }
 
     virtual bool is_on() override
