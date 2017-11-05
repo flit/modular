@@ -68,13 +68,14 @@ Button::Button(PORT_Type * port, GPIO_Type * gpio, uint32_t pin, UIEventSource s
     _pin(pin),
     _isInverted(isInverted),
     _state(false),
-    _timer()
+    _timer(),
+    _timeoutCount(0)
 {
 }
 
 void Button::init()
 {
-    _timer.init("debounce", this, &Button::handle_timer, kArOneShotTimer, 20);
+    _timer.init("button", this, &Button::handle_timer, kArPeriodicTimer, 20);
     UI::get().get_runloop()->addTimer(&_timer);
 
     PinIrqManager::get().connect(_port, _pin, irq_handler_stub, this);
@@ -83,30 +84,59 @@ void Button::init()
 bool Button::read()
 {
     uint32_t value = GPIO_ReadPinInput(_gpio, _pin);
-    return (value != 0) ^ _isInverted;
+    return (value == 0) ^ _isInverted;
 }
 
 void Button::handle_irq()
 {
-    PORT_SetPinInterruptConfig(_port, _pin, kPORT_InterruptOrDMADisabled);
-
-    if (!_timer.isActive())
+    // Restart timer.
+    if (_timer.isActive())
     {
-        _timer.start();
+        _timer.stop();
     }
+
+    // Configure timer for 20 ms debounce timeout and start it.
+    _timeoutCount = 0;
+    _timer.setDelay(20);
+    _timer.start();
 }
 
 void Button::handle_timer(Ar::Timer * timer)
 {
     bool value = read();
 
+    // Handle first timeout, for debounce.
+    if (_timeoutCount == 0)
+    {
+        // We're debouncing and the button state did not change, so ignore the transition.
+        if (value == _state)
+        {
+            _timer.stop();
+            return;
+        }
+
+        _state = value;
+
+        // Don't need the timer continuing unless button is pressed.
+        if (!value)
+        {
+            _timer.stop();
+        }
+        // Set timer period to 1 second after initial debounce.
+        else
+        {
+            _timer.setDelay(1000);
+        }
+    }
+
+    // Send event to UI.
     UIEvent event;
-    event.event = value ? kButtonUp : kButtonDown;
+    event.event = (_timeoutCount >= 1) ? kButtonHeld : (value ? kButtonDown : kButtonUp);
     event.source = _source;
-    event.value = 0;
+    event.value = _timeoutCount;
     UI::get().send_event(event);
 
-    PORT_SetPinInterruptConfig(_port, _pin, kPORT_InterruptEitherEdge);
+    ++_timeoutCount;
 }
 
 void Button::irq_handler_stub(PORT_Type * port, uint32_t pin, void * userData)
@@ -323,6 +353,24 @@ void UI::ui_thread()
                                     _channelPots[n].set_hysteresis(kPotEditHysteresisPercent);
                                 }
                             }
+                            break;
+
+                        default:
+                            break;
+                    }
+                    break;
+
+                case kButtonHeld:
+                    switch (event.source)
+                    {
+                        case kButton1:
+                            if (event.value == 5)
+                            {
+                                _blinkTimer.start();
+                            }
+                            break;
+
+                        case kButton2:
                             break;
 
                         default:

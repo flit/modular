@@ -52,6 +52,7 @@ enum UIEventType : uint16_t
 {
     kButtonDown,
     kButtonUp,
+    kButtonHeld,
     kPotAdjusted,
     kPotStopped,
     kCardInserted,
@@ -105,6 +106,7 @@ protected:
     bool _isInverted;
     bool _state;
     Ar::TimerWithMemberCallback<Button> _timer;
+    uint32_t _timeoutCount;
 
     void handle_irq();
     void handle_timer(Ar::Timer * timer);
