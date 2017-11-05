@@ -189,7 +189,7 @@ uint32_t Pot::process(uint32_t value)
 UI::UI()
 :   _button1(PIN_BUTTON1_PORT, PIN_BUTTON1_GPIO, PIN_BUTTON1_BIT, kButton1, true),
     _button2(PIN_BUTTON2_PORT, PIN_BUTTON2_GPIO, PIN_BUTTON2_BIT, kButton2, false),
-    _mode(kPlayMode),
+    _mode(kNoCardMode),
     _voiceStates{0},
     _editChannel(0),
     _isCardPresent(false),
@@ -197,7 +197,8 @@ UI::UI()
     _lastSampleStart(-1.0f),
     _selectedBank(0),
     _button1LedDutyCycle(0),
-    _button1LedDutyCycleDelta(kButton1LedDutyCycleDelta)
+    _button1LedDutyCycleDelta(kButton1LedDutyCycleDelta),
+    _firstSwitchToPlayMode(true)
 {
 }
 
@@ -256,36 +257,61 @@ void UI::set_mode()
 {
     uint32_t n;
 
+    if (_mode == mode)
+    {
+        return;
+    }
+
     _mode = mode;
 
-    // Switch to edit mode.
-    if (mode == kEditMode)
+    switch (mode)
     {
-        _button1Led->on();
+        // Switch to edit mode.
+        case kEditMode:
+            _button1Led->on();
 
-        // Turn off all LEDs.
-//         set_channel_led_color(kLEDYellow);
+            // Turn off all LEDs.
+            set_channel_led_color(kLEDYellow);
 
-        set_all_channel_leds(false);
+            set_all_channel_leds(false);
 
-        // Select last channel being edited.
-        _channelLeds[_editChannel]->on();
+            // Select last channel being edited.
+            _channelLeds[_editChannel]->on();
 
-        _lastSampleStart = -1.0f;
-    }
-    // Switch to play mode.
-    else
-    {
-        _button1Led->off();
+            _lastSampleStart = -1.0f;
+            break;
 
-        // Restore channel LEDs to play state.
-//         set_channel_led_color(kLEDRed);
+        // Switch to play mode.
+        case kPlayMode:
+            _button1Led->off();
 
-        // Restore LEDs to current voice state.
-        for (n = 0; n < kVoiceCount; ++n)
-        {
-            _channelLeds[n]->set(_voiceStates[n]);
-        }
+            // Restore channel LEDs to play state.
+            set_channel_led_color(kLEDRed);
+
+            // Restore LEDs to current voice state.
+            for (n = 0; n < kVoiceCount; ++n)
+            {
+                _channelLeds[n]->set(_voiceStates[n]);
+            }
+
+            if (_firstSwitchToPlayMode)
+            {
+                _firstSwitchToPlayMode = false;
+
+                // Set no hysteresis on all pots.
+                for (n = 0; n < kVoiceCount; ++n)
+                {
+                    _channelPots[n].set_hysteresis(0);
+                }
+                return;
+            }
+            break;
+
+        // Switch to the no-card mode.
+        case kNoCardMode:
+            _button1Led->off();
+            set_all_channel_leds(false);
+            break;
     }
 
     // Set hysteresis on all pots.
@@ -310,48 +336,60 @@ void UI::ui_thread()
             switch (event.event)
             {
                 case kButtonDown:
-                    // start timer for mode change and reboot
                     break;
 
                 case kButtonUp:
                     switch (event.source)
                     {
                         case kButton1:
-                            // Switch to edit mode.
-                            if (_mode == kPlayMode)
+                            // Only allow mode switches if the card is inserted.
+                            switch (_mode)
                             {
-                                set_mode<kEditMode>();
-                            }
-                            // Switch to play mode.
-                            else
-                            {
-                                set_mode<kPlayMode>();
+                                // Switch to edit mode.
+                                case kPlayMode:
+                                    set_mode<kEditMode>();
+                                    break;
+
+                                // Switch to play mode.
+                                case kEditMode:
+                                    set_mode<kPlayMode>();
+                                    break;
+
+                                // Do nothing.
+                                case kNoCardMode:
+                                    break;
                             }
                             break;
 
                         case kButton2:
-                            // Bank switch in play mode.
-                            if (_mode == kPlayMode)
+                            switch (_mode)
                             {
-                                if (++_selectedBank >= kVoiceCount)
-                                {
-                                    _selectedBank = 0;
-                                }
-                                load_sample_bank(_selectedBank);
-                            }
-                            // In edit mode, select next channel to edit.
-                            else
-                            {
-                                // Update edit LED.
-                                _channelLeds[_editChannel]->off();
-                                _editChannel = (_editChannel + 1) % kVoiceCount;
-                                _channelLeds[_editChannel]->on();
+                                // Bank switch in play mode.
+                                case kPlayMode:
+                                    if (++_selectedBank >= kVoiceCount)
+                                    {
+                                        _selectedBank = 0;
+                                    }
+                                    load_sample_bank(_selectedBank);
+                                    break;
 
-                                // Set hysteresis on all pots.
-                                for (n = 0; n < kVoiceCount; ++n)
-                                {
-                                    _channelPots[n].set_hysteresis(kPotEditHysteresisPercent);
-                                }
+                                // In edit mode, select next channel to edit.
+                                case kEditMode:
+                                    // Update edit LED.
+                                    _channelLeds[_editChannel]->off();
+                                    _editChannel = (_editChannel + 1) % kVoiceCount;
+                                    _channelLeds[_editChannel]->on();
+
+                                    // Set hysteresis on all pots.
+                                    for (n = 0; n < kVoiceCount; ++n)
+                                    {
+                                        _channelPots[n].set_hysteresis(kPotEditHysteresisPercent);
+                                    }
+                                    break;
+
+                                // Ignore button2 if we don't have a card present.
+                                case kNoCardMode:
+                                    break;
                             }
                             break;
 
@@ -390,6 +428,8 @@ void UI::ui_thread()
                             _blinkTimer.stop();
                             FileManager::get().scan_for_files();
                             _isCardPresent = true;
+                            set_mode<kPlayMode>();
+
                             _selectedBank = 0;
                             load_sample_bank(_selectedBank);
                         }
@@ -412,9 +452,10 @@ void UI::ui_thread()
                         _isCardPresent = false;
                         _cardDetectTimer.start();
 
+                        set_mode<kNoCardMode>();
+                        _button1LedDutyCycle = 0;
+                        _button1LedDutyCycleDelta = kButton1LedDutyCycleDelta;
                         _blinkTimer.start();
-//                         _button1LedDutyCycle = 0;
-//                         _button1LedDutyCycleDelta = kButton1LedDutyCycleDelta;
                     }
                     break;
 
@@ -432,6 +473,7 @@ void UI::load_sample_bank(uint32_t bankNumber)
     uint32_t channel;
     for (channel = 0; channel < kVoiceCount; ++channel)
     {
+        set_voice_playing(channel, false);
         if (bank.has_sample(channel))
         {
             bank.load_sample_to_voice(channel, g_voice[channel]);
@@ -512,51 +554,62 @@ void UI::pot_did_change(Pot& pot, uint32_t value)
     uint32_t potNumber = pot.n;
     float fvalue = float(value) / float(kAdcMax);
 
-    // In play mode, the pots control the gain of their corresponding channel.
-    if (get_mode() == kPlayMode)
+    switch (_mode)
     {
-        // Below a certain threshold, force gain to 0. This compensates for the physical nature
-        // of the gain pot, which may not result in an ADC value of zero when fully turnd down.
-        if (value < 15)
-        {
-            fvalue = 0.0f;
-        }
-        else
-        {
-            // Apply curve.
-            fvalue = powf(fvalue, 2.0f);
-        }
-
-        g_voice[potNumber].set_gain(fvalue);
-    }
-    else
-    {
-        // In edit mode, each pot controls a different voice parameter of the selected channel.
-        switch (potNumber)
-        {
-            case kPitchPot:
-                // Shift value from 0..1 to 0.1..2.5
-                fvalue = (fvalue * 2.4f) + 0.1f;
-                g_voice[_editChannel].set_pitch(fvalue);
-                break;
-            case kSampleStartPot:
+        // In play mode, the pots control the gain of their corresponding channel.
+        case kPlayMode:
+            // Below a certain threshold, force gain to 0. This compensates for the physical nature
+            // of the gain pot, which may not result in an ADC value of zero when fully turnd down.
+            if (value < 15)
             {
-                // 0..1
-                float delta = fabsf(fvalue - _lastSampleStart);
-                _lastSampleStart = fvalue;
-                if (delta > (kAdcLsbFloat * 16))
-                {
-                    _potReleaseTimer.start();
-                }
-                break;
+                fvalue = 0.0f;
             }
-            case kSampleEndPot:
-                // 0..1
-                g_voice[_editChannel].set_sample_end(fvalue);
-                break;
-            case kEffectPot:
-                break;
-        }
+            else
+            {
+                // Apply curve.
+                fvalue = powf(fvalue, 2.0f);
+            }
+
+            g_voice[potNumber].set_gain(fvalue);
+            break;
+
+        // In edit mode, each pot controls a different voice parameter of the selected channel.
+        case kEditMode:
+            switch (potNumber)
+            {
+                case kPitchPot:
+                    // Shift value from 0..1 to 0.1..2.5
+                    fvalue = (fvalue * 2.4f) + 0.1f;
+                    g_voice[_editChannel].set_pitch(fvalue);
+                    break;
+                case kSampleStartPot:
+                {
+                    // 0..1
+                    float delta = fabsf(fvalue - _lastSampleStart);
+                    _lastSampleStart = fvalue;
+                    if (delta > (kAdcLsbFloat * 16))
+                    {
+                        _potReleaseTimer.start();
+                    }
+                    break;
+                }
+                case kSampleEndPot:
+                    // 0..1
+                    g_voice[_editChannel].set_sample_end(fvalue);
+                    break;
+                case kEffectPot:
+                {
+                    // 0..1 -> 1..32
+                    uint32_t bits = (fvalue * 32) + 1;
+                    g_voice[_editChannel].set_bits(bits);
+                    break;
+                }
+            }
+            break;
+
+        // Ignore pots when there is no card.
+        case kNoCardMode:
+            break;
     }
 }
 

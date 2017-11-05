@@ -394,8 +394,8 @@ void init_thread(void * arg)
     FTM_GetDefaultConfig(&config);
     config.prescale = kFTM_Prescale_Divide_16;
     FTM_Init(FTM3, &config);
-    FTM_StartTimer(FTM3, kFTM_SystemClock);
     g_button1Led.init();
+    FTM_StartTimer(FTM3, kFTM_SystemClock);
 
     // Init UI.
     g_ui.set_leds(g_channelLeds, &g_button1Led);

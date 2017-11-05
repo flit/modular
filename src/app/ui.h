@@ -46,6 +46,7 @@ enum UIMode : uint32_t
 {
     kPlayMode,
     kEditMode,
+    kNoCardMode,
 };
 
 enum UIEventType : uint16_t
@@ -207,6 +208,7 @@ protected:
     uint32_t _selectedBank;
     int32_t _button1LedDutyCycle;
     int32_t _button1LedDutyCycleDelta;
+    bool _firstSwitchToPlayMode;
 
     void ui_thread();
 
