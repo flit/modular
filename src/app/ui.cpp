@@ -69,7 +69,8 @@ Button::Button(PORT_Type * port, GPIO_Type * gpio, uint32_t pin, UIEventSource s
     _isInverted(isInverted),
     _state(false),
     _timer(),
-    _timeoutCount(0)
+    _timeoutCount(0),
+    _ignoreRelease(false)
 {
 }
 
@@ -97,28 +98,29 @@ void Button::handle_irq()
 
     // Configure timer for 20 ms debounce timeout and start it.
     _timeoutCount = 0;
+    _ignoreRelease = false;
     _timer.setDelay(20);
     _timer.start();
 }
 
 void Button::handle_timer(Ar::Timer * timer)
 {
-    bool value = read();
+    bool isPressed = read();
 
     // Handle first timeout, for debounce.
     if (_timeoutCount == 0)
     {
         // We're debouncing and the button state did not change, so ignore the transition.
-        if (value == _state)
+        if (isPressed == _state)
         {
             _timer.stop();
             return;
         }
 
-        _state = value;
+        _state = isPressed;
 
         // Don't need the timer continuing unless button is pressed.
-        if (!value)
+        if (!isPressed)
         {
             _timer.stop();
         }
@@ -129,12 +131,29 @@ void Button::handle_timer(Ar::Timer * timer)
         }
     }
 
-    // Send event to UI.
-    UIEvent event;
-    event.event = (_timeoutCount >= 1) ? kButtonHeld : (value ? kButtonDown : kButtonUp);
-    event.source = _source;
-    event.value = _timeoutCount;
-    UI::get().send_event(event);
+    // Send event to UI, unless this is a button release and the UI asked to ignore it.
+    if (isPressed || !_ignoreRelease)
+    {
+        UIEvent event;
+        if (isPressed)
+        {
+            if (_timeoutCount >= 1)
+            {
+                event.event = kButtonHeld;
+            }
+            else
+            {
+                event.event = kButtonDown;
+            }
+        }
+        else
+        {
+            event.event = kButtonUp;
+        }
+        event.source = _source;
+        event.value = _timeoutCount;
+        UI::get().send_event(event);
+    }
 
     ++_timeoutCount;
 }

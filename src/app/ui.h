@@ -97,7 +97,11 @@ public:
 
     void init();
 
+    //! @brief Returns true if the button is pressed.
     bool read();
+
+    //! @brief Don't send an event when the button is released.
+    void ignore_release() { _ignoreRelease = true; }
 
 protected:
     UIEventSource _source;
@@ -108,6 +112,7 @@ protected:
     bool _state;
     Ar::TimerWithMemberCallback<Button> _timer;
     uint32_t _timeoutCount;
+    bool _ignoreRelease;
 
     void handle_irq();
     void handle_timer(Ar::Timer * timer);
