@@ -30,6 +30,8 @@
 #define _MAIN_H_
 
 #include "sampler_voice.h"
+#include "sampler_synth.h"
+#include "channel_cv_gate.h"
 #include "card_manager.h"
 #include "file_manager.h"
 #include "audio_defs.h"
@@ -60,7 +62,9 @@ enum dma_channels : uint32_t {
     kAllocatedDmaChannelCount = 6,  //!< Number of DMA channels used by the application.
 };
 
+extern SamplerSynth g_sampler;
 extern SamplerVoice g_voice[kVoiceCount];
+extern ChannelCVGate g_gates[kVoiceCount];
 extern CardManager g_cardManager;
 extern FileManager g_fileManager;
 

@@ -42,6 +42,15 @@
 
 namespace slab {
 
+//! @brief Major voice architecture modes.
+enum VoiceMode : uint32_t
+{
+    k4VoiceMode,    //!< 4-voice: default mode, just trigger input per voice (plus edit params).
+    k2VoiceMode,    //!< 2-voice: each voice has trigger plus pitch CV.
+    k1VoiceMode,    //!< 1-voice: the single voice has trigger plus pitch, volume, and (other) CV.
+    kVoiceModeCount,
+};
+
 enum UIMode : uint32_t
 {
     kPlayMode,
@@ -185,7 +194,8 @@ public:
 
     void pot_did_change(Pot& pot, uint32_t value);
 
-    UIMode get_mode() const { return _mode; }
+    UIMode get_ui_mode() const { return _uiMode; }
+    VoiceMode get_voice_mode() const { return _voiceMode; }
 
     Ar::RunLoop * get_runloop() { return &_runloop; }
 
@@ -204,7 +214,8 @@ protected:
     Pot * _channelPots;
     Button _button1;
     Button _button2;
-    UIMode _mode;
+    VoiceMode _voiceMode;
+    UIMode _uiMode;
     bool _voiceStates[kVoiceCount];
     uint32_t _editChannel;
     bool _isCardPresent;
@@ -217,8 +228,8 @@ protected:
 
     void ui_thread();
 
-    template <UIMode mode>
-    void set_mode();
+    void set_ui_mode(UIMode mode);
+    void set_voice_mode(VoiceMode mode);
 
     void load_sample_bank(uint32_t bankNumber);
 

@@ -154,6 +154,8 @@ public:
 
     void set_gain(float gain) { _gain = gain; }
     void set_pitch(float pitch) { _pitch = pitch; }
+    void set_pitch_cv(float pitch) { _pitchCV = pitch; }
+    void set_pitch_cv_amount(float amount) { _pitchCVAmount = amount; }
     void set_bits(uint32_t bits);
     void set_sample_start(float start);
     void set_sample_end(float end);
@@ -176,6 +178,8 @@ protected:
     float _fraction;
     float _gain;
     float _pitch;
+    float _pitchCV;
+    float _pitchCVAmount;
     float _step;
     float _inverseStep;
 

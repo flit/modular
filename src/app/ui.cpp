@@ -57,6 +57,23 @@ const uint32_t kSampleStartPotReleaseDelay_ms = 100;
 
 const int32_t kButton1LedDutyCycleDelta = 1;
 
+//! Time in seconds button1 must be held to switch voice modes.
+const uint32_t kVoiceModeLongPressTime = 5;
+
+//! Map of bank channel to voice channel for each voice mode.
+//!
+//! The first index is the voice mode, second index is bank channel number. The value
+//! is the voice channel number that the bank channel is installed in. If the value
+//! is negative, then the voice channel equal to the absolute value is unused.
+static const int8_t kVoiceModeChannelMap[kVoiceModeCount][kVoiceCount] = {
+        // k4VoiceMode
+        { 0, 1, 2, 3, },
+        // k2VoiceMode
+        { 0, 2, -1, -3, },
+        // k1VoiceMode
+        { 0, -1, -2, -3, },
+    };
+
 //------------------------------------------------------------------------------
 // Code
 //------------------------------------------------------------------------------
@@ -208,7 +225,8 @@ uint32_t Pot::process(uint32_t value)
 UI::UI()
 :   _button1(PIN_BUTTON1_PORT, PIN_BUTTON1_GPIO, PIN_BUTTON1_BIT, kButton1, true),
     _button2(PIN_BUTTON2_PORT, PIN_BUTTON2_GPIO, PIN_BUTTON2_BIT, kButton2, false),
-    _mode(kNoCardMode),
+    _voiceMode(k4VoiceMode),
+    _uiMode(kNoCardMode),
     _voiceStates{0},
     _editChannel(0),
     _isCardPresent(false),
@@ -271,17 +289,16 @@ void UI::start()
     _thread.resume();
 }
 
-template <UIMode mode>
-void UI::set_mode()
+void UI::set_ui_mode(UIMode mode)
 {
     uint32_t n;
 
-    if (_mode == mode)
+    if (_uiMode == mode)
     {
         return;
     }
 
-    _mode = mode;
+    _uiMode = mode;
 
     switch (mode)
     {
@@ -340,6 +357,37 @@ void UI::set_mode()
     }
 }
 
+void UI::set_voice_mode(VoiceMode mode)
+{
+    if (_voiceMode == mode)
+    {
+        return;
+    }
+
+    _voiceMode = mode;
+
+    load_sample_bank(_selectedBank);
+
+    switch (mode)
+    {
+        case k4VoiceMode:
+            g_gates[1].set_mode(ChannelCVGate::kGate);
+            g_gates[3].set_mode(ChannelCVGate::kGate);
+            break;
+
+        case k2VoiceMode:
+            g_gates[1].set_mode(ChannelCVGate::kCV);
+            g_gates[3].set_mode(ChannelCVGate::kCV);
+            break;
+
+        default:
+            assert(0 && "Unsupported voice mode");
+    }
+
+    // Always switch to play mode on voice mode change.
+    set_ui_mode(kPlayMode);
+}
+
 void UI::ui_thread()
 {
     uint32_t n;
@@ -362,16 +410,16 @@ void UI::ui_thread()
                     {
                         case kButton1:
                             // Only allow mode switches if the card is inserted.
-                            switch (_mode)
+                            switch (_uiMode)
                             {
                                 // Switch to edit mode.
                                 case kPlayMode:
-                                    set_mode<kEditMode>();
+                                    set_ui_mode(kEditMode);
                                     break;
 
                                 // Switch to play mode.
                                 case kEditMode:
-                                    set_mode<kPlayMode>();
+                                    set_ui_mode(kPlayMode);
                                     break;
 
                                 // Do nothing.
@@ -381,7 +429,7 @@ void UI::ui_thread()
                             break;
 
                         case kButton2:
-                            switch (_mode)
+                            switch (_uiMode)
                             {
                                 // Bank switch in play mode.
                                 case kPlayMode:
@@ -396,7 +444,12 @@ void UI::ui_thread()
                                 case kEditMode:
                                     // Update edit LED.
                                     _channelLeds[_editChannel]->off();
-                                    _editChannel = (_editChannel + 1) % kVoiceCount;
+
+                                    // Select next valid channel.
+                                    do {
+                                        _editChannel = (_editChannel + 1) % kVoiceCount;
+                                    } while (!g_voice[_editChannel].is_valid());
+
                                     _channelLeds[_editChannel]->on();
 
                                     // Set hysteresis on all pots.
@@ -421,9 +474,20 @@ void UI::ui_thread()
                     switch (event.source)
                     {
                         case kButton1:
-                            if (event.value == 5)
+                            if (event.value == kVoiceModeLongPressTime)
                             {
-                                _blinkTimer.start();
+                                // We don't want the button up event.
+                                _button1.ignore_release();
+
+                                // Select new voice mode.
+                                if (_voiceMode == k4VoiceMode)
+                                {
+                                    set_voice_mode(k2VoiceMode);
+                                }
+                                else
+                                {
+                                    set_voice_mode(k4VoiceMode);
+                                }
                             }
                             break;
 
@@ -447,7 +511,7 @@ void UI::ui_thread()
                             _blinkTimer.stop();
                             FileManager::get().scan_for_files();
                             _isCardPresent = true;
-                            set_mode<kPlayMode>();
+                            set_ui_mode(kPlayMode);
 
                             _selectedBank = 0;
                             load_sample_bank(_selectedBank);
@@ -471,7 +535,7 @@ void UI::ui_thread()
                         _isCardPresent = false;
                         _cardDetectTimer.start();
 
-                        set_mode<kNoCardMode>();
+                        set_ui_mode(kNoCardMode);
                         _button1LedDutyCycle = 0;
                         _button1LedDutyCycleDelta = kButton1LedDutyCycleDelta;
                         _blinkTimer.start();
@@ -493,13 +557,18 @@ void UI::load_sample_bank(uint32_t bankNumber)
     for (channel = 0; channel < kVoiceCount; ++channel)
     {
         set_voice_playing(channel, false);
-        if (bank.has_sample(channel))
+        uint32_t mappedChannel = kVoiceModeChannelMap[_voiceMode][channel];
+        if (mappedChannel >= 0 && bank.has_sample(channel))
         {
-            bank.load_sample_to_voice(channel, g_voice[channel]);
+            bank.load_sample_to_voice(channel, g_voice[mappedChannel]);
         }
         else
         {
-            g_voice[channel].clear_file();
+            if (mappedChannel < 0)
+            {
+                mappedChannel = -mappedChannel;
+            }
+            g_voice[mappedChannel].clear_file();
         }
     }
 }
@@ -509,7 +578,7 @@ void UI::set_voice_playing(uint32_t voice, bool state)
     assert(voice < kVoiceCount);
 
     _voiceStates[voice] = state;
-    if (_mode == kPlayMode)
+    if (_uiMode == kPlayMode)
     {
         _channelLeds[voice]->set(state);
     }
@@ -573,23 +642,32 @@ void UI::pot_did_change(Pot& pot, uint32_t value)
     uint32_t potNumber = pot.n;
     float fvalue = float(value) / float(kAdcMax);
 
-    switch (_mode)
+    switch (_uiMode)
     {
         // In play mode, the pots control the gain of their corresponding channel.
         case kPlayMode:
-            // Below a certain threshold, force gain to 0. This compensates for the physical nature
-            // of the gain pot, which may not result in an ADC value of zero when fully turnd down.
-            if (value < 15)
+            // In 2 voice mode, second pot for each channel adjusts pitch CV amount.
+            if ((_voiceMode == k2VoiceMode && (potNumber == 1 || potNumber == 3)))
             {
-                fvalue = 0.0f;
+                uint32_t voiceNumber = (potNumber == 1) ? 0 : (potNumber == 3 ? 2 : 0);
+                g_voice[voiceNumber].set_pitch_cv_amount(fvalue);
             }
             else
             {
-                // Apply curve.
-                fvalue = powf(fvalue, 2.0f);
-            }
+                // Below a certain threshold, force gain to 0. This compensates for the physical nature
+                // of the gain pot, which may not result in an ADC value of zero when fully turnd down.
+                if (value < 15)
+                {
+                    fvalue = 0.0f;
+                }
+                else
+                {
+                    // Apply curve.
+                    fvalue = powf(fvalue, 2.0f);
+                }
 
-            g_voice[potNumber].set_gain(fvalue);
+                g_voice[potNumber].set_gain(fvalue);
+            }
             break;
 
         // In edit mode, each pot controls a different voice parameter of the selected channel.

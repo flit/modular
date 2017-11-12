@@ -172,6 +172,8 @@ void flash_leds()
 
 void cv_thread(void * arg)
 {
+    const float kAdcMax = 65536.0f;
+
     volatile uint32_t results0[4];
     Ar::Semaphore waitSem0(nullptr, 0);
     g_adc0Sequencer.set_channels(CH2_CV_CHANNEL_MASK | CH3_CV_CHANNEL_MASK | CH1_POT_CHANNEL_MASK | CH2_POT_CHANNEL_MASK);
@@ -190,6 +192,9 @@ void cv_thread(void * arg)
     g_adc1Sequencer.start();
     while (true)
     {
+        VoiceMode mode = UI::get().get_voice_mode();
+        float fvalue;
+
         // Wait until all new ADC samples are available.
         waitSem0.get();
         waitSem1.get();
@@ -200,20 +205,36 @@ void cv_thread(void * arg)
             DEBUG_PRINTF(TRIG_MASK, "ch1 triggered\r\n");
             g_voice[0].trigger();
         }
-        if (g_gates[1].process(results0[3]))
+        if (mode == k4VoiceMode)
         {
-            DEBUG_PRINTF(TRIG_MASK, "ch2 triggered\r\n");
-            g_voice[1].trigger();
+            if (g_gates[1].process(results0[3]))
+            {
+                DEBUG_PRINTF(TRIG_MASK, "ch2 triggered\r\n");
+                g_voice[1].trigger();
+            }
+        }
+        else if (mode == k2VoiceMode)
+        {
+            fvalue = float(g_gates[1].process(results0[3])) / kAdcMax;
+            g_voice[0].set_pitch_cv(fvalue);
         }
         if (g_gates[2].process(results0[0]))
         {
             DEBUG_PRINTF(TRIG_MASK, "ch3 triggered\r\n");
             g_voice[2].trigger();
         }
-        if (g_gates[3].process(results1[3]))
+        if (mode == k4VoiceMode)
         {
-            DEBUG_PRINTF(TRIG_MASK, "ch4 triggered\r\n");
-            g_voice[3].trigger();
+            if (g_gates[3].process(results1[3]))
+            {
+                DEBUG_PRINTF(TRIG_MASK, "ch4 triggered\r\n");
+                g_voice[3].trigger();
+            }
+        }
+        else if (mode == k2VoiceMode)
+        {
+            fvalue = float(g_gates[3].process(results1[3])) / kAdcMax;
+            g_voice[2].set_pitch_cv(fvalue);
         }
 
         // Process pots.
