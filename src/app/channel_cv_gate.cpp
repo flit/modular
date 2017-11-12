@@ -65,7 +65,7 @@ uint32_t ChannelCVGate::process(uint32_t value)
     _history.put(value);
 
     uint32_t result = 0;
-    value <<= 4;
+//     value <<= 4;
 
     if (!_isInverted)
     {
