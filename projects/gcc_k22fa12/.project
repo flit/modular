@@ -131,6 +131,16 @@
 			<locationURI>PARENT-2-PROJECT_LOC/src/app/channel_cv_gate.h</locationURI>
 		</link>
 		<link>
+			<name>app/channel_led.cpp</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/src/app/channel_led.cpp</locationURI>
+		</link>
+		<link>
+			<name>app/channel_led.h</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/src/app/channel_led.h</locationURI>
+		</link>
+		<link>
 			<name>app/debug_log.h</name>
 			<type>1</type>
 			<locationURI>PARENT-2-PROJECT_LOC/src/app/debug_log.h</locationURI>
@@ -359,6 +369,16 @@
 			<name>ksdk/fsl_dmamux.h</name>
 			<type>1</type>
 			<locationURI>PARENT-2-PROJECT_LOC/src/ksdk/fsl_dmamux.h</locationURI>
+		</link>
+		<link>
+			<name>ksdk/fsl_dspi.c</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/src/ksdk/fsl_dspi.c</locationURI>
+		</link>
+		<link>
+			<name>ksdk/fsl_dspi.h</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/src/ksdk/fsl_dspi.h</locationURI>
 		</link>
 		<link>
 			<name>ksdk/fsl_edma.c</name>

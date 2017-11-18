@@ -28,6 +28,7 @@
  */
 
 #include "ui.h"
+#include "channel_led.h"
 #include "debug_log.h"
 #include "pin_irq_manager.h"
 #include "main.h"
@@ -241,15 +242,6 @@ UI::UI()
 
 void UI::init()
 {
-    _channelLedColor = kLEDOff;
-
-    // Set LED FETs to a known state.
-    GPIO_WritePinOutput(PIN_CHLEDN_GPIO, PIN_CHLEDN_BIT, 0);
-    GPIO_WritePinOutput(PIN_CHLEDP_GPIO, PIN_CHLEDP_BIT, 1);
-
-    // Invert polarity of channel LEDs.
-    set_all_channel_leds_polarity(true);
-
     // Create UI thread and its runloop.
     _thread.init("ui", this, &UI::ui_thread, kUIThreadPriority, kArSuspendThread);
     _runloop.init("ui", &_thread);
@@ -274,8 +266,6 @@ void UI::init()
 
     _button1.init();
     _button2.init();
-
-    set_channel_led_color(kLEDRed);
 }
 
 void UI::set_leds(LEDBase ** channelLeds, LEDBase * button1Led)
@@ -307,12 +297,11 @@ void UI::set_ui_mode(UIMode mode)
             _button1Led->on();
 
             // Turn off all LEDs.
-            set_channel_led_color(kLEDYellow);
-
             set_all_channel_leds(false);
 
             // Select last channel being edited.
             _channelLeds[_editChannel]->on();
+            ChannelLEDManager::get().flush();
 
             _lastSampleStart = -1.0f;
             break;
@@ -321,14 +310,12 @@ void UI::set_ui_mode(UIMode mode)
         case kPlayMode:
             _button1Led->off();
 
-            // Restore channel LEDs to play state.
-            set_channel_led_color(kLEDRed);
-
             // Restore LEDs to current voice state.
             for (n = 0; n < kVoiceCount; ++n)
             {
                 _channelLeds[n]->set(_voiceStates[n]);
             }
+            ChannelLEDManager::get().flush();
 
             if (_firstSwitchToPlayMode)
             {
@@ -451,6 +438,8 @@ void UI::ui_thread()
                                     } while (!g_voice[_editChannel].is_valid());
 
                                     _channelLeds[_editChannel]->on();
+
+                                    ChannelLEDManager::get().flush();
 
                                     // Set hysteresis on all pots.
                                     for (n = 0; n < kVoiceCount; ++n)
@@ -581,6 +570,7 @@ void UI::set_voice_playing(uint32_t voice, bool state)
     if (_uiMode == kPlayMode)
     {
         _channelLeds[voice]->set(state);
+        ChannelLEDManager::get().flush();
     }
 }
 
@@ -717,107 +707,7 @@ void UI::set_all_channel_leds(bool state)
     {
         _channelLeds[i]->set(state);
     }
-}
-
-void UI::set_all_channel_leds_polarity(bool polarity)
-{
-    uint32_t i;
-    for (i = 0; i < kVoiceCount; ++i)
-    {
-        _channelLeds[i]->set_polarity(polarity);
-    }
-}
-
-//! Perform safe channel LED color/state transitions. We have to be careful
-//! to not enable both the N and P FETs simultaneously. And the transitions are
-//! done such that switching colors also turns off all LEDs, so they don't all
-//! suddenly switch on/off or flicker.
-void UI::set_channel_led_color(LEDColor newColor)
-{
-    if (newColor == _channelLedColor)
-    {
-        return;
-    }
-
-    // off = P-FET off (1), N-FET off (0)
-    // red = P-FET off (1), N-FET on (1), leds on = 1
-    // yellow = P-FET on (0), N-FET off (0), leds on = 0
-    switch (newColor)
-    {
-        // Turn off LEDs.
-        case kLEDOff:
-            switch (_channelLedColor)
-            {
-                // yellow -> off
-                case kLEDYellow:
-                    // Set LEDs high.
-                    set_all_channel_leds(false);
-                    break;
-                // red -> off
-                case kLEDRed:
-                    // Set LEDs low.
-                    set_all_channel_leds(false);
-                    break;
-                default:
-                    assert(0 && "bad led transition");
-            }
-            // Turn off P-FET and N-FET.
-            GPIO_SetPinsOutput(PIN_CHLEDP_GPIO, PIN_CHLEDP);
-            GPIO_ClearPinsOutput(PIN_CHLEDN_GPIO, PIN_CHLEDN);
-            break;
-
-        // Switch to yellow.
-        case kLEDYellow:
-            switch (_channelLedColor)
-            {
-                // off -> yellow
-                case kLEDOff:
-                    break;
-                // red -> yellow
-                case kLEDRed:
-                    // Set LEDs to red off state.
-                    set_all_channel_leds(false);
-                    // Turn off N-FET.
-                    GPIO_ClearPinsOutput(PIN_CHLEDN_GPIO, PIN_CHLEDN);
-                    break;
-                default:
-                    assert(0 && "bad led transition");
-            }
-            // Set LEDs to yellow off state.
-            set_all_channel_leds_polarity(false);
-            set_all_channel_leds(false);
-            // Turn on P-FET.
-            GPIO_ClearPinsOutput(PIN_CHLEDP_GPIO, PIN_CHLEDP);
-            break;
-
-        // Switch to red.
-        case kLEDRed:
-            switch (_channelLedColor)
-            {
-                // off -> red
-                case kLEDOff:
-                    break;
-                // yellow -> red
-                case kLEDYellow:
-                    // Set LEDs to yellow off state.
-                    set_all_channel_leds(false);
-                    // Turn off P-FET.
-                    GPIO_SetPinsOutput(PIN_CHLEDP_GPIO, PIN_CHLEDP);
-                    break;
-                default:
-                    assert(0 && "bad led transition");
-            }
-            // Set LEDs to red off state.
-            set_all_channel_leds_polarity(true);
-            set_all_channel_leds(false);
-            // Turn on N-FET.
-            GPIO_ClearPinsOutput(PIN_CHLEDN_GPIO, PIN_CHLEDN);
-            break;
-        default:
-            assert(0 && "bad led transition");
-    }
-
-    _channelLedColor = newColor;
+    ChannelLEDManager::get().flush();
 }
 
 //------------------------------------------------------------------------------

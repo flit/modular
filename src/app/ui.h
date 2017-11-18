@@ -210,7 +210,6 @@ protected:
     Ar::TimerWithMemberCallback<UI> _cardDetectTimer;
     LEDBase ** _channelLeds;
     LEDBase * _button1Led;
-    LEDColor _channelLedColor;
     Pot * _channelPots;
     Button _button1;
     Button _button2;
@@ -238,8 +237,6 @@ protected:
     void handle_card_detect_timer(Ar::Timer * timer);
 
     void set_all_channel_leds(bool on);
-    void set_all_channel_leds_polarity(bool polarity);
-    void set_channel_led_color(LEDColor newColor);
 
 };
 

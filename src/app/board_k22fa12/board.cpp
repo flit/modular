@@ -99,30 +99,23 @@ void init_board()
         &sdhcPinConfig);
 
     // LED pins
-    PORT_SetPinMux(PIN_CHLEDP_PORT, PIN_CHLEDP_BIT, kPORT_MuxAsGpio);
-    PORT_SetPinMux(PIN_CHLEDN_PORT, PIN_CHLEDN_BIT, kPORT_MuxAsGpio);
-    PORT_SetPinMux(PIN_CH1_LED_PORT, PIN_CH1_LED_BIT, kPORT_MuxAsGpio);
-    PORT_SetPinMux(PIN_CH2_LED_PORT, PIN_CH2_LED_BIT, kPORT_MuxAsGpio);
-    PORT_SetPinMux(PIN_CH3_LED_PORT, PIN_CH3_LED_BIT, kPORT_MuxAsGpio);
-    PORT_SetPinMux(PIN_CH4_LED_PORT, PIN_CH4_LED_BIT, kPORT_MuxAsGpio);
-    PORT_SetPinMux(PIN_BUTTON1_LED_PORT, PIN_BUTTON1_LED_BIT, kPORT_MuxAlt4);
+    PORT_SetPinMux(PIN_CH_LED_DIN_PORT, PIN_CH_LED_DIN_BIT, kPORT_MuxAlt2); // Alt2 = SPI0_SOUT
+    PORT_SetPinMux(PIN_CH_LED_CLK_PORT, PIN_CH_LED_CLK_BIT, kPORT_MuxAlt2); // Alt2 = SPI0_CLK
+    PORT_SetPinMux(PIN_CH_LED_LATCH_PORT, PIN_CH_LED_LATCH_BIT, kPORT_MuxAsGpio);
+    PORT_SetPinMux(PIN_CH_LED_OE_N_PORT, PIN_CH_LED_OE_N_BIT, kPORT_MuxAsGpio);
+    PORT_SetPinMux(PIN_BUTTON1_LED_PORT, PIN_BUTTON1_LED_BIT, kPORT_MuxAlt4); // Alt4 = FTM3_CH3
 
-   const gpio_pin_config_t gpioOut1 = {
-       .pinDirection = kGPIO_DigitalOutput,
-       .outputLogic = 1,
-   };
+    const gpio_pin_config_t gpioOut1 = {
+        .pinDirection = kGPIO_DigitalOutput,
+        .outputLogic = 1,
+    };
     const gpio_pin_config_t gpioOut0 = {
         .pinDirection = kGPIO_DigitalOutput,
         .outputLogic = 0,
     };
     // LEDs off by default.
-    GPIO_PinInit(PIN_CHLEDP_GPIO, PIN_CHLEDP_BIT, &gpioOut1);
-    GPIO_PinInit(PIN_CHLEDN_GPIO, PIN_CHLEDN_BIT, &gpioOut0);
-    GPIO_PinInit(PIN_CH1_LED_GPIO, PIN_CH1_LED_BIT, &gpioOut0);
-    GPIO_PinInit(PIN_CH2_LED_GPIO, PIN_CH2_LED_BIT, &gpioOut0);
-    GPIO_PinInit(PIN_CH3_LED_GPIO, PIN_CH3_LED_BIT, &gpioOut0);
-    GPIO_PinInit(PIN_CH4_LED_GPIO, PIN_CH4_LED_BIT, &gpioOut0);
-//     GPIO_PinInit(PIN_BUTTON1_LED_GPIO, PIN_BUTTON1_LED_BIT, &gpioOut0);
+    GPIO_PinInit(PIN_CH_LED_LATCH_GPIO, PIN_CH_LED_LATCH_BIT, &gpioOut0);
+    GPIO_PinInit(PIN_CH_LED_OE_N_GPIO, PIN_CH_LED_OE_N_BIT, &gpioOut1);
 
     // Buttons
     PORT_SetPinMux(PIN_BUTTON1_PORT, PIN_BUTTON1_BIT, kPORT_MuxAsGpio);

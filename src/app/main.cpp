@@ -34,6 +34,7 @@
 #include "wav_file.h"
 #include "utility.h"
 #include "led.h"
+#include "channel_led.h"
 #include "fader_led.h"
 #include "microseconds.h"
 #include "debug_log.h"
@@ -106,15 +107,16 @@ FileManager g_fileManager;
 SamplerSynth g_sampler;
 ReaderThread g_readerThread;
 PinIrqManager g_pinManager;
+ChannelLEDManager g_channelLedManager;
 SamplerVoice g_voice[kVoiceCount];
 ChannelCVGate g_gates[kVoiceCount];
 Pot g_pots[kVoiceCount];
 AdcSequencer g_adc0Sequencer(ADC0, kAdc0CommandDmaChannel);
 AdcSequencer g_adc1Sequencer(ADC1, kAdc1CommandDmaChannel);
-LED<PIN_CH1_LED_GPIO_BASE, PIN_CH1_LED_BIT> g_ch1Led;
-LED<PIN_CH2_LED_GPIO_BASE, PIN_CH2_LED_BIT> g_ch2Led;
-LED<PIN_CH3_LED_GPIO_BASE, PIN_CH3_LED_BIT> g_ch3Led;
-LED<PIN_CH4_LED_GPIO_BASE, PIN_CH4_LED_BIT> g_ch4Led;
+ChannelLED<0> g_ch1Led;
+ChannelLED<1> g_ch2Led;
+ChannelLED<2> g_ch3Led;
+ChannelLED<3> g_ch4Led;
 LEDBase * g_channelLeds[] = { &g_ch1Led, &g_ch2Led, &g_ch3Led, &g_ch4Led};
 FaderLED<BUTTON1_LED_FTM_BASE, BUTTON1_LED_FTM_CHANNEL> g_button1Led;
 
@@ -139,15 +141,19 @@ void flash_leds()
     for (which = 0; which < 4; ++which)
     {
         g_channelLeds[which]->on();
+        g_channelLedManager.flush();
         Ar::Thread::sleep(100);
         g_channelLeds[which]->off();
+        g_channelLedManager.flush();
     }
 
     for (which = 2; which >= 0; --which)
     {
         g_channelLeds[which]->on();
+        g_channelLedManager.flush();
         Ar::Thread::sleep(100);
         g_channelLeds[which]->off();
+        g_channelLedManager.flush();
     }
 
     // sleep 100 ms
@@ -158,6 +164,7 @@ void flash_leds()
     {
         g_channelLeds[which]->on();
     }
+    g_channelLedManager.flush();
 
     // sleep 100 ms
     Ar::Thread::sleep(100);
@@ -167,6 +174,7 @@ void flash_leds()
     {
         g_channelLeds[which]->off();
     }
+    g_channelLedManager.flush();
 
 }
 
@@ -390,6 +398,7 @@ void init_thread(void * arg)
 {
     DEBUG_PRINTF(INIT_MASK, "\r\nSAMPLBäR Initializing...\r\n");
 
+    g_channelLedManager.init();
     flash_leds();
 
     // Must init reader thread before initing voices.

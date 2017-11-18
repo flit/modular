@@ -26,11 +26,13 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#if !defined(_LED_H_)
-#define _LED_H_
+#if !defined(_CHANNEL_LED_H_)
+#define _CHANNEL_LED_H_
 
 #include <stdint.h>
-#include "fsl_gpio.h"
+#include "led.h"
+#include "singleton.h"
+#include "fsl_dspi.h"
 
 //------------------------------------------------------------------------------
 // Definitions
@@ -41,43 +43,57 @@ namespace slab {
 /*!
  * @brief Abstract LED base class.
  */
-class LEDBase
+class ChannelLEDManager : public Singleton<ChannelLEDManager>
 {
 public:
-    enum LEDColor : uint32_t
+    enum ChannelLedState : uint32_t
     {
-        kRed,
-        kYellow,
+        kOff = 0x00,    //!< 0b00 = off
+        kRed = 0x01,    //!< 0b01 = red
+        kYellow = 0x02, //!< 0b10 = yellow
     };
 
-    virtual void on()=0;
-    virtual void off()=0;
-    void set(bool state) { state ? on() : off(); }
-    virtual void set_duty_cycle(uint32_t percent) { set(percent > 0); }
-    virtual void set_color(LEDColor color) {}
-    virtual bool is_on()=0;
-    virtual void set_polarity(bool polarity)=0;
+    ChannelLEDManager();
+    ~ChannelLEDManager()=default;
+
+    void init();
+
+    void set_channel_state(uint32_t channel, ChannelLedState state);
+    void flush();
+
+protected:
+    dspi_master_handle_t _spiHandle;
+    uint8_t _buffer;
+
+    static void _transfer_callback(SPI_Type *base, dspi_master_handle_t *handle, status_t status, void *userData);
+
 };
 
 /*!
  * @brief LED template.
  */
-template <uint32_t gpio, uint32_t pin>
-class LED : public LEDBase
+template <uint32_t channel>
+class ChannelLED : public LEDBase
 {
 public:
-    LED() : _state(false), _polarity(false) {}
+    ChannelLED() : _state(false), _color(kRed) {}
 
     virtual void on() override
     {
-        GPIO_WritePinOutput((GPIO_Type *)gpio, pin, true ^ _polarity);
         _state = true;
+        _update();
     }
 
     virtual void off() override
     {
-        GPIO_WritePinOutput((GPIO_Type *)gpio, pin, false ^ _polarity);
         _state = false;
+        _update();
+    }
+
+    virtual void set_color(LEDColor color) override
+    {
+        _color = color;
+        _update();
     }
 
     virtual bool is_on() override
@@ -87,17 +103,24 @@ public:
 
     virtual void set_polarity(bool polarity) override
     {
-        _polarity = polarity;
     }
 
 protected:
     bool _state;
-    bool _polarity;
+    LEDColor _color;
+
+    void _update()
+    {
+        ChannelLEDManager::get().set_channel_state(channel,
+            _state
+            ? ((_color == LEDBase::kRed) ? ChannelLEDManager::kRed : ChannelLEDManager::kYellow)
+            : ChannelLEDManager::kOff);
+    }
 };
 
 } // namespace slab
 
-#endif // _LED_H_
+#endif // _CHANNEL_LED_H_
 //------------------------------------------------------------------------------
 // EOF
 //------------------------------------------------------------------------------
