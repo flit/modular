@@ -41,7 +41,7 @@
 namespace slab {
 
 /*!
- * @brief Abstract LED base class.
+ * @brief Manager for bi-color channel LEDs.
  */
 class ChannelLEDManager : public Singleton<ChannelLEDManager>
 {
@@ -62,8 +62,9 @@ public:
     void flush();
 
 protected:
-    dspi_master_handle_t _spiHandle;
-    uint8_t _buffer;
+    dspi_master_handle_t _spiHandle;    //!< Non-blocking transfer handle for DSPI driver.
+    uint8_t _editBuffer;    //!< Buffer updated prior to flush.
+    uint8_t _transferBuffer;    //!< Buffer used for the transfer.
 
     static void _transfer_callback(SPI_Type *base, dspi_master_handle_t *handle, status_t status, void *userData);
 

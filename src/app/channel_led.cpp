@@ -45,7 +45,8 @@ using namespace slab;
 // }
 
 ChannelLEDManager::ChannelLEDManager()
-:   _buffer(0)
+:   _editBuffer(0),
+    _transferBuffer(0)
 {
 }
 
@@ -75,30 +76,31 @@ void ChannelLEDManager::init()
 void ChannelLEDManager::set_channel_state(uint32_t channel, ChannelLedState state)
 {
     uint32_t channelBitOffset = channel * 2;
-    _buffer = (_buffer & ~(0x3 << channelBitOffset))
-                | (static_cast<uint8_t>(state) << channelBitOffset);
+    _editBuffer = (_editBuffer & ~(0x3 << channelBitOffset))
+                    | (static_cast<uint8_t>(state) << channelBitOffset);
 }
 
 void ChannelLEDManager::flush()
 {
+    // Copy edit buffer to transfer buffer.
+    _transferBuffer = _editBuffer;
+
+    // Reset latch.
     GPIO_PinWrite(PIN_CH_LED_LATCH_GPIO, PIN_CH_LED_LATCH_BIT, 0);
 
+    // Initiate transfer.
     dspi_transfer_t transfer = {0};
-    transfer.txData = &_buffer;
+    transfer.txData = &_transferBuffer;
     transfer.rxData = NULL;
     transfer.dataSize = 1;
     transfer.configFlags = kDSPI_MasterCtar0 | kDSPI_MasterPcs0;
-//     DSPI_MasterTransferBlocking(SPI0, &transfer);
     DSPI_MasterTransferNonBlocking(SPI0, &_spiHandle, &transfer);
 }
 
 void ChannelLEDManager::_transfer_callback(SPI_Type *base, dspi_master_handle_t *handle, status_t status, void *userData)
 {
     // Latch. Can stay high until next flush.
-//     clkdelay(100);
     GPIO_PinWrite(PIN_CH_LED_LATCH_GPIO, PIN_CH_LED_LATCH_BIT, 1);
-//     clkdelay(100);
-//     GPIO_PinWrite(PIN_CH_LED_LATCH_GPIO, PIN_CH_LED_LATCH_BIT, 0);
 }
 
 //------------------------------------------------------------------------------
