@@ -44,7 +44,6 @@ const uint32_t kTriggerThreshold = kAdcMax - (0.3 * (kAdcMax / 2));
 
 ChannelCVGate::ChannelCVGate()
 :   _mode(kGate),
-    _isInverted(false),
     _last(0),
     _edge(false),
     _highCount(0)
@@ -65,13 +64,6 @@ uint32_t ChannelCVGate::process(uint32_t value)
     _history.put(value);
 
     uint32_t result = 0;
-//     value <<= 4;
-
-    if (!_isInverted)
-    {
-        // Invert value to compensate for inverting opamp config;
-        value = kAdcMax - value;
-    }
 
     if (_mode == Mode::kGate)
     {

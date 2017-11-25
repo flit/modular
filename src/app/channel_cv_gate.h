@@ -56,7 +56,6 @@ public:
     void init();
 
     void set_mode(Mode newMode);
-    void set_inverted(bool isInverted) { _isInverted = isInverted; }
 
     uint32_t process(uint32_t value);
 
@@ -64,7 +63,6 @@ public:
 
 protected:
     Mode _mode;
-    bool _isInverted;
     uint32_t _last;
     bool _edge;
     uint32_t _highCount;
