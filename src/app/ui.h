@@ -206,6 +206,7 @@ protected:
     Ar::RunLoop _runloop;
     Ar::StaticQueue<UIEvent, kMaxEvents> _eventQueue;
     Ar::TimerWithMemberCallback<UI> _blinkTimer;
+    Ar::TimerWithMemberCallback<UI> _bankLedTimer;
     Ar::TimerWithMemberCallback<UI> _potReleaseTimer;
     Ar::TimerWithMemberCallback<UI> _cardDetectTimer;
     LEDBase ** _channelLeds;
@@ -224,6 +225,8 @@ protected:
     int32_t _button1LedDutyCycle;
     int32_t _button1LedDutyCycleDelta;
     bool _firstSwitchToPlayMode;
+    bool _isChannelLedFlushPending;
+    bool _isShowingBankLed;
 
     void ui_thread();
 
@@ -233,11 +236,13 @@ protected:
     void load_sample_bank(uint32_t bankNumber);
 
     void handle_blink_timer(Ar::Timer * timer);
+    void handle_bank_led_timer(Ar::Timer * timer);
     void handle_pot_release_timer(Ar::Timer * timer);
     void handle_card_detect_timer(Ar::Timer * timer);
 
     void set_all_channel_leds(bool on);
 
+    static void flush_channel_leds(void * param);
 };
 
 } // namespace slab

@@ -236,7 +236,9 @@ UI::UI()
     _selectedBank(0),
     _button1LedDutyCycle(0),
     _button1LedDutyCycleDelta(kButton1LedDutyCycleDelta),
-    _firstSwitchToPlayMode(true)
+    _firstSwitchToPlayMode(true),
+    _isChannelLedFlushPending(false),
+    _isShowingBankLed(false)
 {
 }
 
@@ -254,6 +256,10 @@ void UI::init()
     _blinkTimer.init("blink", this, &UI::handle_blink_timer, kArPeriodicTimer, 50);
     _runloop.addTimer(&_blinkTimer);
     _blinkTimer.start();
+
+    // Create bank LED timer.
+    _bankLedTimer.init("bank-led", this, &UI::handle_bank_led_timer, kArOneShotTimer, 500);
+    _runloop.addTimer(&_bankLedTimer);
 
     // Create pot edit release timer.
     _potReleaseTimer.init("pot-release", this, &UI::handle_pot_release_timer, kArOneShotTimer, kSampleStartPotReleaseDelay_ms);
@@ -420,10 +426,20 @@ void UI::ui_thread()
                             {
                                 // Bank switch in play mode.
                                 case kPlayMode:
+                                    _isShowingBankLed = true;
+                                    set_all_channel_leds(false);
+
                                     if (++_selectedBank >= kVoiceCount)
                                     {
                                         _selectedBank = 0;
                                     }
+
+                                    _channelLeds[_selectedBank]->set_color(LEDBase::kYellow);
+                                    _channelLeds[_selectedBank]->on();
+                                    ChannelLEDManager::get().flush();
+
+                                    _bankLedTimer.start();
+
                                     load_sample_bank(_selectedBank);
                                     break;
 
@@ -567,10 +583,15 @@ void UI::set_voice_playing(uint32_t voice, bool state)
     assert(voice < kVoiceCount);
 
     _voiceStates[voice] = state;
-    if (_uiMode == kPlayMode)
+    if (_uiMode == kPlayMode && !_isShowingBankLed)
     {
         _channelLeds[voice]->set(state);
-        ChannelLEDManager::get().flush();
+
+        if (!_isChannelLedFlushPending)
+        {
+            _isChannelLedFlushPending = true;
+            _runloop.perform(flush_channel_leds, this);
+        }
     }
 }
 
@@ -591,6 +612,20 @@ void UI::handle_blink_timer(Ar::Timer * timer)
     _button1Led->set_duty_cycle(_button1LedDutyCycle);
 }
 
+void UI::handle_bank_led_timer(Ar::Timer * timer)
+{
+    uint32_t n;
+
+    // Restore LEDs to current voice state.
+    for (n = 0; n < kVoiceCount; ++n)
+    {
+        _channelLeds[n]->set_color(LEDBase::kRed);
+        _channelLeds[n]->set(_voiceStates[n]);
+    }
+    ChannelLEDManager::get().flush();
+    _isShowingBankLed = false;
+}
+
 void UI::handle_pot_release_timer(Ar::Timer * timer)
 {
     _channelPots[kSampleStartPot].set_hysteresis(1);
@@ -605,7 +640,7 @@ void UI::handle_card_detect_timer(Ar::Timer * timer)
     bool isPresent = CardManager::get().check_presence();
     if (!_debounceCardDetect)
     {
-        // Set debounce flag if a change is presence is detected.
+        // Set debounce flag if a change in presence is detected.
         _debounceCardDetect = (isPresent != _isCardPresent);
     }
     else
@@ -707,6 +742,13 @@ void UI::set_all_channel_leds(bool state)
     {
         _channelLeds[i]->set(state);
     }
+    ChannelLEDManager::get().flush();
+}
+
+void UI::flush_channel_leds(void * param)
+{
+    UI * _ui = reinterpret_cast<UI *>(param);
+    _ui->_isChannelLedFlushPending = false;
     ChannelLEDManager::get().flush();
 }
 
