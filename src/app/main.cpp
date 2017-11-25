@@ -182,7 +182,7 @@ void flash_leds()
 
 void cv_thread(void * arg)
 {
-    const float kAdcMax = 65536.0f;
+    const float kAdcMax = 65535.0f;
 
     volatile uint32_t results0[4];
     Ar::Semaphore waitSem0(nullptr, 0);
@@ -202,12 +202,12 @@ void cv_thread(void * arg)
     g_adc1Sequencer.start();
     while (true)
     {
-        VoiceMode mode = UI::get().get_voice_mode();
-        float fvalue;
-
         // Wait until all new ADC samples are available.
         waitSem0.get();
         waitSem1.get();
+
+        VoiceMode mode = UI::get().get_voice_mode();
+        float fvalue;
 
         // Process gates and trigger voices. If a voice is invalid, it will ignore the trigger.
         if (g_gates[0].process(results1[2]))

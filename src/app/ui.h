@@ -46,8 +46,9 @@ namespace slab {
 enum VoiceMode : uint32_t
 {
     k4VoiceMode,    //!< 4-voice: default mode, just trigger input per voice (plus edit params).
-    k2VoiceMode,    //!< 2-voice: each voice has trigger plus pitch CV.
-    k1VoiceMode,    //!< 1-voice: the single voice has trigger plus pitch, volume, and (other) CV.
+    k3VoiceMode,    //!< 3-voice: one voice with gate plus pitch CV, two voices with only trigger.
+    k2VoiceMode,    //!< 2-voice: each voice has gate plus pitch CV.
+    k1VoiceMode,    //!< 1-voice: the single voice has gate plus pitch, volume, and (other) CV.
     kVoiceModeCount,
 };
 
@@ -227,6 +228,7 @@ protected:
     bool _firstSwitchToPlayMode;
     bool _isChannelLedFlushPending;
     bool _isShowingBankLed;
+    uint32_t _button1LedFlashes;
 
     void ui_thread();
 

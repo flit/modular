@@ -59,7 +59,7 @@ const uint32_t kSampleStartPotReleaseDelay_ms = 100;
 const int32_t kButton1LedDutyCycleDelta = 1;
 
 //! Time in seconds button1 must be held to switch voice modes.
-const uint32_t kVoiceModeLongPressTime = 5;
+const uint32_t kVoiceModeLongPressTime = 2;
 
 //! Map of bank channel to voice channel for each voice mode.
 //!
@@ -238,7 +238,8 @@ UI::UI()
     _button1LedDutyCycleDelta(kButton1LedDutyCycleDelta),
     _firstSwitchToPlayMode(true),
     _isChannelLedFlushPending(false),
-    _isShowingBankLed(false)
+    _isShowingBankLed(false),
+    _button1LedFlashes(0)
 {
 }
 
@@ -366,11 +367,13 @@ void UI::set_voice_mode(VoiceMode mode)
         case k4VoiceMode:
             g_gates[1].set_mode(ChannelCVGate::kGate);
             g_gates[3].set_mode(ChannelCVGate::kGate);
+            _button1LedFlashes = 8;
             break;
 
         case k2VoiceMode:
             g_gates[1].set_mode(ChannelCVGate::kCV);
             g_gates[3].set_mode(ChannelCVGate::kCV);
+            _button1LedFlashes = 4;
             break;
 
         default:
@@ -379,6 +382,9 @@ void UI::set_voice_mode(VoiceMode mode)
 
     // Always switch to play mode on voice mode change.
     set_ui_mode(kPlayMode);
+
+    _button1Led->on();
+    _bankLedTimer.start();
 }
 
 void UI::ui_thread()
@@ -562,7 +568,7 @@ void UI::load_sample_bank(uint32_t bankNumber)
     for (channel = 0; channel < kVoiceCount; ++channel)
     {
         set_voice_playing(channel, false);
-        uint32_t mappedChannel = kVoiceModeChannelMap[_voiceMode][channel];
+        int32_t mappedChannel = kVoiceModeChannelMap[_voiceMode][channel];
         if (mappedChannel >= 0 && bank.has_sample(channel))
         {
             bank.load_sample_to_voice(channel, g_voice[mappedChannel]);
@@ -616,14 +622,25 @@ void UI::handle_bank_led_timer(Ar::Timer * timer)
 {
     uint32_t n;
 
-    // Restore LEDs to current voice state.
-    for (n = 0; n < kVoiceCount; ++n)
+    if (_button1LedFlashes)
     {
-        _channelLeds[n]->set_color(LEDBase::kRed);
-        _channelLeds[n]->set(_voiceStates[n]);
+        _button1Led->set(!_button1Led->is_on());
+        if (--_button1LedFlashes)
+        {
+            _bankLedTimer.start();
+        }
     }
-    ChannelLEDManager::get().flush();
-    _isShowingBankLed = false;
+    else
+    {
+        // Restore LEDs to current voice state.
+        for (n = 0; n < kVoiceCount; ++n)
+        {
+            _channelLeds[n]->set_color(LEDBase::kRed);
+            _channelLeds[n]->set(_voiceStates[n]);
+        }
+        ChannelLEDManager::get().flush();
+        _isShowingBankLed = false;
+    }
 }
 
 void UI::handle_pot_release_timer(Ar::Timer * timer)
@@ -674,7 +691,7 @@ void UI::pot_did_change(Pot& pot, uint32_t value)
             // In 2 voice mode, second pot for each channel adjusts pitch CV amount.
             if ((_voiceMode == k2VoiceMode && (potNumber == 1 || potNumber == 3)))
             {
-                uint32_t voiceNumber = (potNumber == 1) ? 0 : (potNumber == 3 ? 2 : 0);
+                uint32_t voiceNumber = potNumber - 1;
                 g_voice[voiceNumber].set_pitch_cv_amount(fvalue);
             }
             else

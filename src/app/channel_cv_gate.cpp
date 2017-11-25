@@ -57,6 +57,11 @@ void ChannelCVGate::init()
 void ChannelCVGate::set_mode(Mode newMode)
 {
     _mode = newMode;
+
+    // Reset state variables.
+    _last = 0;
+    _edge = false;
+    _highCount = 0;
 }
 
 uint32_t ChannelCVGate::process(uint32_t value)
@@ -95,6 +100,7 @@ uint32_t ChannelCVGate::process(uint32_t value)
     }
     else
     {
+        result = value;
     }
 
     return result;
