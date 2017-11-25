@@ -145,6 +145,7 @@ void flash_leds()
         Ar::Thread::sleep(100);
         g_channelLeds[which]->off();
         g_channelLedManager.flush();
+        Ar::Thread::sleep(10);
     }
 
     for (which = 2; which >= 0; --which)
@@ -154,6 +155,7 @@ void flash_leds()
         Ar::Thread::sleep(100);
         g_channelLeds[which]->off();
         g_channelLedManager.flush();
+        Ar::Thread::sleep(10);
     }
 
     // sleep 100 ms
