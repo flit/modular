@@ -491,7 +491,7 @@ void SamplerVoice::render(int16_t * data, uint32_t frameCount)
                         break;
                     }
                     bufferData = voiceBuffer->data;
-                    readHead = voiceBuffer->readHead + (bufferFrameCount - readHead);
+                    readHead = voiceBuffer->readHead + (readHead - bufferFrameCount);
                     bufferFrameCount = voiceBuffer->frameCount;
                 }
 
