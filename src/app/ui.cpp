@@ -367,6 +367,8 @@ void UI::set_voice_mode(VoiceMode mode)
         case k4VoiceMode:
             g_gates[1].set_mode(ChannelCVGate::kGate);
             g_gates[3].set_mode(ChannelCVGate::kGate);
+            g_voice[1].set_pitch_octave(0.0f);
+            g_voice[3].set_pitch_octave(0.0f);
             _button1LedFlashes = 8;
             break;
 
@@ -691,8 +693,7 @@ void UI::pot_did_change(Pot& pot, uint32_t value)
             // In 2 voice mode, second pot for each channel adjusts pitch CV amount.
             if ((_voiceMode == k2VoiceMode && (potNumber == 1 || potNumber == 3)))
             {
-                uint32_t voiceNumber = potNumber - 1;
-                g_voice[voiceNumber].set_pitch_cv_amount(fvalue);
+//                 uint32_t voiceNumber = potNumber - 1;
             }
             else
             {

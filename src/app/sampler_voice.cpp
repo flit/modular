@@ -329,8 +329,7 @@ SamplerVoice::SamplerVoice()
     _fraction(0.0f),
     _gain(1.0f),
     _pitch(1.0f),
-    _pitchCV(0.0f),
-    _pitchCVAmount(0.0f)
+    _pitchOctave(0.0f)
 {
 }
 
@@ -361,7 +360,7 @@ void SamplerVoice::clear_file()
 void SamplerVoice::_reset_voice()
 {
     _isPlaying = false;
-    _pitchCV = 0.0f;
+    _pitchOctave = 0.0f;
     _fraction = 0.0f;
     _lastBufferLastSample = 0.0f;
 }
@@ -426,7 +425,8 @@ void SamplerVoice::render(int16_t * data, uint32_t frameCount)
         return;
     }
 
-    float rate = _pitch + _pitchCV * _pitchCVAmount;
+    float pitchScaler = powf(2.0f, _pitchOctave);
+    float rate = _pitch * pitchScaler;
     int16_t * bufferData = voiceBuffer->data;
     uint32_t readHead = voiceBuffer->readHead;
     uint32_t bufferFrameCount = voiceBuffer->frameCount;

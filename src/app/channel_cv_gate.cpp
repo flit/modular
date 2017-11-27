@@ -103,7 +103,7 @@ uint32_t ChannelCVGate::process(uint32_t value)
     }
     else
     {
-        result = value;
+        result = value * 5.0f; // Convert to volt-per-octave.
     }
 
     return result;

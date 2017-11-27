@@ -226,7 +226,7 @@ void cv_thread(void * arg)
         else if (mode == k2VoiceMode)
         {
             fvalue = float(g_gates[1].process(results0[3])) / kAdcMax;
-            g_voice[0].set_pitch_cv(fvalue);
+            g_voice[0].set_pitch_octave(fvalue);
         }
         if (g_gates[2].process(results0[0]))
         {
@@ -244,7 +244,7 @@ void cv_thread(void * arg)
         else if (mode == k2VoiceMode)
         {
             fvalue = float(g_gates[3].process(results1[3])) / kAdcMax;
-            g_voice[2].set_pitch_cv(fvalue);
+            g_voice[2].set_pitch_octave(fvalue);
         }
 
         // Process pots.
