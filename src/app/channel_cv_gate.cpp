@@ -66,6 +66,9 @@ void ChannelCVGate::set_mode(Mode newMode)
 
 uint32_t ChannelCVGate::process(uint32_t value)
 {
+    // Invert value to compensate for inverting opamp config;
+    value = kAdcMax - value;
+
     _history.put(value);
 
     uint32_t result = 0;
