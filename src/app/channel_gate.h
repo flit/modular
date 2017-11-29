@@ -39,12 +39,12 @@
 namespace slab {
 
 /*!
- * @brief
+ * @brief Process raw ADC input into trigger/gate events.
  */
 class ChannelGate
 {
 public:
-    //! @brief Actions resulting from processing the ADC input.
+    //! @brief Events resulting from processing the ADC input.
     enum Event : uint32_t
     {
         kNone,
@@ -62,9 +62,19 @@ public:
     uint32_t n;
 
 protected:
-    uint32_t _last;
-    bool _edge;
-    uint32_t _highCount;
+    enum State : uint32_t
+    {
+        kInitial,
+        kLowStable,
+        kHighStable,
+        kRising,
+        kFalling,
+    };
+
+    int32_t _last;
+    State _state;
+    uint32_t _transitionCount;
+
 #if DEBUG
     RingBuffer<uint16_t, 128> _history;
 #endif
