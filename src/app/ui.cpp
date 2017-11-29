@@ -46,7 +46,7 @@ using namespace slab;
 // Definitions
 //------------------------------------------------------------------------------
 
-const uint32_t kAdcMax = 65536;
+const uint32_t kAdcMax = 65535;
 const float kAdcLsbFloat = 1.0f / 4096.0f;
 const uint32_t kPotEditHysteresisPercent = 5;
 
@@ -365,16 +365,12 @@ void UI::set_voice_mode(VoiceMode mode)
     switch (mode)
     {
         case k4VoiceMode:
-            g_gates[1].set_mode(ChannelCVGate::kGate);
-            g_gates[3].set_mode(ChannelCVGate::kGate);
             g_voice[1].set_pitch_octave(0.0f);
             g_voice[3].set_pitch_octave(0.0f);
             _button1LedFlashes = 8;
             break;
 
         case k2VoiceMode:
-            g_gates[1].set_mode(ChannelCVGate::kCV);
-            g_gates[3].set_mode(ChannelCVGate::kCV);
             _button1LedFlashes = 4;
             break;
 

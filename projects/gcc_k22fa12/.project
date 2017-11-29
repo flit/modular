@@ -121,14 +121,24 @@
 			<locationURI>PARENT-2-PROJECT_LOC/src/app/card_manager.h</locationURI>
 		</link>
 		<link>
-			<name>app/channel_cv_gate.cpp</name>
+			<name>app/channel_cv.cpp</name>
 			<type>1</type>
-			<locationURI>PARENT-2-PROJECT_LOC/src/app/channel_cv_gate.cpp</locationURI>
+			<locationURI>PARENT-2-PROJECT_LOC/src/app/channel_cv.cpp</locationURI>
 		</link>
 		<link>
-			<name>app/channel_cv_gate.h</name>
+			<name>app/channel_cv.h</name>
 			<type>1</type>
-			<locationURI>PARENT-2-PROJECT_LOC/src/app/channel_cv_gate.h</locationURI>
+			<locationURI>PARENT-2-PROJECT_LOC/src/app/channel_cv.h</locationURI>
+		</link>
+		<link>
+			<name>app/channel_gate.cpp</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/src/app/channel_gate.cpp</locationURI>
+		</link>
+		<link>
+			<name>app/channel_gate.h</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/src/app/channel_gate.h</locationURI>
 		</link>
 		<link>
 			<name>app/channel_led.cpp</name>

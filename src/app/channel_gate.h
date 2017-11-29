@@ -26,89 +26,53 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+#if !defined(_CHANNEL_GATE_H_)
+#define _CHANNEL_GATE_H_
 
-#include "channel_cv_gate.h"
-
-using namespace slab;
+#include <stdint.h>
+#include "ring_buffer.h"
 
 //------------------------------------------------------------------------------
 // Definitions
 //------------------------------------------------------------------------------
 
-const uint32_t kAdcMax = 65536;
-const uint32_t kTriggerThreshold = kAdcMax - (0.3 * (kAdcMax / 2));
+namespace slab {
 
-//------------------------------------------------------------------------------
-// Code
-//------------------------------------------------------------------------------
-
-ChannelCVGate::ChannelCVGate()
-:   _mode(kGate),
-    _last(0),
-    _edge(false),
-    _highCount(0)
+/*!
+ * @brief
+ */
+class ChannelGate
 {
-}
-
-void ChannelCVGate::init()
-{
-}
-
-void ChannelCVGate::set_mode(Mode newMode)
-{
-    _mode = newMode;
-
-    // Reset state variables.
-    _last = 0;
-    _edge = false;
-    _highCount = 0;
-}
-
-uint32_t ChannelCVGate::process(uint32_t value)
-{
-    // Invert value to compensate for inverting opamp config;
-    value = kAdcMax - value;
-
-    _history.put(value);
-
-    uint32_t result = 0;
-
-    if (_mode == Mode::kGate)
+public:
+    //! @brief Actions resulting from processing the ADC input.
+    enum Event : uint32_t
     {
-        uint32_t state = (value > kTriggerThreshold) ? 1 : 0;
+        kNone,
+        kNoteOn,
+        kNoteOff,
+    };
 
-        if (state == 0)
-        {
-            _edge = false;
-            _highCount = 0;
-        }
+    ChannelGate();
+    ~ChannelGate()=default;
 
-        if (state == 1)
-        {
-            if (_last == 0)
-            {
-                _edge = true;
-                _highCount = 0;
-            }
+    void init();
 
-            ++_highCount;
+    Event process(uint32_t value);
 
-            if (_highCount == 3)
-            {
-                result = 1;
-            }
-        }
+    uint32_t n;
 
-        _last = state;
-    }
-    else
-    {
-        result = value * 5.0f; // Convert to volt-per-octave.
-    }
+protected:
+    uint32_t _last;
+    bool _edge;
+    uint32_t _highCount;
+#if DEBUG
+    RingBuffer<uint16_t, 128> _history;
+#endif
+};
 
-    return result;
-}
+} // namespace slab
 
+#endif // _CHANNEL_GATE_H_
 //------------------------------------------------------------------------------
 // EOF
 //------------------------------------------------------------------------------

@@ -26,53 +26,46 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#if !defined(_MAIN_H_)
-#define _MAIN_H_
 
-#include "sampler_voice.h"
-#include "sampler_synth.h"
-#include "channel_gate.h"
 #include "channel_cv.h"
-#include "card_manager.h"
-#include "file_manager.h"
-#include "audio_defs.h"
+
+using namespace slab;
 
 //------------------------------------------------------------------------------
 // Definitions
 //------------------------------------------------------------------------------
 
-namespace slab {
+const uint32_t kAdcMax = 65535.0f;
 
-enum thread_priorties : uint8_t
+//------------------------------------------------------------------------------
+// Code
+//------------------------------------------------------------------------------
+
+ChannelCV::ChannelCV()
 {
-    kAudioThreadPriority = 180,
-    kReaderThreadPriority = 120,
-    kCVThreadPriority = 80,
-    kUIThreadPriority = 60,
-    kInitThreadPriority = 40,
-};
+}
 
-//! DMA channel numbers used by the application.
-enum dma_channels : uint32_t {
-    kAudioPingDmaChannel = 0,
-    kAudioPongDmaChannel = 1,
-    kAdc0CommandDmaChannel = 2,
-    kAdc0ReadDmaChannel = 3,
-    kAdc1CommandDmaChannel = 4,
-    kAdc1ReadDmaChannel = 5,
-    kAllocatedDmaChannelCount = 6,  //!< Number of DMA channels used by the application.
-};
+void ChannelCV::init()
+{
+}
 
-extern SamplerSynth g_sampler;
-extern SamplerVoice g_voice[kVoiceCount];
-extern ChannelGate g_gates[kVoiceCount];
-extern ChannelCV g_cvs[kVoiceCount];
-extern CardManager g_cardManager;
-extern FileManager g_fileManager;
+float ChannelCV::process(uint32_t value)
+{
+    // Invert value to compensate for inverting opamp config;
+    value = kAdcMax - value;
 
-} // namespace slab
+#if DEBUG
+    _history.put(value);
+#endif
 
-#endif // _MAIN_H_
+    float result = 0;
+
+    // Convert to volt-per-octave.
+    result = static_cast<float>(value) * 5.0f / kAdcMax;
+
+    return result;
+}
+
 //------------------------------------------------------------------------------
 // EOF
 //------------------------------------------------------------------------------

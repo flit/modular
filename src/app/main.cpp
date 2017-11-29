@@ -40,7 +40,8 @@
 #include "debug_log.h"
 #include "reader_thread.h"
 #include "adc_sequencer.h"
-#include "channel_cv_gate.h"
+#include "channel_gate.h"
+#include "channel_cv.h"
 #include "analog_in.h"
 #include "sampler_synth.h"
 #include "ui.h"
@@ -109,7 +110,8 @@ ReaderThread g_readerThread;
 PinIrqManager g_pinManager;
 ChannelLEDManager g_channelLedManager;
 SamplerVoice g_voice[kVoiceCount];
-ChannelCVGate g_gates[kVoiceCount];
+ChannelGate g_gates[kVoiceCount];
+ChannelCV g_cvs[kVoiceCount];
 Pot g_pots[kVoiceCount];
 AdcSequencer g_adc0Sequencer(ADC0, kAdc0CommandDmaChannel);
 AdcSequencer g_adc1Sequencer(ADC1, kAdc1CommandDmaChannel);
@@ -207,17 +209,31 @@ void cv_thread(void * arg)
         waitSem1.get();
 
         VoiceMode mode = UI::get().get_voice_mode();
+        ChannelGate::Event event;
         float fvalue;
 
-        // Process gates and trigger voices. If a voice is invalid, it will ignore the trigger.
-        if (g_gates[0].process(results1[2]))
+        // Process gate and CV inputs, trigger voices and adjust pitch. This is where the
+        // voice mode determines whether an input channel is treated as a gate or CV.
+        // If a voice is invalid, it will ignore triggers.
+
+        // Channel 1
+        event = g_gates[0].process(results1[2]);
+        if (event == ChannelGate::kNoteOn)
         {
             DEBUG_PRINTF(TRIG_MASK, "ch1 triggered\r\n");
             g_voice[0].trigger();
         }
+        else if (mode == k2VoiceMode && event == ChannelGate::kNoteOff)
+        {
+            DEBUG_PRINTF(TRIG_MASK, "ch1 note off\r\n");
+            g_voice[0].note_off();
+        }
+
+        // Channel 2
         if (mode == k4VoiceMode)
         {
-            if (g_gates[1].process(results0[3]))
+            event = g_gates[1].process(results0[3]);
+            if (event == ChannelGate::kNoteOn)
             {
                 DEBUG_PRINTF(TRIG_MASK, "ch2 triggered\r\n");
                 g_voice[1].trigger();
@@ -225,17 +241,28 @@ void cv_thread(void * arg)
         }
         else if (mode == k2VoiceMode)
         {
-            fvalue = float(g_gates[1].process(results0[3])) / kAdcMax;
+            fvalue = g_cvs[1].process(results0[3]);
             g_voice[0].set_pitch_octave(fvalue);
         }
-        if (g_gates[2].process(results0[0]))
+
+        // Channel 3
+        event = g_gates[2].process(results0[0]);
+        if (event == ChannelGate::kNoteOn)
         {
             DEBUG_PRINTF(TRIG_MASK, "ch3 triggered\r\n");
             g_voice[2].trigger();
         }
+        else if (mode == k2VoiceMode && event == ChannelGate::kNoteOff)
+        {
+            DEBUG_PRINTF(TRIG_MASK, "ch3 note off\r\n");
+            g_voice[2].note_off();
+        }
+
+        // Channel 4
         if (mode == k4VoiceMode)
         {
-            if (g_gates[3].process(results1[3]))
+            event = g_gates[3].process(results1[3]);
+            if (event == ChannelGate::kNoteOn)
             {
                 DEBUG_PRINTF(TRIG_MASK, "ch4 triggered\r\n");
                 g_voice[3].trigger();
@@ -243,7 +270,7 @@ void cv_thread(void * arg)
         }
         else if (mode == k2VoiceMode)
         {
-            fvalue = float(g_gates[3].process(results1[3])) / kAdcMax;
+            fvalue = g_cvs[3].process(results1[3]);
             g_voice[2].set_pitch_octave(fvalue);
         }
 

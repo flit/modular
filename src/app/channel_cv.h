@@ -26,8 +26,8 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#if !defined(_CHANNEL_CV_GATE_H_)
-#define _CHANNEL_CV_GATE_H_
+#if !defined(_CHANNEL_CV_H_)
+#define _CHANNEL_CV_H_
 
 #include <stdint.h>
 #include "ring_buffer.h"
@@ -41,37 +41,27 @@ namespace slab {
 /*!
  * @brief
  */
-class ChannelCVGate
+class ChannelCV
 {
 public:
-    enum Mode
-    {
-        kGate,
-        kCV
-    };
-
-    ChannelCVGate();
-    ~ChannelCVGate()=default;
+    ChannelCV();
+    ~ChannelCV()=default;
 
     void init();
 
-    void set_mode(Mode newMode);
-
-    uint32_t process(uint32_t value);
+    float process(uint32_t value);
 
     uint32_t n;
 
 protected:
-    Mode _mode;
-    uint32_t _last;
-    bool _edge;
-    uint32_t _highCount;
+#if DEBUG
     RingBuffer<uint16_t, 128> _history;
+#endif
 };
 
 } // namespace slab
 
-#endif // _CHANNEL_CV_GATE_H_
+#endif // _CHANNEL_CV_H_
 //------------------------------------------------------------------------------
 // EOF
 //------------------------------------------------------------------------------
