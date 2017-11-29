@@ -121,6 +121,16 @@
 			<locationURI>PARENT-2-PROJECT_LOC/src/app/card_manager.h</locationURI>
 		</link>
 		<link>
+			<name>app/channel_adc_processor.cpp</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/src/app/channel_adc_processor.cpp</locationURI>
+		</link>
+		<link>
+			<name>app/channel_adc_processor.h</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/src/app/channel_adc_processor.h</locationURI>
+		</link>
+		<link>
 			<name>app/channel_cv.cpp</name>
 			<type>1</type>
 			<locationURI>PARENT-2-PROJECT_LOC/src/app/channel_cv.cpp</locationURI>

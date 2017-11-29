@@ -39,7 +39,7 @@
 #include "microseconds.h"
 #include "debug_log.h"
 #include "reader_thread.h"
-#include "adc_sequencer.h"
+#include "channel_adc_processor.h"
 #include "channel_gate.h"
 #include "channel_cv.h"
 #include "analog_in.h"
@@ -69,7 +69,6 @@ using namespace slab;
 // Prototypes
 //------------------------------------------------------------------------------
 
-void cv_thread(void * arg);
 void init_thread(void * arg);
 
 #if ENABLE_LOAD_REPORT
@@ -95,7 +94,6 @@ int16_t g_outBuf[kAudioBufferCount][kAudioBufferSize * kAudioChannelCount] __att
 int16_t g_sampleBufs[kVoiceCount][SampleBufferManager::kBufferCount * SampleBufferManager::kBufferSize] __attribute__ ((section(".buffers"),aligned(4)));
 
 Ar::Thread * g_initThread = NULL;
-Ar::ThreadWithStack<2048> g_cvThread("cv", cv_thread, 0, kCVThreadPriority, kArSuspendThread);
 
 #if ENABLE_LOAD_REPORT
 Ar::ThreadWithStack<2048> g_loadReportThread("load", load_thread, 0, kUIThreadPriority-1, kArStartThread);
@@ -113,8 +111,7 @@ SamplerVoice g_voice[kVoiceCount];
 ChannelGate g_gates[kVoiceCount];
 ChannelCV g_cvs[kVoiceCount];
 Pot g_pots[kVoiceCount];
-AdcSequencer g_adc0Sequencer(ADC0, kAdc0CommandDmaChannel);
-AdcSequencer g_adc1Sequencer(ADC1, kAdc1CommandDmaChannel);
+ChannelAdcProcessor g_adcProcessor;
 ChannelLED<0> g_ch1Led;
 ChannelLED<1> g_ch2Led;
 ChannelLED<2> g_ch3Led;
@@ -180,106 +177,6 @@ void flash_leds()
     }
     g_channelLedManager.flush();
 
-}
-
-void cv_thread(void * arg)
-{
-    const float kAdcMax = 65535.0f;
-
-    volatile uint32_t results0[4];
-    Ar::Semaphore waitSem0(nullptr, 0);
-    g_adc0Sequencer.set_channels(CH2_CV_CHANNEL_MASK | CH3_CV_CHANNEL_MASK | CH1_POT_CHANNEL_MASK | CH2_POT_CHANNEL_MASK);
-    g_adc0Sequencer.set_result_buffer((uint32_t *)&results0[0]);
-    g_adc0Sequencer.set_semaphore(&waitSem0);
-    g_adc0Sequencer.init(g_adcConfig);
-
-    volatile uint32_t results1[4];
-    Ar::Semaphore waitSem1(nullptr, 0);
-    g_adc1Sequencer.set_channels(CH1_CV_CHANNEL_MASK | CH4_CV_CHANNEL_MASK | CH3_POT_CHANNEL_MASK |  CH4_POT_CHANNEL_MASK);
-    g_adc1Sequencer.set_result_buffer((uint32_t *)&results1[0]);
-    g_adc1Sequencer.set_semaphore(&waitSem1);
-    g_adc1Sequencer.init(g_adcConfig);
-
-    g_adc0Sequencer.start();
-    g_adc1Sequencer.start();
-    while (true)
-    {
-        // Wait until all new ADC samples are available.
-        waitSem0.get();
-        waitSem1.get();
-
-        VoiceMode mode = UI::get().get_voice_mode();
-        ChannelGate::Event event;
-        float fvalue;
-
-        // Process gate and CV inputs, trigger voices and adjust pitch. This is where the
-        // voice mode determines whether an input channel is treated as a gate or CV.
-        // If a voice is invalid, it will ignore triggers.
-
-        // Channel 1
-        event = g_gates[0].process(results1[2]);
-        if (event == ChannelGate::kNoteOn)
-        {
-            DEBUG_PRINTF(TRIG_MASK, "ch1 triggered\r\n");
-            g_voice[0].trigger();
-        }
-        else if (mode == k2VoiceMode && event == ChannelGate::kNoteOff)
-        {
-            DEBUG_PRINTF(TRIG_MASK, "ch1 note off\r\n");
-            g_voice[0].note_off();
-        }
-
-        // Channel 2
-        if (mode == k4VoiceMode)
-        {
-            event = g_gates[1].process(results0[3]);
-            if (event == ChannelGate::kNoteOn)
-            {
-                DEBUG_PRINTF(TRIG_MASK, "ch2 triggered\r\n");
-                g_voice[1].trigger();
-            }
-        }
-        else if (mode == k2VoiceMode)
-        {
-            fvalue = g_cvs[1].process(results0[3]);
-            g_voice[0].set_pitch_octave(fvalue);
-        }
-
-        // Channel 3
-        event = g_gates[2].process(results0[0]);
-        if (event == ChannelGate::kNoteOn)
-        {
-            DEBUG_PRINTF(TRIG_MASK, "ch3 triggered\r\n");
-            g_voice[2].trigger();
-        }
-        else if (mode == k2VoiceMode && event == ChannelGate::kNoteOff)
-        {
-            DEBUG_PRINTF(TRIG_MASK, "ch3 note off\r\n");
-            g_voice[2].note_off();
-        }
-
-        // Channel 4
-        if (mode == k4VoiceMode)
-        {
-            event = g_gates[3].process(results1[3]);
-            if (event == ChannelGate::kNoteOn)
-            {
-                DEBUG_PRINTF(TRIG_MASK, "ch4 triggered\r\n");
-                g_voice[3].trigger();
-            }
-        }
-        else if (mode == k2VoiceMode)
-        {
-            fvalue = g_cvs[3].process(results1[3]);
-            g_voice[2].set_pitch_octave(fvalue);
-        }
-
-        // Process pots.
-        g_pots[0].process(results0[1]);
-        g_pots[1].process(results0[2]);
-        g_pots[2].process(results1[0]);
-        g_pots[3].process(results1[1]);
-    }
 }
 
 void calibrate_pots()
@@ -469,7 +366,7 @@ void init_thread(void * arg)
     // Start other threads.
     g_ui.start();
     g_audioOut.start();
-    g_cvThread.resume();
+    g_adcProcessor.init();
 
     DEBUG_PRINTF(INIT_MASK, "done.\r\n");
 

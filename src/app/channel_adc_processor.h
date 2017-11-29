@@ -26,18 +26,11 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#if !defined(_MAIN_H_)
-#define _MAIN_H_
+#if !defined(_CHANNEL_ADC_PROCESSOR_H_)
+#define _CHANNEL_ADC_PROCESSOR_H_
 
-#include "sampler_voice.h"
-#include "sampler_synth.h"
-#include "channel_gate.h"
-#include "channel_cv.h"
-#include "card_manager.h"
-#include "file_manager.h"
-#include "audio_defs.h"
-#include "ui.h"
-#include "fsl_adc16.h"
+#include "argon/argon.h"
+#include "adc_sequencer.h"
 
 //------------------------------------------------------------------------------
 // Definitions
@@ -45,38 +38,39 @@
 
 namespace slab {
 
-enum thread_priorties : uint8_t
+/*!
+ * @brief Manage reading ADC and processing results.
+ */
+class ChannelAdcProcessor
 {
-    kAudioThreadPriority = 180,
-    kReaderThreadPriority = 120,
-    kCVThreadPriority = 80,
-    kUIThreadPriority = 60,
-    kInitThreadPriority = 40,
-};
+public:
 
-//! DMA channel numbers used by the application.
-enum dma_channels : uint32_t {
-    kAudioPingDmaChannel = 0,
-    kAudioPongDmaChannel = 1,
-    kAdc0CommandDmaChannel = 2,
-    kAdc0ReadDmaChannel = 3,
-    kAdc1CommandDmaChannel = 4,
-    kAdc1ReadDmaChannel = 5,
-    kAllocatedDmaChannelCount = 6,  //!< Number of DMA channels used by the application.
-};
+    ChannelAdcProcessor();
+    ~ChannelAdcProcessor()=default;
 
-extern SamplerSynth g_sampler;
-extern SamplerVoice g_voice[kVoiceCount];
-extern ChannelGate g_gates[kVoiceCount];
-extern ChannelCV g_cvs[kVoiceCount];
-extern Pot g_pots[kVoiceCount];
-extern CardManager g_cardManager;
-extern FileManager g_fileManager;
-extern adc16_config_t g_adcConfig;
+    void init();
+
+protected:
+
+    Ar::ThreadWithStack<2048> _thread;
+
+    struct AdcData
+    {
+        AdcSequencer sequencer;
+        Ar::Semaphore waitSem;
+        volatile uint32_t results[4];
+    };
+
+    AdcData _adc0Data;
+    AdcData _adc1Data;
+
+    void cv_thread();
+
+};
 
 } // namespace slab
 
-#endif // _MAIN_H_
+#endif // _CHANNEL_ADC_PROCESSOR_H_
 //------------------------------------------------------------------------------
 // EOF
 //------------------------------------------------------------------------------

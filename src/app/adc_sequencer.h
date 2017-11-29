@@ -55,8 +55,9 @@ class AdcSequencer
 {
 public:
 
+    AdcSequencer()=default;
     AdcSequencer(ADC_Type * base, uint32_t firstDmaChannel);
-    AdcSequencer(const AdcSequencer& other)=delete;
+    AdcSequencer(const AdcSequencer& other)=default;
     ~AdcSequencer()=default;
 
     void set_channels(uint32_t channels) { _channels = channels; }
