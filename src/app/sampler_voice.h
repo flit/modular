@@ -148,6 +148,7 @@ public:
     void prime();
 
     void trigger();
+    void note_off();
     bool is_playing() const { return _isPlaying; }
 
     void playing_did_finish();

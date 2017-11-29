@@ -397,6 +397,18 @@ void SamplerVoice::trigger()
     _isPlaying = true;
 }
 
+void SamplerVoice::note_off()
+{
+    DEBUG_PRINTF(RETRIG_MASK, "V%lu: note off (@%lu)\r\n", _number, _manager.get_samples_played());
+
+    if (_isPlaying)
+    {
+        _isPlaying = false;
+        prime();
+        UI::get().set_voice_playing(_number, false);
+    }
+}
+
 void SamplerVoice::playing_did_finish()
 {
     UI::get().set_voice_playing(_number, false);
