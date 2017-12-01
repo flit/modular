@@ -86,6 +86,16 @@
 			<locationURI>PARENT-2-PROJECT_LOC/src/app/card_manager.h</locationURI>
 		</link>
 		<link>
+			<name>app/channel_led.cpp</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/src/app/channel_led.cpp</locationURI>
+		</link>
+		<link>
+			<name>app/channel_led.h</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/src/app/channel_led.h</locationURI>
+		</link>
+		<link>
 			<name>app/debug_log.h</name>
 			<type>1</type>
 			<locationURI>PARENT-2-PROJECT_LOC/src/app/debug_log.h</locationURI>
@@ -219,6 +229,16 @@
 			<name>ksdk/fsl_debug_console.h</name>
 			<type>1</type>
 			<locationURI>PARENT-2-PROJECT_LOC/src/ksdk/fsl_debug_console.h</locationURI>
+		</link>
+		<link>
+			<name>ksdk/fsl_dspi.c</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/src/ksdk/fsl_dspi.c</locationURI>
+		</link>
+		<link>
+			<name>ksdk/fsl_dspi.h</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/src/ksdk/fsl_dspi.h</locationURI>
 		</link>
 		<link>
 			<name>ksdk/fsl_flash.c</name>

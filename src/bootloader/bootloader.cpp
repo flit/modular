@@ -33,6 +33,7 @@
 #include "card_manager.h"
 #include "utility.h"
 #include "led.h"
+#include "channel_led.h"
 #include "microseconds.h"
 #include "debug_log.h"
 #include "fsl_flash.h"
@@ -63,6 +64,9 @@ using namespace slab;
 
 //! Time in milliseconds to delay between card presence checks.
 #define CARD_CHECK_TIME_MS (250)
+
+//! Number of channel LEDs.
+#define CHANNEL_LED_COUNT (4)
 
 //! @brief Start of the app's vector table.
 struct AppVectors
@@ -150,11 +154,7 @@ namespace slab {
 LEDFlasher g_flasher;
 Bootloader g_bootloader;
 
-LED<PIN_CH1_LED_GPIO_BASE, PIN_CH1_LED_BIT> g_ch1Led;
-LED<PIN_CH2_LED_GPIO_BASE, PIN_CH2_LED_BIT> g_ch2Led;
-LED<PIN_CH3_LED_GPIO_BASE, PIN_CH3_LED_BIT> g_ch3Led;
-LED<PIN_CH4_LED_GPIO_BASE, PIN_CH4_LED_BIT> g_ch4Led;
-LEDBase * g_channelLeds[] = { &g_ch1Led, &g_ch2Led, &g_ch3Led, &g_ch4Led};
+ChannelLEDManager g_channelLedManager;
 LED<PIN_BUTTON1_LED_GPIO_BASE, PIN_BUTTON1_LED_BIT> g_button1Led;
 
 }
@@ -165,6 +165,11 @@ DEFINE_DEBUG_LOG
 // Code
 //------------------------------------------------------------------------------
 
+uint64_t ar_get_microseconds()
+{
+    return Microseconds::get();
+}
+
 LEDFlasher::LEDFlasher()
 :   _thread("leds", this, &LEDFlasher::flasher_thread, 50, kArSuspendThread),
     _flashing(false),
@@ -174,15 +179,6 @@ LEDFlasher::LEDFlasher()
 
 void LEDFlasher::init()
 {
-    // Configure channel LED color.
-    GPIO_WritePinOutput(PIN_CHLEDN_GPIO, PIN_CHLEDN_BIT, 0);
-    GPIO_WritePinOutput(PIN_CHLEDP_GPIO, PIN_CHLEDP_BIT, 1);
-
-    // Invert polarity of channel LEDs.
-    g_channelLeds[0]->set_polarity(true);
-    g_channelLeds[1]->set_polarity(true);
-    g_channelLeds[2]->set_polarity(true);
-    g_channelLeds[3]->set_polarity(true);
     set_all_leds(false);
 
     _thread.resume();
@@ -203,10 +199,11 @@ void LEDFlasher::set_flashing(bool isFlashing)
 void LEDFlasher::set_all_leds(bool state)
 {
     int which;
-    for (which = 0; which < ARRAY_SIZE(g_channelLeds); ++which)
+    for (which = 0; which < CHANNEL_LED_COUNT; ++which)
     {
-        g_channelLeds[which]->set(state);
+        g_channelLedManager.set_channel_state(which, state ? ChannelLEDManager::kRed : ChannelLEDManager::kOff);
     }
+    g_channelLedManager.flush();
     g_button1Led.set(state);
 }
 
@@ -474,6 +471,7 @@ void Bootloader::bootloader_thread()
     DEBUG_PRINTF(INIT_MASK, "samplbaer bootloader initializing...\r\n");
 
     // Init LED flasher thread.
+    g_channelLedManager.init();
     g_flasher.init();
 
     // Init SD card manager.
