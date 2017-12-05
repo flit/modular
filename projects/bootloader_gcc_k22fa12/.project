@@ -141,11 +141,6 @@
 			<locationURI>PARENT-2-PROJECT_LOC/src/app/microseconds.h</locationURI>
 		</link>
 		<link>
-			<name>app/nanolib_stubs.c</name>
-			<type>1</type>
-			<locationURI>PARENT-2-PROJECT_LOC/src/app/nanolib_stubs.c</locationURI>
-		</link>
-		<link>
 			<name>app/ring_buffer.h</name>
 			<type>1</type>
 			<locationURI>PARENT-2-PROJECT_LOC/src/app/ring_buffer.h</locationURI>
