@@ -561,6 +561,7 @@ int main(void)
     init_board();
     Microseconds::init();
     ar_kernel_run();
+    return 0;
 }
 
 //------------------------------------------------------------------------------
