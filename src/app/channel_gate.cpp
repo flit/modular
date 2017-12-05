@@ -123,7 +123,7 @@ ChannelGate::Event ChannelGate::process(uint32_t value)
             assert(0);
     }
 
-    _last = value;
+    _last = filteredValue;
 
     return result;
 }
