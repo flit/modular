@@ -55,7 +55,8 @@ enum thread_priorties : uint8_t
 };
 
 //! DMA channel numbers used by the application.
-enum dma_channels : uint32_t {
+enum dma_channels : uint32_t
+{
     kAudioPingDmaChannel = 0,
     kAudioPongDmaChannel = 1,
     kAdc0CommandDmaChannel = 2,
@@ -64,6 +65,18 @@ enum dma_channels : uint32_t {
     kAdc1ReadDmaChannel = 5,
     kAllocatedDmaChannelCount = 6,  //!< Number of DMA channels used by the application.
 };
+
+namespace persistent_data {
+
+//! Keys for persistent data values.
+enum data_keys : uint32_t
+{
+    kCalibrationDataKey = 'cal_',
+    kLastSelectedBankKey = 'lbnk',
+    kLastVoiceMode = 'vmod',
+};
+
+}
 
 extern SamplerSynth g_sampler;
 extern SamplerVoice g_voice[kVoiceCount];

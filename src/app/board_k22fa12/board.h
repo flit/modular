@@ -40,6 +40,12 @@ const uint32_t kXtal0Freq = 12000000;
 const uint32_t kXtal32Freq = 32768;
 #endif
 
+// Persistent data store address in flash.
+#define DATA_STORE_BASE_ADDR (FSL_FEATURE_FLASH_FLEX_NVM_START_ADDRESS)
+#define DATA_STORE_PAGE_SIZE (FSL_FEATURE_FLASH_FLEX_NVM_BLOCK_SECTOR_SIZE)
+#define DATA_STORE_WRITE_SIZE (FSL_FEATURE_FLASH_FLEX_NVM_BLOCK_WRITE_UNIT_SIZE)
+#define DATA_STORE_PAGE_COUNT (2)
+
 // SDHC base address, clock and card detection pin
 #define BOARD_SDHC_BASEADDR SDHC
 #define BOARD_SDHC_CLKSRC kCLOCK_CoreSysClk

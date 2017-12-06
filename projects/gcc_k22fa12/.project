@@ -161,6 +161,16 @@
 			<locationURI>PARENT-2-PROJECT_LOC/src/app/channel_led.h</locationURI>
 		</link>
 		<link>
+			<name>app/crc16.cpp</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/src/app/crc16.cpp</locationURI>
+		</link>
+		<link>
+			<name>app/crc16.h</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/src/app/crc16.h</locationURI>
+		</link>
+		<link>
 			<name>app/debug_log.h</name>
 			<type>1</type>
 			<locationURI>PARENT-2-PROJECT_LOC/src/app/debug_log.h</locationURI>
@@ -224,6 +234,16 @@
 			<name>app/moving_average.h</name>
 			<type>1</type>
 			<locationURI>PARENT-2-PROJECT_LOC/src/app/moving_average.h</locationURI>
+		</link>
+		<link>
+			<name>app/persistent_data_store.cpp</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/src/app/persistent_data_store.cpp</locationURI>
+		</link>
+		<link>
+			<name>app/persistent_data_store.h</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/src/app/persistent_data_store.h</locationURI>
 		</link>
 		<link>
 			<name>app/pin_irq_manager.cpp</name>
@@ -404,6 +424,16 @@
 			<name>ksdk/fsl_edma.h</name>
 			<type>1</type>
 			<locationURI>PARENT-2-PROJECT_LOC/src/ksdk/fsl_edma.h</locationURI>
+		</link>
+		<link>
+			<name>ksdk/fsl_flash.c</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/src/ksdk/fsl_flash.c</locationURI>
+		</link>
+		<link>
+			<name>ksdk/fsl_flash.h</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/src/ksdk/fsl_flash.h</locationURI>
 		</link>
 		<link>
 			<name>ksdk/fsl_ftm.c</name>

@@ -45,6 +45,7 @@
 #include "analog_in.h"
 #include "sampler_synth.h"
 #include "ui.h"
+#include "persistent_data_store.h"
 #include "fsl_sd_disk.h"
 #include "fsl_edma.h"
 #include "fsl_dmamux.h"
@@ -118,6 +119,21 @@ ChannelLED<2> g_ch3Led;
 ChannelLED<3> g_ch4Led;
 LEDBase * g_channelLeds[] = { &g_ch1Led, &g_ch2Led, &g_ch3Led, &g_ch4Led};
 FaderLED<BUTTON1_LED_FTM_BASE, BUTTON1_LED_FTM_CHANNEL> g_button1Led;
+
+struct CalibrationData
+{
+    uint32_t a;
+    uint32_t b;
+    uint32_t c;
+    uint32_t d;
+};
+
+namespace persistent_data {
+PersistentDataStore g_store;
+PersistentData<kCalibrationDataKey, CalibrationData> g_calibrationData;
+PersistentData<kLastSelectedBankKey, uint32_t> g_lastSelectedBank;
+PersistentData<kLastVoiceMode, VoiceMode> g_lastVoiceMode;
+}
 
 adc16_config_t g_adcConfig;
 
@@ -326,6 +342,12 @@ void init_thread(void * arg)
 
     g_channelLedManager.init();
     flash_leds();
+
+    // Init persistent data.
+    persistent_data::g_store.init();
+    persistent_data::g_calibrationData.init();
+    persistent_data::g_lastSelectedBank.init();
+    persistent_data::g_lastVoiceMode.init();
 
     // Must init reader thread before initing voices.
     g_readerThread.init();

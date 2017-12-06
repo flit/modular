@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2017 Immo Software
+ * Copyright 2017 NXP
+ * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without modification,
  * are permitted provided that the following conditions are met:
@@ -11,9 +12,9 @@
  *   list of conditions and the following disclaimer in the documentation and/or
  *   other materials provided with the distribution.
  *
- * o Neither the name of the copyright holder nor the names of its contributors may
- *   be used to endorse or promote products derived from this software without
- *   specific prior written permission.
+ * o Neither the name of the copyright holder nor the names of its
+ *   contributors may be used to endorse or promote products derived from this
+ *   software without specific prior written permission.
  *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
  * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
@@ -26,63 +27,51 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#if !defined(_UTILITY_H_)
-#define _UTILITY_H_
+
+#ifndef _CRC16_H_
+#define _CRC16_H_
 
 #include <stdint.h>
 
-//------------------------------------------------------------------------------
-// Definitions
-//------------------------------------------------------------------------------
+/*!
+ * @addtogroup infra_transport
+ * @{
+ * @file
+ */
+
+////////////////////////////////////////////////////////////////////////////////
+// Classes
+////////////////////////////////////////////////////////////////////////////////
 
 namespace slab {
 
-template <typename T>
-inline T abs(T a)
+class Crc16
 {
-    return (a > 0) ? a : -a;
-}
+public:
+    /*!
+     * @brief Constructor.
+     */
+    Crc16()=default;
 
-template <typename T>
-inline T min(T a, T b)
-{
-    return (a < b) ? a : b;
-}
+    /*!
+     * @brief Destructor
+     */
+    ~Crc16()=default;
 
-template <typename T>
-inline T max(T a, T b)
-{
-    return (a > b) ? a : b;
-}
+    /*!
+     * @brief Compute a ITU-CCITT CRC-16 over the provided data.
+     *
+     * This implementation is slow but small in size.
+     *
+     * @param[in] inputData Pointer to data used for crc16.
+     * @param[in] dataLength Data length.
+     */
+    uint16_t compute(const void *inputData, uint32_t lengthInBytes);
 
-template <typename T>
-inline T max3(T a, T b, T c)
-{
-    T tmp = (a > b) ? a : b;
-    return (tmp > c) ? tmp : c;
-}
-
-template <typename T>
-inline T round_up_div(T a, T b)
-{
-    return (a + b - 1) / b;
-}
-
-template <uint32_t A, typename T>
-inline constexpr T align_up(T v)
-{
-    return (v + (T(A) - 1)) & (~(T(A) - 1));
-}
-
-template <uint32_t A, typename T>
-inline constexpr T align_down(T v)
-{
-    return v & (~(T(A) - 1));
-}
+};
 
 } // namespace slab
 
-#endif // _UTILITY_H_
-//------------------------------------------------------------------------------
-// EOF
-//------------------------------------------------------------------------------
+/*! @} */
+
+#endif // _CRC16_H_
