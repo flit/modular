@@ -33,6 +33,7 @@
 #include "singleton.h"
 #include "board.h"
 #include "utility.h"
+#include "crc16.h"
 #include "fsl_flash.h"
 
 //------------------------------------------------------------------------------
@@ -78,6 +79,8 @@ public:
         uint16_t fieldVersion;
         uint16_t crc;
 
+        static const uint32_t kHeaderCrcDataLength;
+
         static constexpr uint32_t get_length() { return align_up<kWriteAlignment>(sizeof(FieldHeader)); }
 
         uint8_t * get_data()
@@ -85,12 +88,18 @@ public:
             return reinterpret_cast<uint8_t *>(reinterpret_cast<uint32_t>(this) + get_length());
         }
 
-        FieldHeader * get_next_field()
+        uint16_t compute_crc(const uint8_t * data)
         {
-            return reinterpret_cast<FieldHeader *>(reinterpret_cast<uint32_t>(this) + fieldLength);
+            return Crc16()
+                    .compute(this, kHeaderCrcDataLength)
+                    .compute(data, dataLength)
+                    .get();
         }
     };
 
+    /*!
+     * @brief Linked list node to keep track of all data store keys.
+     */
     struct KeyInfo
     {
         uint32_t key;
@@ -112,14 +121,16 @@ public:
     void reset();
 
 protected:
-
-    static const uint32_t kMagicNumber = 'pdat';
-    static const uint32_t kFormatVersion = 1;
-
-    static const uint32_t kMaxPageDataOffset;
-
+    /*!
+     * @brief Header of each valid data store page.
+     *
+     * The actual size of the header is rounded up to the minimum flash write size.
+     */
     struct PageHeader
     {
+        static const uint32_t kMagicNumber = 'pdat';
+        static const uint32_t kFormatVersion = 1;
+
         uint32_t magic;
         uint32_t formatVersion;
         uint32_t dataVersion;
@@ -127,43 +138,73 @@ protected:
         static constexpr uint32_t get_length() { return align_up<kWriteAlignment>(sizeof(PageHeader)); }
     };
 
-    enum PageState : uint32_t
+    /*!
+     * @brief Represents one page of the data store.
+     */
+    class Page
     {
-        kErased,
-        kValid,
-        kActive,
-        kMerging,
-        kCorrupted,
-    };
+    public:
+        static const uint32_t kMaxDataOffset;
 
-    struct PageInfo
-    {
-        uint32_t address;
-        PageState state;
-        uint32_t version;
+        //! @brief Possible states of a page.
+        enum PageState : uint32_t
+        {
+            kErased,
+            kValid,
+            kActive,
+            kMerging,
+            kCorrupted,
+        };
+
+        Page();
+        ~Page()=default;
+
+        void init(uint32_t address);
+
+        PageState get_state() const { return _state; }
+        void set_state(PageState newState) { _state = newState; }
+        uint32_t get_version() const { return _header->dataVersion; }
+
+        FieldHeader * find_newest_field(uint32_t key);
+
+        bool is_erased();
+        bool erase();
+
+        bool start_merge();
+        bool finish_merge();
+
+        bool format_page();
+        bool can_write_field(uint32_t length);
+        FieldHeader * write_field(const FieldHeader * header, const uint8_t * data);
+
+    protected:
+        uint32_t _address;
+        PageHeader * _header;
+        PageState _state;
+        uint32_t _nextWriteOffset;
+
+        void _scan();
+        bool _ensure_erased();
+        bool _write_header();
     };
 
     flash_config_t _flash;
-    PageInfo _pages[DATA_STORE_PAGE_COUNT];
-    uint32_t _activePage;
-    uint32_t _nextWriteOffset;
+    Page _pages[DATA_STORE_PAGE_COUNT];
+    Page * _activePage;
     uint32_t _nextPageVersion;
     KeyInfo * _firstKey;
     uint8_t _writeBuffer[kWriteAlignment] __attribute__ ((aligned(4)));
 
     void _load_pages();
-    uint32_t _scan_page(uint32_t page);
-    FieldHeader * _find_newest_field(uint32_t key, uint32_t page);
-    bool _init_page(uint32_t page);
     bool _merge_fields();
-    FieldHeader * _write_field(const FieldHeader * header, const uint8_t * data);
     uint32_t _find_next_page();
 
-    bool _is_page_erased(uint32_t address);
-    bool _erase_page(uint32_t address);
+    uint32_t _get_next_page_version() { return _nextPageVersion++; }
+
     bool _write_data(uint32_t address, const void * data, uint32_t length);
     bool _write_and_verify(uint32_t address, const void * data, uint32_t length);
 
+    friend class Page;
 };
 
 /*!
@@ -173,7 +214,7 @@ template <uint32_t Key, typename Data>
 class PersistentData : public PersistentDataStore::KeyInfo
 {
 public:
-    PersistentData() : PersistentDataStore::KeyInfo(Key), _cached(nullptr), _isCacheValid(false) {}
+    PersistentData() : PersistentDataStore::KeyInfo(Key), _cached(nullptr) {}
     ~PersistentData()=default;
 
     void init()
@@ -181,9 +222,14 @@ public:
         PersistentDataStore::get().add_key(this);
     }
 
+    bool is_present()
+    {
+        return newest || PersistentDataStore::get().read_key(this, nullptr, 0);
+    }
+
     bool read(Data * data)
     {
-        if (_isCacheValid)
+        if (_cached)
         {
             memcpy(data, &_cached, sizeof(Data));
             return true;
@@ -193,8 +239,7 @@ public:
             bool result = PersistentDataStore::get().read_key(this, reinterpret_cast<uint8_t *>(data), sizeof(Data));
             if (result)
             {
-                _cached = newest->get_data();
-                _isCacheValid = true;
+                _cached = reinterpret_cast<Data *>(newest->get_data());
             }
             return result;
         }
@@ -206,35 +251,39 @@ public:
         if (ok)
         {
             _cached = reinterpret_cast<Data *>(newest->get_data());
-            _isCacheValid = true;
         }
         else
         {
-            _isCacheValid = false;
+            _cached = nullptr;
         }
         return ok;
     }
 
-    Data read()
+    const Data & read()
     {
-        uint32_t data;
-        read(&data);
-        return data;
+        if (!_cached)
+        {
+            bool result = PersistentDataStore::get().read_key(this, nullptr, 0);
+            if (result)
+            {
+                _cached = reinterpret_cast<Data *>(newest->get_data());
+            }
+        }
+        return *_cached;
     }
 
-    bool write(Data data)
+    bool write(const Data & data)
     {
         return write(&data);
     }
 
-    operator Data () const
+    operator Data ()
     {
         return read();
     }
 
 protected:
-    Data * _cached;
-    bool _isCacheValid;
+    const Data * _cached;
 
 };
 

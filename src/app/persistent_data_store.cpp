@@ -28,8 +28,6 @@
  */
 
 #include "persistent_data_store.h"
-#include "crc16.h"
-#include "utility.h"
 #include <cassert>
 
 using namespace slab;
@@ -40,15 +38,16 @@ using namespace slab;
 
 const uint32_t kErasedWord = 0xffffffff;
 
-const uint32_t PersistentDataStore::kMaxPageDataOffset = DATA_STORE_PAGE_SIZE - FieldHeader::get_length();
+const uint32_t PersistentDataStore::FieldHeader::kHeaderCrcDataLength = sizeof(FieldHeader) - sizeof(uint16_t);
+
+const uint32_t PersistentDataStore::Page::kMaxDataOffset = DATA_STORE_PAGE_SIZE - PersistentDataStore::FieldHeader::get_length();
 
 //------------------------------------------------------------------------------
 // Code
 //------------------------------------------------------------------------------
 
 PersistentDataStore::PersistentDataStore()
-:   _activePage(kErasedWord),
-    _nextWriteOffset(0),
+:   _activePage(nullptr),
     _nextPageVersion(0),
     _firstKey(nullptr)
 {
@@ -61,14 +60,14 @@ void PersistentDataStore::init()
     _load_pages();
 
     // If there is no active page, i.e. all pages are erased, then init a page.
-    if (_activePage == kErasedWord)
+    if (!_activePage)
     {
-        _activePage = 0;
+        uint32_t activePageNumber = _find_next_page();
+        assert(activePageNumber != kErasedWord);
+        _activePage = &_pages[activePageNumber];
         _nextPageVersion = 1;
-        _init_page(_activePage);
+        _activePage->format_page();
     }
-
-    _nextWriteOffset = _scan_page(_activePage);
 }
 
 void PersistentDataStore::reset()
@@ -76,13 +75,13 @@ void PersistentDataStore::reset()
     uint32_t i;
     for (i = 0; i < DATA_STORE_PAGE_COUNT; ++i)
     {
-        uint32_t pageAddress = DATA_STORE_BASE_ADDR + i * DATA_STORE_PAGE_SIZE;
-        _erase_page(pageAddress);
+        _pages[i].erase();
     }
 }
 
 void PersistentDataStore::add_key(KeyInfo * info)
 {
+    assert(info->key != kErasedWord && "key must not be 0xffffffff");
     info->next = _firstKey;
     _firstKey = info;
 }
@@ -91,14 +90,17 @@ bool PersistentDataStore::read_key(KeyInfo * info, uint8_t * data, uint32_t leng
 {
     if (info->newest == nullptr)
     {
-        info->newest = _find_newest_field(info->key, _activePage);
+        info->newest = _activePage->find_newest_field(info->key);
         if (info->newest == nullptr)
         {
             return false;
         }
     }
 
-    memcpy(data, info->newest->get_data(), length);
+    if (data)
+    {
+        memcpy(data, info->newest->get_data(), length);
+    }
 
     return true;
 }
@@ -107,12 +109,20 @@ bool PersistentDataStore::write_key(KeyInfo * info, const uint8_t * data, uint32
 {
     if (info->newest == nullptr)
     {
-        info->newest = _find_newest_field(info->key, _activePage);
+        info->newest = _activePage->find_newest_field(info->key);
+    }
+
+    // If the data is not changing, then we don't really need to write the field.
+    if (info->newest
+        && (length == info->newest->dataLength)
+        && (memcmp(info->newest->get_data(), data, length) == 0))
+    {
+        return true;
     }
 
     // Check if this write will fit in the active page.
     uint32_t fieldLength = align_up<kWriteAlignment>(FieldHeader::get_length() + length);
-    if (_nextWriteOffset + fieldLength > DATA_STORE_PAGE_SIZE)
+    if (!_activePage->can_write_field(fieldLength))
     {
         // We need to merge fields into a new page.
         if (!_merge_fields())
@@ -129,10 +139,10 @@ bool PersistentDataStore::write_key(KeyInfo * info, const uint8_t * data, uint32
     newHeader.dataLength = length;
     newHeader.fieldLength = fieldLength;
     newHeader.fieldVersion = nextVersion;
-    newHeader.crc = Crc16().compute(data, length);
+    newHeader.crc = newHeader.compute_crc(data);
 
     // Write to the active page.
-    FieldHeader * writtenHeader = _write_field(&newHeader, data);
+    FieldHeader * writtenHeader = _activePage->write_field(&newHeader, data);
     if (!writtenHeader)
     {
         return false;
@@ -142,75 +152,41 @@ bool PersistentDataStore::write_key(KeyInfo * info, const uint8_t * data, uint32
     return true;
 }
 
-bool PersistentDataStore::_init_page(uint32_t page)
-{
-    PageInfo & info = _pages[page];
-
-    // Erase page if it is not already.
-    if (info.state != kErased)
-    {
-        if (!_erase_page(info.address))
-        {
-            return false;
-        }
-    }
-
-    // Write the page's header with the next page data version.
-    PageHeader header;
-    header.magic = kMagicNumber;
-    header.formatVersion = kFormatVersion;
-    header.dataVersion = _nextPageVersion;
-    if (!_write_data(info.address, &header, sizeof(header)))
-    {
-        return false;
-    }
-
-    info.state = kValid;
-    info.version = _nextPageVersion;
-    ++_nextPageVersion;
-
-    return true;
-}
-
 bool PersistentDataStore::_merge_fields()
 {
-    uint32_t previousActivePage = _activePage;
-    _activePage = _find_next_page();
-    if (_activePage == kErasedWord)
+    uint32_t nextPage = _find_next_page();
+    if (nextPage == kErasedWord)
     {
         return false;
     }
 
-    // Erase page if it is not already.
-    PageInfo & info = _pages[_activePage];
-    if (info.state != kErased)
+    // Start merging. The page header will not be written until we're done merging, so
+    // the page will be identified as corrupt if we get interrupted somehow.
+    Page & page = _pages[nextPage];
+    if (!page.start_merge())
     {
-        if (!_erase_page(info.address))
-        {
-            return false;
-        }
+        return false;
     }
-
-    // Set the page state to merging.
-    info.state = kMerging;
-
-    // Start writing after the header, which will not be written until all keys are merged.
-    _nextWriteOffset = PageHeader::get_length();
 
     // Copy the latest version of each key into the new page.
     KeyInfo * key = _firstKey;
     while (key)
     {
-        // Load key if necessary.
+        // Load key from page we're merging from if necessary.
         if (!key->newest)
         {
-            key->newest = _find_newest_field(key->key, previousActivePage);
+            key->newest = _activePage->find_newest_field(key->key);
         }
 
         // Copy key to new page. newest may be null if the key wasn't ever written.
         if (key->newest)
         {
-            FieldHeader * newHeader = _write_field(key->newest, key->newest->get_data());
+            // Copy the header and reset the version.
+            FieldHeader updatedHeader = *(key->newest);
+            updatedHeader.fieldVersion = 1;
+
+            // Write the updated header and data to the new page.
+            FieldHeader * newHeader = page.write_field(&updatedHeader, key->newest->get_data());
             if (newHeader == nullptr)
             {
                 return false;
@@ -222,61 +198,55 @@ bool PersistentDataStore::_merge_fields()
         key = key->next;
     }
 
-    // Write the page's header with the next page data version.
-    PageHeader header;
-    header.magic = kMagicNumber;
-    header.formatVersion = kFormatVersion;
-    header.dataVersion = _nextPageVersion;
-    if (!_write_data(info.address, &header, sizeof(header)))
+    // Complete the merge. This writes the page header and sets the page state to kActive.
+    if (!page.finish_merge())
     {
         return false;
     }
 
-    info.state = kActive;
-    info.version = _nextPageVersion;
-    ++_nextPageVersion;
+    // Erase previous active page.
+    _activePage->erase();
 
-    // Erase previous page.
-    _erase_page(_pages[previousActivePage].address);
-    _pages[previousActivePage].state = kErased;
+    // Update active page pointer.
+    _activePage = &_pages[nextPage];
 
     return true;
 }
 
-PersistentDataStore::FieldHeader * PersistentDataStore::_write_field(const FieldHeader * header, const uint8_t * data)
-{
-    assert(_nextWriteOffset <= kMaxPageDataOffset);
-    uint32_t writeAddress = _pages[_activePage].address + _nextWriteOffset;
-    if (!_write_data(writeAddress, header, sizeof(FieldHeader)))
-    {
-        return nullptr;
-    }
-    if (!_write_data(writeAddress + FieldHeader::get_length(), data, header->dataLength))
-    {
-        return nullptr;
-    }
-
-    _nextWriteOffset += header->fieldLength;
-
-    return reinterpret_cast<FieldHeader *>(writeAddress);
-}
-
 //! @brief Select the next page to write into.
 //!
-//! Returns either an erased page or an out of data valid page, which will have to be erased
+//! Returns either an erased page or an out of date valid page, which will have to be erased
 //! before it can be used.
 uint32_t PersistentDataStore::_find_next_page()
 {
     uint32_t i;
-    uint32_t activePageVersion = (_activePage != kErasedWord) ? _pages[_activePage].version : kErasedWord;
-    for (i = 0; i < DATA_STORE_PAGE_COUNT; ++i)
+    uint32_t activePageVersion = kErasedWord;
+    uint32_t startPage = 0;
+
+    // Start searching from the page after the active page.
+    if (_activePage)
     {
-        if (_pages[i].state == kErased
-            || (_pages[i].state == kValid && _pages[i].version < activePageVersion))
+        activePageVersion = _activePage->get_version();
+        startPage = ((reinterpret_cast<uint32_t>(_activePage) - reinterpret_cast<uint32_t>(&_pages[0])) / sizeof(Page) + 1) % DATA_STORE_PAGE_COUNT;
+    }
+    for (i = startPage; i < DATA_STORE_PAGE_COUNT; ++i)
+    {
+        if (_pages[i].get_state() == Page::kErased
+            || (_pages[i].get_state() == Page::kValid && _pages[i].get_version() < activePageVersion))
         {
             return i;
         }
     }
+    for (i = 0; i < startPage; ++i)
+    {
+        if (_pages[i].get_state() == Page::kErased
+            || (_pages[i].get_state() == Page::kValid && _pages[i].get_version() < activePageVersion))
+        {
+            return i;
+        }
+    }
+
+    // Failed to find a page we can write into!
     return kErasedWord;
 }
 
@@ -284,134 +254,31 @@ void PersistentDataStore::_load_pages()
 {
     uint32_t i;
     uint32_t newestVersion = 0;
-
-    _activePage = kErasedWord;
+    uint32_t activePageNumber = kErasedWord;
 
     for (i = 0; i < DATA_STORE_PAGE_COUNT; ++i)
     {
+        Page & page = _pages[i];
         uint32_t pageAddress = DATA_STORE_BASE_ADDR + i * DATA_STORE_PAGE_SIZE;
-        PageHeader * header = reinterpret_cast<PageHeader *>(pageAddress);
+        page.init(pageAddress);
 
-        PageInfo info = { pageAddress, kErased, 0 };
-        if (header->magic == kMagicNumber && header->formatVersion == kFormatVersion)
+        if (page.get_state() == Page::kValid)
         {
-            info.state = kValid;
-            info.version = header->dataVersion;
-        }
-        else if (header->magic == kErasedWord && _is_page_erased(pageAddress))
-        {
-            info.state = kErased;
-        }
-        else
-        {
-            // Page is corrupted, attempt to erase it.
-            if (_erase_page(pageAddress))
+            uint32_t pageVersion = page.get_version();
+            if (pageVersion > newestVersion)
             {
-                info.state = kErased;
+                activePageNumber = i;
+                newestVersion = pageVersion;
             }
-            else
-            {
-                info.state = kCorrupted;
-            }
-        }
-
-        _pages[i] = info;
-
-        if (info.version > newestVersion)
-        {
-            _activePage = i;
-            newestVersion = info.version;
         }
     }
 
-    if (_activePage != kErasedWord)
+    if (activePageNumber != kErasedWord)
     {
-        _pages[_activePage].state = kActive;
+        _activePage = &_pages[activePageNumber];
+        _activePage->set_state(Page::kActive);
     }
     _nextPageVersion = newestVersion + 1;
-}
-
-uint32_t PersistentDataStore::_scan_page(uint32_t page)
-{
-    uint32_t offset = PageHeader::get_length();
-
-    while (offset < kMaxPageDataOffset)
-    {
-        FieldHeader * field = reinterpret_cast<FieldHeader *>(_pages[page].address + offset);
-        if (field->key == kErasedWord)
-        {
-            break;
-        }
-
-        offset += field->fieldLength;
-    }
-
-    return offset;
-}
-
-PersistentDataStore::FieldHeader * PersistentDataStore::_find_newest_field(uint32_t key, uint32_t page)
-{
-    uint32_t offset = PageHeader::get_length();
-    uint32_t newestVersion = 0;
-    FieldHeader * newestField = nullptr;
-
-    while (offset < kMaxPageDataOffset)
-    {
-        FieldHeader * field = reinterpret_cast<FieldHeader *>(_pages[page].address + offset);
-
-        if (field->key == kErasedWord)
-        {
-            break;
-        }
-
-        if (field->key == key)
-        {
-            // Check CRC.
-            uint16_t crc = Crc16().compute(field->get_data(), field->dataLength);
-            if (crc == field->crc
-                && field->fieldVersion > newestVersion)
-            {
-                newestField = field;
-                newestVersion = field->fieldVersion;
-            }
-        }
-
-        offset += field->fieldLength;
-    }
-
-    return newestField;
-}
-
-bool PersistentDataStore::_is_page_erased(uint32_t address)
-{
-    uint32_t * word = reinterpret_cast<uint32_t *>(address);
-    uint32_t * pageEnd = word + (DATA_STORE_PAGE_SIZE / sizeof(uint32_t));
-    for (; word < pageEnd; ++word)
-    {
-        if (*word != kErasedWord)
-        {
-            return false;
-        }
-    }
-    return true;
-}
-
-bool PersistentDataStore::_erase_page(uint32_t address)
-{
-    status_t status;
-    status = FLASH_Erase(&_flash, address, DATA_STORE_PAGE_SIZE, kFLASH_ApiEraseKey);
-    if (status != kStatus_Success)
-    {
-        return false;
-    }
-
-    status = FLASH_VerifyErase(&_flash, address, DATA_STORE_PAGE_SIZE, kFLASH_MarginValueUser);
-    if (status != kStatus_Success)
-    {
-        return false;
-    }
-
-    return true;
 }
 
 //! @brief Write data to flash.
@@ -468,6 +335,226 @@ bool PersistentDataStore::_write_and_verify(uint32_t address, const void * data,
     }
 
     return true;
+}
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+PersistentDataStore::Page::Page()
+:   _address(0),
+    _header(nullptr),
+    _state(kCorrupted),
+    _nextWriteOffset(0)
+{
+}
+
+void PersistentDataStore::Page::init(uint32_t address)
+{
+    _address = address;
+    _header = reinterpret_cast<PageHeader *>(_address);
+
+    if (_header->magic == PageHeader::kMagicNumber
+        && _header->formatVersion == PageHeader::kFormatVersion)
+    {
+        _state = kValid;
+        _scan();
+    }
+    else if (_header->magic == kErasedWord && is_erased())
+    {
+        _state = kErased;
+    }
+    // Page is corrupted, attempt to erase it.
+    else if (erase())
+    {
+        _state = kErased;
+    }
+    else
+    {
+        _state = kCorrupted;
+    }
+}
+
+void PersistentDataStore::Page::_scan()
+{
+    uint32_t offset = PageHeader::get_length();
+
+    while (offset < kMaxDataOffset)
+    {
+        FieldHeader * field = reinterpret_cast<FieldHeader *>(_address + offset);
+        if (field->key == kErasedWord)
+        {
+            break;
+        }
+
+        offset += field->fieldLength;
+    }
+
+    _nextWriteOffset = offset;
+}
+
+PersistentDataStore::FieldHeader * PersistentDataStore::Page::find_newest_field(uint32_t key)
+{
+    uint32_t offset = PageHeader::get_length();
+    uint32_t newestVersion = 0;
+    FieldHeader * newestField = nullptr;
+
+    while (offset < kMaxDataOffset)
+    {
+        FieldHeader * field = reinterpret_cast<FieldHeader *>(_address + offset);
+
+        if (field->key == kErasedWord)
+        {
+            break;
+        }
+
+        if (field->key == key)
+        {
+            // Check CRC.
+            if (field->compute_crc(field->get_data()) == field->crc
+                && field->fieldVersion > newestVersion)
+            {
+                newestField = field;
+                newestVersion = field->fieldVersion;
+            }
+        }
+
+        offset += field->fieldLength;
+    }
+
+    return newestField;
+}
+
+bool PersistentDataStore::Page::is_erased()
+{
+    uint32_t * word = reinterpret_cast<uint32_t *>(_address);
+    uint32_t * pageEnd = word + (DATA_STORE_PAGE_SIZE / sizeof(uint32_t));
+    for (; word < pageEnd; ++word)
+    {
+        if (*word != kErasedWord)
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
+bool PersistentDataStore::Page::erase()
+{
+    flash_config_t * flash = &PersistentDataStore::get()._flash;
+    status_t status = FLASH_Erase(flash, _address, DATA_STORE_PAGE_SIZE, kFLASH_ApiEraseKey);
+    if (status != kStatus_Success)
+    {
+        return false;
+    }
+
+    status = FLASH_VerifyErase(flash, _address, DATA_STORE_PAGE_SIZE, kFLASH_MarginValueUser);
+    if (status != kStatus_Success)
+    {
+        return false;
+    }
+
+    // Clear state variables.
+    _state = kErased;
+    _nextWriteOffset = 0;
+
+    return true;
+}
+
+bool PersistentDataStore::Page::start_merge()
+{
+    // Erase this page if it's not already erased.
+    if (!_ensure_erased())
+    {
+        return false;
+    }
+
+    // Set the page state to merging.
+    _state = kMerging;
+
+    // Start writing after the header, which will not be written until all keys are merged.
+    _nextWriteOffset = PageHeader::get_length();
+
+    return true;
+}
+
+bool PersistentDataStore::Page::finish_merge()
+{
+    assert(_state == kMerging);
+
+    // Write the page's header with the next page data version.
+    if (!_write_header())
+    {
+        return false;
+    }
+
+    _state = kActive;
+
+    return true;
+}
+
+bool PersistentDataStore::Page::format_page()
+{
+    // Erase page if it is not already.
+    if (!_ensure_erased())
+    {
+        return false;
+    }
+
+    // Place the page's header.
+    if (!_write_header())
+    {
+        return false;
+    }
+
+    _nextWriteOffset = PageHeader::get_length();
+
+    return true;
+}
+
+bool PersistentDataStore::Page::_ensure_erased()
+{
+    // Erase page if it is not already.
+    return (_state == kErased) || erase();
+}
+
+bool PersistentDataStore::Page::_write_header()
+{
+    // Write the page's header with the next page data version.
+    PageHeader header;
+    header.magic = PageHeader::kMagicNumber;
+    header.formatVersion = PageHeader::kFormatVersion;
+    header.dataVersion =  PersistentDataStore::get()._get_next_page_version();
+    if (!PersistentDataStore::get()._write_data(_address, &header, sizeof(header)))
+    {
+        return false;
+    }
+
+    _state = kValid;
+
+    return true;
+}
+
+bool PersistentDataStore::Page::can_write_field(uint32_t length)
+{
+    return (_nextWriteOffset + length < DATA_STORE_PAGE_SIZE);
+}
+
+PersistentDataStore::FieldHeader * PersistentDataStore::Page::write_field(const FieldHeader * header, const uint8_t * data)
+{
+    assert((_nextWriteOffset + header->fieldLength) < DATA_STORE_PAGE_SIZE);
+    PersistentDataStore & store = PersistentDataStore::get();
+    uint32_t writeAddress = _address + _nextWriteOffset;
+    if (!store._write_data(writeAddress, header, sizeof(FieldHeader)))
+    {
+        return nullptr;
+    }
+    if (!store._write_data(writeAddress + FieldHeader::get_length(), data, header->dataLength))
+    {
+        return nullptr;
+    }
+
+    _nextWriteOffset += header->fieldLength;
+
+    return reinterpret_cast<FieldHeader *>(writeAddress);
 }
 
 //------------------------------------------------------------------------------

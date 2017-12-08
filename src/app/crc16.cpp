@@ -36,16 +36,16 @@ using namespace slab;
 // Code
 ////////////////////////////////////////////////////////////////////////////////
 
-uint16_t Crc16::compute(const void *inputData, uint32_t lengthInBytes)
+Crc16 & Crc16::compute(const void *inputData, uint32_t lengthInBytes)
 {
     const uint8_t *data = reinterpret_cast<const uint8_t*>(inputData);
-    uint32_t crc = 0xffff;
+    uint32_t crc = _crc;
 
     uint32_t j;
     for (j = 0; j < lengthInBytes; ++j)
     {
         uint32_t i;
-        uint32_t byte = data[j];
+        uint32_t byte = *data++;
         crc ^= byte << 8;
         for (i = 0; i < 8; ++i)
         {
@@ -57,6 +57,7 @@ uint16_t Crc16::compute(const void *inputData, uint32_t lengthInBytes)
             crc = temp;
         }
     }
+    _crc = crc;
 
-    return crc;
+    return *this;
 }

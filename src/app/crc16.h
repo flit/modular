@@ -1,6 +1,6 @@
 /*
  * Copyright 2017 NXP
- * All rights reserved.
+ * Copyright (c) 2017 Immo Software.
  *
  * Redistribution and use in source and binary forms, with or without modification,
  * are permitted provided that the following conditions are met:
@@ -33,25 +33,32 @@
 
 #include <stdint.h>
 
-/*!
- * @addtogroup infra_transport
- * @{
- * @file
- */
-
 ////////////////////////////////////////////////////////////////////////////////
 // Classes
 ////////////////////////////////////////////////////////////////////////////////
 
 namespace slab {
 
+/*!
+ * @brief ITU-CCITT CRC-16.
+ *
+ * This clas is intended to be used by chaining one or more calls to compute()
+ * followed by a call to get().
+ *
+ * Example
+ * @code
+ * uint16_t crc = Crc16().compute(d0, l0).compute(d1, l1).get();
+ * @endcode
+ *
+ * This implementation is slow but small in size.
+ */
 class Crc16
 {
 public:
     /*!
      * @brief Constructor.
      */
-    Crc16()=default;
+    Crc16() : _crc(0xffff) {}
 
     /*!
      * @brief Destructor
@@ -59,19 +66,25 @@ public:
     ~Crc16()=default;
 
     /*!
-     * @brief Compute a ITU-CCITT CRC-16 over the provided data.
+     * @brief Compute the CRC-16 over the provided data.
      *
-     * This implementation is slow but small in size.
+     * Multiple calls to this method can be made to update the CRC with non-contiguous
+     * blocks of data.
      *
      * @param[in] inputData Pointer to data used for crc16.
      * @param[in] dataLength Data length.
      */
-    uint16_t compute(const void *inputData, uint32_t lengthInBytes);
+    Crc16 & compute(const void *inputData, uint32_t lengthInBytes);
 
+    /*!
+     * @brief Retrieve the CRC-16 current result after processing the input data.
+     */
+    uint16_t get() const { return _crc; }
+
+protected:
+    uint16_t _crc;
 };
 
 } // namespace slab
-
-/*! @} */
 
 #endif // _CRC16_H_
