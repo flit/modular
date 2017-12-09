@@ -215,6 +215,8 @@ class PersistentData : public PersistentDataStore::KeyInfo
 {
 public:
     PersistentData() : PersistentDataStore::KeyInfo(Key), _cached(nullptr) {}
+    PersistentData(const PersistentData<Key, Data> & other)=delete;
+    PersistentData & operator = (const PersistentData<Key, Data> & other)=delete;
     ~PersistentData()=default;
 
     void init()
