@@ -198,6 +198,11 @@ public:
     UIMode get_ui_mode() const { return _uiMode; }
     VoiceMode get_voice_mode() const { return _voiceMode; }
 
+    void set_ui_mode(UIMode mode);
+    void set_voice_mode(VoiceMode mode);
+
+    void load_sample_bank(uint32_t bankNumber);
+
     Ar::RunLoop * get_runloop() { return &_runloop; }
 
 protected:
@@ -231,11 +236,6 @@ protected:
     uint32_t _button1LedFlashes;
 
     void ui_thread();
-
-    void set_ui_mode(UIMode mode);
-    void set_voice_mode(VoiceMode mode);
-
-    void load_sample_bank(uint32_t bankNumber);
 
     void handle_blink_timer(Ar::Timer * timer);
     void handle_bank_led_timer(Ar::Timer * timer);
