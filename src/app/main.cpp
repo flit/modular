@@ -139,6 +139,24 @@ adc16_config_t g_adcConfig;
 
 DEFINE_DEBUG_LOG
 
+const char kLedStartupPattern[][5] = {
+        "r---",
+        "-r--",
+        "--r-",
+        "---r",
+        "---y",
+        "--y-",
+        "-y--",
+        "y---",
+        "----",
+        "rrrr",
+        "----",
+        "yyyy",
+        "----",
+        "rrrr",
+        "----",
+    };
+
 //------------------------------------------------------------------------------
 // Code
 //------------------------------------------------------------------------------
@@ -150,47 +168,31 @@ uint64_t ar_get_microseconds()
 
 void flash_leds()
 {
-    int which;
-    for (which = 0; which < 4; ++which)
+    uint32_t i;
+    for (i = 0; i < ARRAY_SIZE(kLedStartupPattern); ++i)
     {
-        g_channelLeds[which]->on();
+        char const * pattern = kLedStartupPattern[i];
+        uint32_t which;
+        for (which = 0; which < kVoiceCount; ++which)
+        {
+            switch (pattern[which])
+            {
+                case 'r':
+                    g_channelLeds[which]->set_color(LEDBase::kRed);
+                    g_channelLeds[which]->on();
+                    break;
+                case 'y':
+                    g_channelLeds[which]->set_color(LEDBase::kYellow);
+                    g_channelLeds[which]->on();
+                    break;
+                default:
+                    g_channelLeds[which]->off();
+            }
+        }
+
         g_channelLedManager.flush();
         Ar::Thread::sleep(100);
-        g_channelLeds[which]->off();
-        g_channelLedManager.flush();
-        Ar::Thread::sleep(10);
     }
-
-    for (which = 2; which >= 0; --which)
-    {
-        g_channelLeds[which]->on();
-        g_channelLedManager.flush();
-        Ar::Thread::sleep(100);
-        g_channelLeds[which]->off();
-        g_channelLedManager.flush();
-        Ar::Thread::sleep(10);
-    }
-
-    // sleep 100 ms
-    Ar::Thread::sleep(100);
-
-    // all on
-    for (which = 0; which < 4; ++which)
-    {
-        g_channelLeds[which]->on();
-    }
-    g_channelLedManager.flush();
-
-    // sleep 100 ms
-    Ar::Thread::sleep(100);
-
-    // all off
-    for (which = 0; which < 4; ++which)
-    {
-        g_channelLeds[which]->off();
-    }
-    g_channelLedManager.flush();
-
 }
 
 void calibrate_pots()
