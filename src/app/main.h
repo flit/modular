@@ -37,6 +37,7 @@
 #include "file_manager.h"
 #include "audio_defs.h"
 #include "ui.h"
+#include "persistent_data_store.h"
 #include "fsl_adc16.h"
 
 //------------------------------------------------------------------------------
@@ -75,6 +76,9 @@ enum data_keys : uint32_t
     kLastSelectedBankKey = 'lbnk',
     kLastVoiceMode = 'vmod',
 };
+
+extern PersistentData<kLastSelectedBankKey, uint32_t> g_lastSelectedBank;
+extern PersistentData<kLastVoiceMode, VoiceMode> g_lastVoiceMode;
 
 }
 

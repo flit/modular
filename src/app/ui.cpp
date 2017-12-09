@@ -353,12 +353,13 @@ void UI::set_ui_mode(UIMode mode)
 
 void UI::set_voice_mode(VoiceMode mode)
 {
-    if (_voiceMode == mode)
+    if (_voiceMode == mode && !_firstSwitchToPlayMode)
     {
         return;
     }
 
     _voiceMode = mode;
+    persistent_data::g_lastVoiceMode.write(_voiceMode);
 
     load_sample_bank(_selectedBank);
 
@@ -520,10 +521,36 @@ void UI::ui_thread()
                             _blinkTimer.stop();
                             FileManager::get().scan_for_files();
                             _isCardPresent = true;
-                            set_ui_mode(kPlayMode);
 
-                            _selectedBank = 0;
-                            load_sample_bank(_selectedBank);
+                            if (_firstSwitchToPlayMode)
+                            {
+                                // Restore selected bank.
+                                if (persistent_data::g_lastSelectedBank.is_present())
+                                {
+                                    _selectedBank = persistent_data::g_lastSelectedBank;
+                                }
+                                else
+                                {
+                                    _selectedBank = 0;
+                                }
+
+                                // Restore voice mode.
+                                if (persistent_data::g_lastVoiceMode.is_present())
+                                {
+                                    set_voice_mode(persistent_data::g_lastVoiceMode);
+                                }
+                                else
+                                {
+                                    set_voice_mode(k4VoiceMode);
+                                }
+                            }
+                            else
+                            {
+                                set_ui_mode(kPlayMode);
+
+                                _selectedBank = 0;
+                                load_sample_bank(_selectedBank);
+                            }
                         }
                         _cardDetectTimer.start();
                     }
@@ -560,6 +587,8 @@ void UI::ui_thread()
 
 void UI::load_sample_bank(uint32_t bankNumber)
 {
+    persistent_data::g_lastSelectedBank.write(bankNumber);
+
     SampleBank & bank = FileManager::get().get_bank(bankNumber);
 
     uint32_t channel;
