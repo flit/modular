@@ -37,6 +37,12 @@
 using namespace slab;
 
 //------------------------------------------------------------------------------
+// Definitions
+//------------------------------------------------------------------------------
+
+const uint32_t kNoteOffSamples = 128;
+
+//------------------------------------------------------------------------------
 // Code
 //------------------------------------------------------------------------------
 
@@ -324,7 +330,10 @@ SamplerVoice::SamplerVoice()
     _data(),
     _manager(),
     _isPlaying(false),
+    _doNoteOff(false),
+    _doRetrigger(false),
     _turnOnLedNextBuffer(false),
+    _noteOffSamplesRemaining(0),
     _lastBufferLastSample(0),
     _fraction(0.0f),
     _gain(1.0f),
@@ -360,6 +369,9 @@ void SamplerVoice::clear_file()
 void SamplerVoice::_reset_voice()
 {
     _isPlaying = false;
+    _doNoteOff = false;
+    _doRetrigger = false;
+    _noteOffSamplesRemaining = 0;
     _pitchOctave = 0.0f;
     _fraction = 0.0f;
     _lastBufferLastSample = 0.0f;
@@ -384,28 +396,33 @@ void SamplerVoice::trigger()
     {
         DEBUG_PRINTF(RETRIG_MASK, "V%lu: retrigger (@%lu)\r\n", _number, _manager.get_samples_played());
 
-        // Start playing over from file start.
-        prime();
-
-        UI::get().set_voice_playing(_number, false);
-        _turnOnLedNextBuffer = true;
+        // Start retrigger process.
+        _doNoteOff = true;
+        _doRetrigger = true;
+        _noteOffSamplesRemaining = kNoteOffSamples;
     }
     else
     {
         UI::get().set_voice_playing(_number, true);
+        _isPlaying = true;
     }
-    _isPlaying = true;
 }
 
 void SamplerVoice::note_off()
 {
+    // Ignore the note off event if the manager isn't ready to play.
+    if (!is_valid() || !_manager.is_ready())
+    {
+        return;
+    }
+
     DEBUG_PRINTF(RETRIG_MASK, "V%lu: note off (@%lu)\r\n", _number, _manager.get_samples_played());
 
     if (_isPlaying)
     {
-        _isPlaying = false;
-        prime();
-        UI::get().set_voice_playing(_number, false);
+        // Start note off process.
+        _doNoteOff = true;
+        _noteOffSamplesRemaining = kNoteOffSamples;
     }
 }
 
@@ -446,7 +463,7 @@ void SamplerVoice::render(int16_t * data, uint32_t frameCount)
     float s1 = 0.0f;
 
     // Special case for unmodified pitch.
-    if (rate == 1.0f)
+    if (rate == 1.0f && !_doNoteOff)
     {
         uint32_t framesRemainingInBuffer = bufferFrameCount - readHead;
         uint32_t framesFromBuffer = min(framesRemainingInBuffer, frameCount);
@@ -471,6 +488,8 @@ void SamplerVoice::render(int16_t * data, uint32_t frameCount)
         float readHeadFraction = _fraction;
         s1 = _lastBufferLastSample;
 
+        bool updateBuffer = false;
+
         // Render sample data into the output buffer at the specified playback rate.
         for (i = 0; i < frameCount; ++i)
         {
@@ -486,26 +505,63 @@ void SamplerVoice::render(int16_t * data, uint32_t frameCount)
                 {
                     _manager.retire_buffer(voiceBuffer);
 
-                    // If we're no longer playing, exit this loop.
-                    if (!_isPlaying)
-                    {
-                        // Set some variables used outside the loop below.
-                        readHead = voiceBuffer->readHead;
-                        readHeadFraction = 0.0f;
-                        s1 = 0.0f;
-                        break;
-                    }
-
-                    // Get the next buffer and update locals.
-                    voiceBuffer = _manager.get_current_buffer();
-                    if (!voiceBuffer)
-                    {
-                        break;
-                    }
-                    bufferData = voiceBuffer->data;
-                    readHead = voiceBuffer->readHead + (readHead - bufferFrameCount);
-                    bufferFrameCount = voiceBuffer->frameCount;
+                    updateBuffer = true;
                 }
+                else
+                {
+                    s0 = s1;
+                    s1 = float(bufferData[readHead]);
+                }
+            }
+
+            float gain = _gain;
+            if (_doNoteOff)
+            {
+                if (_noteOffSamplesRemaining-- == 0)
+                {
+                    // Prime will clear all flags for us, so save retrigger locally to set
+                    // isPlaying after priming.
+                    bool savedRetrigger = _doRetrigger;
+                    prime();
+                    _isPlaying = savedRetrigger;
+
+                    _turnOnLedNextBuffer = savedRetrigger;
+                    UI::get().set_voice_playing(_number, false);
+
+                    updateBuffer = true;
+                    readHead = bufferFrameCount;
+                    readHeadFraction = 0.0f;
+                    s1 = 0.0f;
+                }
+                else
+                {
+                    gain *= float(_noteOffSamplesRemaining) / float(kNoteOffSamples);
+                }
+            }
+
+            if (updateBuffer)
+            {
+                updateBuffer = false;
+
+                // If we're no longer playing, exit this loop.
+                if (!_isPlaying)
+                {
+                    // Set some variables used outside the loop below.
+                    readHead = voiceBuffer->readHead;
+                    readHeadFraction = 0.0f;
+                    s1 = 0.0f;
+                    break;
+                }
+
+                // Get the next buffer and update locals.
+                voiceBuffer = _manager.get_current_buffer();
+                if (!voiceBuffer)
+                {
+                    break;
+                }
+                bufferData = voiceBuffer->data;
+                readHead = voiceBuffer->readHead + (readHead - bufferFrameCount);
+                bufferFrameCount = voiceBuffer->frameCount;
 
                 s0 = s1;
                 s1 = float(bufferData[readHead]);
@@ -515,7 +571,7 @@ void SamplerVoice::render(int16_t * data, uint32_t frameCount)
             float s = (s0 + readHeadFraction * (s1 - s0));
 //             s /= 32768.0f;
 //             s = _step * floor((s * _inverseStep) + 0.5);
-            s *= _gain;
+            s *= gain;
 //             s *= 32768.0f;
             *data = int16_t(s);
             data += 2;
@@ -524,6 +580,7 @@ void SamplerVoice::render(int16_t * data, uint32_t frameCount)
         _fraction = readHeadFraction;
     }
 
+    // Save local read head back into buffer and record the last sample from this output buffer.
     if (voiceBuffer)
     {
         voiceBuffer->readHead = readHead;

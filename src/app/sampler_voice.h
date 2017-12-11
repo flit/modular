@@ -173,7 +173,10 @@ protected:
     WaveFile::AudioDataStream _data;
     SampleBufferManager _manager;
     bool _isPlaying;
+    bool _doNoteOff;
+    bool _doRetrigger;
     bool _turnOnLedNextBuffer;
+    uint32_t _noteOffSamplesRemaining;
     float _lastBufferLastSample;
     float _fraction;
     float _gain;
