@@ -60,8 +60,8 @@ float ChannelCV::process(uint32_t value)
 
     float result = 0;
 
-    // Convert to volt-per-octave.
-    result = static_cast<float>(value) * 5.0f / kAdcMax;
+    // Convert to volt-per-octave, from 0..1 to -2..+3
+    result = (static_cast<float>(value) * 5.0f / kAdcMax) - 2.0f;
 
     return result;
 }
