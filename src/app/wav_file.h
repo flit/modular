@@ -58,7 +58,7 @@ public:
     class AudioDataStream : public Stream
     {
     public:
-        AudioDataStream() : _file(nullptr) {}
+        AudioDataStream() : Stream(), _file(nullptr) {}
         AudioDataStream(WaveFile * wave) : Stream(), _file(wave) {}
         AudioDataStream(const AudioDataStream& other)=default;
         AudioDataStream& operator = (const AudioDataStream& other)=default;
