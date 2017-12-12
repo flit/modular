@@ -75,34 +75,37 @@ bool SampleBank::load_sample_to_voice(uint32_t sampleNumber, SamplerVoice & voic
         return false;
     }
 
+    // Open and parse .wav file.
     FilePath & path = _samplePaths[sampleNumber];
     WaveFile wav(path.get());
 
-    bool inited = (wav.parse() == fs::kSuccess);
-
-    // @todo check sample rate
-    if (inited && wav.get_channels() <= 2)
-    {
-        voice.set_file(wav);
-
-        uint32_t frameCount = voice.get_audio_stream().get_frames();
-
-        DEBUG_PRINTF(INIT_MASK, "%s: %lu Hz; %lu bits; %lu ch; %lu bytes/frame; %lu frames\r\n",
-            path.get(),
-            wav.get_sample_rate(),
-            wav.get_sample_size(),
-            wav.get_channels(),
-            wav.get_frame_size(),
-            frameCount);
-
-        return true;
-    }
-    else
+    fs::error_t err = wav.parse();
+    if (err != fs::kSuccess)
     {
         DEBUG_PRINTF(ERROR_MASK, "Failed to parse %s\r\n", path.get());
         voice.clear_file();
         return false;
     }
+
+    // Only support 48 kHz 16-bit format files with 1 or 2 channels.
+    if (!(wav.get_channels() <= 2
+        && wav.get_sample_rate() == 48000
+        && wav.get_sample_size() == 16))
+    {
+        DEBUG_PRINTF(ERROR_MASK, "File %s is an unsupported format\r\n", path.get());
+        voice.clear_file();
+        return false;
+    }
+
+    // Set sample file in voice.
+    voice.set_file(wav);
+
+    DEBUG_PRINTF(INIT_MASK, "%s: %lu ch; %lu frames\r\n",
+        path.get(),
+        wav.get_channels(),
+        voice.get_audio_stream().get_frames());
+
+    return true;
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
