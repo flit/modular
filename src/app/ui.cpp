@@ -69,6 +69,8 @@ const uint32_t kVoiceModeLongPressTime = 2;
 static const int8_t kVoiceModeChannelMap[kVoiceModeCount][kVoiceCount] = {
         // k4VoiceMode
         { 0, 1, 2, 3, },
+        // k3VoiceMode
+        { 0, 2, 3, -1, },
         // k2VoiceMode
         { 0, 2, -1, -3, },
         // k1VoiceMode
