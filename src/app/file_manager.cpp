@@ -41,6 +41,7 @@ using namespace slab;
 //------------------------------------------------------------------------------
 
 SampleBank::SampleBank()
+:   _isValid(false)
 {
 }
 
@@ -56,6 +57,8 @@ const SampleBank::FilePath & SampleBank::get_sample_path(uint32_t sampleNumber) 
 
 void SampleBank::clear_sample_paths()
 {
+    _isValid = false;
+
     uint32_t i;
     for (i = 0; i < kVoiceCount; ++i)
     {
@@ -66,6 +69,11 @@ void SampleBank::clear_sample_paths()
 void SampleBank::set_sample_path(uint32_t sampleNumber, FilePath & path)
 {
     _samplePaths[sampleNumber] = path;
+
+    if (has_sample(sampleNumber))
+    {
+        _isValid = true;
+    }
 }
 
 bool SampleBank::load_sample_to_voice(uint32_t sampleNumber, SamplerVoice & voice)
@@ -111,8 +119,7 @@ bool SampleBank::load_sample_to_voice(uint32_t sampleNumber, SamplerVoice & voic
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 FileManager::FileManager()
-:   _fs(),
-    _bankValidMask(0)
+:   _fs()
 {
 }
 
@@ -126,11 +133,35 @@ bool FileManager::mount()
 void FileManager::unmount()
 {
     _fs.unmount();
+    _reset_banks();
+}
+
+void FileManager::_reset_banks()
+{
+    // Reset all the banks.
+    uint32_t bank;
+    for (bank = 0; bank < kMaxBankCount; ++bank)
+    {
+        _banks[bank].clear_sample_paths();
+    }
+}
+
+bool FileManager::has_any_banks() const
+{
+    uint32_t bank;
+    for (bank = 0; bank < kMaxBankCount; ++bank)
+    {
+        if (_banks[bank].is_valid())
+        {
+            return true;
+        }
+    }
+    return false;
 }
 
 bool FileManager::has_bank(uint32_t bankNumber) const
 {
-    return (_bankValidMask & (1 << bankNumber)) != 0;
+    return _banks[bankNumber].is_valid();
 }
 
 void FileManager::scan_for_files()
@@ -138,7 +169,7 @@ void FileManager::scan_for_files()
     fs::DirectoryIterator dir = _fs.open_dir("/");
     FILINFO info;
 
-    _bankValidMask = 0;
+    _reset_banks();
 
     while (dir.next(&info))
     {
@@ -162,7 +193,7 @@ void FileManager::scan_for_files()
         }
 
         uint32_t bankNumber = dirName[0] - '1';
-        if (bankNumber < 4)
+        if (bankNumber < kMaxBankCount)
         {
             snprintf(_dirPath, sizeof(_dirPath), "/%s", dirName);
             _scan_bank_directory(bankNumber, _dirPath);
@@ -197,9 +228,6 @@ void FileManager::_scan_bank_directory(uint32_t bankNumber, const char * dirPath
             uint32_t channel = fileName[0] - '1';
             if (channel >=0 && channel < kVoiceCount)
             {
-                // Mark bank as valid if there's at least one file.
-                _bankValidMask |= (1 << bankNumber);
-
                 snprintf(_filePath, sizeof(_filePath), "%s/%s", dirPath, fileName);
                 SampleBank::FilePath path(_filePath);
 

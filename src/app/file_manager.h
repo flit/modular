@@ -41,6 +41,9 @@
 
 namespace slab {
 
+//! @brief Number of banks.
+const uint32_t kMaxBankCount = kVoiceCount;
+
 /*!
  * @brief Holds information about a bank of samples.
  */
@@ -52,6 +55,7 @@ public:
     SampleBank();
     ~SampleBank()=default;
 
+    bool is_valid() const { return _isValid; }
     bool has_sample(uint32_t sampleNumber) const;
     const FilePath & get_sample_path(uint32_t sampleNumber) const;
 
@@ -61,6 +65,7 @@ public:
     void set_sample_path(uint32_t sampleNumber, FilePath & path);
 
 protected:
+    bool _isValid;
     FilePath _samplePaths[kVoiceCount];
 };
 
@@ -78,16 +83,17 @@ public:
 
     void scan_for_files();
 
+    bool has_any_banks() const;
     bool has_bank(uint32_t bankNumber) const;
     SampleBank & get_bank(uint32_t bankNumber) { return _banks[bankNumber]; }
 
 protected:
     fs::FileSystem _fs;
-    uint32_t _bankValidMask;
-    SampleBank _banks[4];
+    SampleBank _banks[kMaxBankCount];
     char _dirPath[_MAX_LFN + 1];
     char _filePath[_MAX_LFN + 1];
 
+    void _reset_banks();
     void _scan_bank_directory(uint32_t bankNumber, const char * dirPath);
 };
 
