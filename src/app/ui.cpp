@@ -30,12 +30,9 @@
 #include "ui.h"
 #include "channel_led.h"
 #include "debug_log.h"
-#include "pin_irq_manager.h"
 #include "main.h"
 #include "board.h"
 #include "utility.h"
-#include "fsl_gpio.h"
-#include "fsl_port.h"
 #include "fsl_sd_disk.h"
 #include <assert.h>
 #include <cmath>
@@ -87,145 +84,6 @@ static const int8_t kVoiceModeChannelMap[kVoiceModeCount][kVoiceCount] = {
 //------------------------------------------------------------------------------
 // Code
 //------------------------------------------------------------------------------
-
-Button::Button(PORT_Type * port, GPIO_Type * gpio, uint32_t pin, UIEventSource source, bool isInverted)
-:   _source(source),
-    _port(port),
-    _gpio(gpio),
-    _pin(pin),
-    _isInverted(isInverted),
-    _state(false),
-    _timer(),
-    _timeoutCount(0)
-{
-}
-
-void Button::init()
-{
-    _timer.init("button", this, &Button::handle_timer, kArPeriodicTimer, 20);
-    UI::get().get_runloop()->addTimer(&_timer);
-
-    PinIrqManager::get().connect(_port, _pin, irq_handler_stub, this);
-}
-
-bool Button::read()
-{
-    uint32_t value = GPIO_ReadPinInput(_gpio, _pin);
-    return (value == 0) ^ _isInverted;
-}
-
-void Button::handle_irq()
-{
-    // Restart timer.
-    if (_timer.isActive())
-    {
-        _timer.stop();
-    }
-
-    // Configure timer for 20 ms debounce timeout and start it.
-    _timeoutCount = 0;
-    _timer.setDelay(20);
-    _timer.start();
-}
-
-void Button::handle_timer(Ar::Timer * timer)
-{
-    bool isPressed = read();
-
-    // Handle first timeout, for debounce.
-    if (_timeoutCount == 0)
-    {
-        // We're debouncing and the button state did not change, so ignore the transition.
-        if (isPressed == _state)
-        {
-            _timer.stop();
-            return;
-        }
-
-        _state = isPressed;
-
-        // Don't need the timer continuing unless button is pressed.
-        if (!isPressed)
-        {
-            _timer.stop();
-        }
-        // Set timer period to 1 second after initial debounce.
-        else
-        {
-            _timer.setDelay(1000);
-        }
-    }
-
-    // Send event to UI.
-    UIEvent event;
-    if (isPressed)
-    {
-        if (_timeoutCount >= 1)
-        {
-            event.event = kButtonHeld;
-        }
-        else
-        {
-            event.event = kButtonDown;
-        }
-    }
-    else
-    {
-        event.event = kButtonUp;
-    }
-    event.source = _source;
-    event.value = _timeoutCount;
-    UI::get().send_event(event);
-
-    ++_timeoutCount;
-}
-
-void Button::irq_handler_stub(PORT_Type * port, uint32_t pin, void * userData)
-{
-    Button * _this = reinterpret_cast<Button *>(userData);
-    assert(_this);
-    _this->handle_irq();
-}
-
-// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-
-Pot::Pot()
-:   _last(0),
-    _hysteresis(0)
-{
-}
-
-void Pot::set_hysteresis(uint32_t percent)
-{
-    _hysteresis = kAdcMax * percent / 100;
-}
-
-uint32_t Pot::process(uint32_t value)
-{
-    _history.put(value);
-//     value <<= 4; // 12-bit to 16-bit
-
-    // Set gain for this channel.
-    if (value <= kAdcMax)
-    {
-        value = _avg.update(value);
-
-        uint32_t hysLow = (_last > _hysteresis / 2) ? (_last - _hysteresis / 2) : 0;
-        uint32_t hysHigh = min(_last + _hysteresis / 2, kAdcMax);
-
-        if (value < hysLow || value > hysHigh)
-        {
-            _last = value;
-            _hysteresis = (4) << 4;
-
-            UI::get().pot_did_change(*this, value);
-        }
-    }
-
-    return 0;
-}
-
-// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 UI::UI()
 :   _button1(PIN_BUTTON1_PORT, PIN_BUTTON1_GPIO, PIN_BUTTON1_BIT, kButton1, true),

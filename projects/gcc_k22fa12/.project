@@ -111,6 +111,16 @@
 			<locationURI>virtual:/virtual</locationURI>
 		</link>
 		<link>
+			<name>app/button.cpp</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/src/app/button.cpp</locationURI>
+		</link>
+		<link>
+			<name>app/button.h</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/src/app/button.h</locationURI>
+		</link>
+		<link>
 			<name>app/card_manager.cpp</name>
 			<type>1</type>
 			<locationURI>PARENT-2-PROJECT_LOC/src/app/card_manager.cpp</locationURI>
@@ -256,6 +266,16 @@
 			<locationURI>PARENT-2-PROJECT_LOC/src/app/pin_irq_manager.h</locationURI>
 		</link>
 		<link>
+			<name>app/pot.cpp</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/src/app/pot.cpp</locationURI>
+		</link>
+		<link>
+			<name>app/pot.h</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/src/app/pot.h</locationURI>
+		</link>
+		<link>
 			<name>app/protected_queue.h</name>
 			<type>1</type>
 			<locationURI>PARENT-2-PROJECT_LOC/src/app/protected_queue.h</locationURI>
@@ -319,6 +339,11 @@
 			<name>app/ui.h</name>
 			<type>1</type>
 			<locationURI>PARENT-2-PROJECT_LOC/src/app/ui.h</locationURI>
+		</link>
+		<link>
+			<name>app/ui_events.h</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/src/app/ui_events.h</locationURI>
 		</link>
 		<link>
 			<name>app/utility.h</name>

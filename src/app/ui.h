@@ -32,8 +32,9 @@
 #include "argon/argon.h"
 #include "led.h"
 #include "audio_defs.h"
-#include "moving_average.h"
 #include "singleton.h"
+#include "button.h"
+#include "pot.h"
 
 //------------------------------------------------------------------------------
 // Definitions
@@ -56,98 +57,6 @@ enum UIMode : uint32_t
     kPlayMode,
     kEditMode,
     kNoCardMode,
-};
-
-enum UIEventType : uint16_t
-{
-    kButtonDown,
-    kButtonUp,
-    kButtonHeld,
-    kPotAdjusted,
-    kPotStopped,
-    kCardInserted,
-    kCardRemoved,
-};
-
-enum UIEventSource : uint16_t
-{
-    kNoEventSource,
-    kButton1,
-    kButton2,
-    kPot1,
-    kPot2,
-    kPot3,
-    kPot4
-};
-
-struct UIEvent
-{
-    UIEventType event;
-    UIEventSource source;
-    float value;
-
-    UIEvent() {}
-    UIEvent(UIEventType theEvent, UIEventSource theSource=kNoEventSource, float theValue=0)
-    :   event(theEvent),
-        source(theSource),
-        value(theValue)
-    {
-    }
-};
-
-/*!
- * @brief
- */
-class Button
-{
-public:
-    Button(PORT_Type * port, GPIO_Type * gpio, uint32_t pin, UIEventSource source, bool isInverted);
-    ~Button()=default;
-
-    void init();
-
-    //! @brief Returns true if the button is pressed.
-    bool read();
-
-protected:
-    UIEventSource _source;
-    PORT_Type * _port;
-    GPIO_Type * _gpio;
-    uint32_t _pin;
-    bool _isInverted;
-    bool _state;
-    Ar::TimerWithMemberCallback<Button> _timer;
-    uint32_t _timeoutCount;
-
-    void handle_irq();
-    void handle_timer(Ar::Timer * timer);
-
-    static void irq_handler_stub(PORT_Type * port, uint32_t pin, void * userData);
-};
-
-/*!
- * @brief
- */
-class Pot
-{
-public:
-    Pot();
-    ~Pot()=default;
-
-    void set_noise(uint32_t noise) { _noise = noise; }
-    void set_hysteresis(uint32_t percent);
-
-    uint32_t process(uint32_t value);
-
-    uint32_t n;
-
-protected:
-    uint32_t _number;
-    uint32_t _last;
-    MovingAverage<32> _avg;
-    RingBuffer<uint16_t, 128> _history;
-    uint32_t _hysteresis;
-    uint32_t _noise;
 };
 
 //!
