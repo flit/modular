@@ -99,10 +99,8 @@ void ReaderStatistics::add(uint32_t voiceNumber, uint32_t bufferNumber, uint32_t
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-ReaderThread::ReaderThread()
-:   _thread(),
-    _sem(),
-    _queueLock(),
+ReadRequestQueue::ReadRequestQueue()
+:   _queueLock(),
     _first(nullptr),
     _last(nullptr),
     _free(nullptr),
@@ -110,30 +108,19 @@ ReaderThread::ReaderThread()
 {
 }
 
-void ReaderThread::init()
+void ReadRequestQueue::init()
 {
-    _thread.init("reader", this, &ReaderThread::reader_thread, kReaderThreadPriority, kArSuspendThread);
-    _sem.init("reader", 0);
     _queueLock.init("reader");
 
     // Put all queue nodes on the free list.
     clear_all();
-
-#if DEBUG
-    _statistics.init();
-    uint32_t i;
-    for (i = 0; i < kVoiceCount; ++i)
-    {
-        _voiceStatistics[i].init();
-    }
-#endif
 }
 
-void ReaderThread::enqueue(SamplerVoice * request)
+void ReadRequestQueue::enqueue(SamplerVoice * request)
 {
     Ar::Mutex::Guard guard(_queueLock);
 
-    QueueNode * node = get_free_node();
+    QueueNode * node = _get_free_node();
     assert(node);
     if (!node)
     {
@@ -144,6 +131,18 @@ void ReaderThread::enqueue(SamplerVoice * request)
 
     // Find where to insert. Insert in the earliest voice number sequence that is missing
     // this voice.
+    QueueNode * insertPosition = _find_insert_position(request);
+    _insert_before(node, insertPosition);
+
+    // Increment semaphore count to match queue size.
+    ++_count;
+}
+
+//! @brief Find where to insert.
+//!
+//! Insert in the earliest voice number sequence that is missing this voice.
+ReadRequestQueue::QueueNode * ReadRequestQueue::_find_insert_position(SamplerVoice * request)
+{
     uint32_t requestVoiceNumber = request->get_number();
     uint32_t requestVoiceMask = 1 << requestVoiceNumber;
     uint32_t thisSequenceVoicesMask = 0;
@@ -172,14 +171,10 @@ void ReaderThread::enqueue(SamplerVoice * request)
         iter = iter->next;
     }
 
-    insert_before(node, iter);
-
-    // Increment semaphore count to match queue size.
-    ++_count;
-    _sem.put();
+    return iter;
 }
 
-void ReaderThread::clear_voice_queue(SamplerVoice * voice)
+void ReadRequestQueue::clear_voice(SamplerVoice * voice)
 {
     Ar::Mutex::Guard guard(_queueLock);
 
@@ -213,7 +208,7 @@ void ReaderThread::clear_voice_queue(SamplerVoice * voice)
             // Add node to free list.
             QueueNode * temp = iter;
             iter = iter->next;
-            add_free_node(temp);
+            _add_free_node(temp);
         }
         else
         {
@@ -222,7 +217,7 @@ void ReaderThread::clear_voice_queue(SamplerVoice * voice)
     }
 }
 
-void ReaderThread::clear_all()
+void ReadRequestQueue::clear_all()
 {
     Ar::Mutex::Guard guard(_queueLock);
 
@@ -236,11 +231,11 @@ void ReaderThread::clear_all()
     uint32_t i;
     for (i=0; i < kQueueSize; ++i)
     {
-        add_free_node(&_nodes[i]);
+        _add_free_node(&_nodes[i]);
     }
 }
 
-void ReaderThread::insert_before(QueueNode * node, QueueNode * beforeNode)
+void ReadRequestQueue::_insert_before(QueueNode * node, QueueNode * beforeNode)
 {
     if (beforeNode)
     {
@@ -275,7 +270,7 @@ void ReaderThread::insert_before(QueueNode * node, QueueNode * beforeNode)
     }
 }
 
-SamplerVoice * ReaderThread::dequeue()
+SamplerVoice * ReadRequestQueue::dequeue()
 {
     Ar::Mutex::Guard guard(_queueLock);
 
@@ -304,12 +299,12 @@ SamplerVoice * ReaderThread::dequeue()
         _last = nullptr;
     }
 
-    add_free_node(node);
+    _add_free_node(node);
 
     return request;
 }
 
-ReaderThread::QueueNode * ReaderThread::get_free_node()
+ReadRequestQueue::QueueNode * ReadRequestQueue::_get_free_node()
 {
     QueueNode * node = _free;
     if (node)
@@ -319,7 +314,7 @@ ReaderThread::QueueNode * ReaderThread::get_free_node()
     return node;
 }
 
-void ReaderThread::add_free_node(QueueNode * node)
+void ReadRequestQueue::_add_free_node(QueueNode * node)
 {
     node->voice = nullptr;
     node->previous = nullptr;
@@ -327,12 +322,43 @@ void ReaderThread::add_free_node(QueueNode * node)
     _free = node;
 }
 
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+ReaderThread::ReaderThread()
+:   _thread(),
+    _sem(),
+    _queue()
+{
+}
+
+void ReaderThread::init()
+{
+    _thread.init("reader", this, &ReaderThread::reader_thread, kReaderThreadPriority, kArSuspendThread);
+    _sem.init("reader", 0);
+    _queue.init();
+
+#if DEBUG
+    _statistics.init();
+    uint32_t i;
+    for (i = 0; i < kVoiceCount; ++i)
+    {
+        _voiceStatistics[i].init();
+    }
+#endif
+}
+
+void ReaderThread::enqueue(SamplerVoice * request)
+{
+    _queue.enqueue(request);
+    _sem.put();
+}
+
 void ReaderThread::reader_thread()
 {
     while (_sem.get() == kArSuccess)
     {
         // Pull a voice that needs a buffer filled from the queue.
-        SamplerVoice * voice = dequeue();
+        SamplerVoice * voice = _queue.dequeue();
 
         // The voice can be null if clear_voice_queue() was called, and the sem count
         // is higher than the number of queue entries.
