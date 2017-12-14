@@ -33,7 +33,6 @@
 #include "led.h"
 #include "audio_defs.h"
 #include "moving_average.h"
-#include "callback.h"
 #include "singleton.h"
 
 //------------------------------------------------------------------------------
