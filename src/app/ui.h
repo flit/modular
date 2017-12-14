@@ -110,9 +110,6 @@ public:
     //! @brief Returns true if the button is pressed.
     bool read();
 
-    //! @brief Don't send an event when the button is released.
-    void ignore_release() { _ignoreRelease = true; }
-
 protected:
     UIEventSource _source;
     PORT_Type * _port;
@@ -122,7 +119,6 @@ protected:
     bool _state;
     Ar::TimerWithMemberCallback<Button> _timer;
     uint32_t _timeoutCount;
-    bool _ignoreRelease;
 
     void handle_irq();
     void handle_timer(Ar::Timer * timer);
@@ -153,16 +149,6 @@ protected:
     RingBuffer<uint16_t, 128> _history;
     uint32_t _hysteresis;
     uint32_t _noise;
-};
-
-//! @brief Color options for LEDs.
-//!
-//! All LEDs are set to the same color.
-enum LEDColor : uint32_t
-{
-    kLEDOff,
-    kLEDRed,
-    kLEDYellow,
 };
 
 //!
@@ -208,11 +194,20 @@ public:
 protected:
     static const uint32_t kMaxEvents = 20;
 
+    //! @brief LED display modes.
+    enum class LedMode : uint32_t
+    {
+        kCardDetection,
+        kVoiceActivity,
+        kVoiceEdit,
+        kBankSwitch,
+        kVoiceModeSwitch,
+    };
+
     Ar::ThreadWithStack<4096> _thread;
     Ar::RunLoop _runloop;
     Ar::StaticQueue<UIEvent, kMaxEvents> _eventQueue;
     Ar::TimerWithMemberCallback<UI> _blinkTimer;
-    Ar::TimerWithMemberCallback<UI> _bankLedTimer;
     Ar::TimerWithMemberCallback<UI> _potReleaseTimer;
     Ar::TimerWithMemberCallback<UI> _cardDetectTimer;
     LEDBase ** _channelLeds;
@@ -222,31 +217,35 @@ protected:
     Button _button2;
     VoiceMode _voiceMode;
     UIMode _uiMode;
+    LedMode _ledMode;
     bool _voiceStates[kVoiceCount];
-    uint32_t _editChannel;
     bool _isCardPresent;
     bool _debounceCardDetect;
+    bool _firstSwitchToPlayMode;
+    bool _isChannelLedFlushPending;
+    bool _ignoreButton1Release;
     float _lastSampleStart;
+    uint32_t _editChannel;
     uint32_t _selectedBank;
     int32_t _button1LedDutyCycle;
     int32_t _button1LedDutyCycleDelta;
-    bool _firstSwitchToPlayMode;
-    bool _isChannelLedFlushPending;
-    bool _isShowingBankLed;
     uint32_t _button1LedFlashes;
+    uint32_t _ledTimeoutCount;
 
     void ui_thread();
 
     void handle_button_event(const UIEvent & event);
     void handle_card_event(const UIEvent & event);
 
+    void select_next_bank();
+
     void handle_blink_timer(Ar::Timer * timer);
-    void handle_bank_led_timer(Ar::Timer * timer);
     void handle_pot_release_timer(Ar::Timer * timer);
     void handle_card_detect_timer(Ar::Timer * timer);
 
-    void set_all_channel_leds(bool on);
-
+    void set_voice_activity_led_mode();
+    void set_all_channel_leds(bool on, bool setColor=false, LEDBase::LEDColor color=LEDBase::kRed);
+    void update_channel_leds();
     static void flush_channel_leds(void * param);
 };
 

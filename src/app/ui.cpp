@@ -56,10 +56,17 @@ const uint32_t kCardDetectInterval_ms = 250;
 //! Delay for applying a change to the sample start parameter.
 const uint32_t kSampleStartPotReleaseDelay_ms = 100;
 
-const int32_t kButton1LedDutyCycleDelta = 1;
+//! Duty cycle percent change per 100 ms.
+const int32_t kButton1LedDutyCycleDelta = 2;
 
 //! Time in seconds button1 must be held to switch voice modes.
 const uint32_t kVoiceModeLongPressTime = 2;
+
+//! Number of 100ms ticks that the new bank is shown on channel LEDs.
+const uint32_t kBankSwitchLedDelayCount = 4;
+
+//! Number of 100ms ticks per flash on voice mode switch.
+const uint32_t kVoiceModeSwitchLedDelayCount = 1;
 
 //! Map of bank channel to voice channel for each voice mode.
 //!
@@ -89,8 +96,7 @@ Button::Button(PORT_Type * port, GPIO_Type * gpio, uint32_t pin, UIEventSource s
     _isInverted(isInverted),
     _state(false),
     _timer(),
-    _timeoutCount(0),
-    _ignoreRelease(false)
+    _timeoutCount(0)
 {
 }
 
@@ -118,7 +124,6 @@ void Button::handle_irq()
 
     // Configure timer for 20 ms debounce timeout and start it.
     _timeoutCount = 0;
-    _ignoreRelease = false;
     _timer.setDelay(20);
     _timer.start();
 }
@@ -151,29 +156,26 @@ void Button::handle_timer(Ar::Timer * timer)
         }
     }
 
-    // Send event to UI, unless this is a button release and the UI asked to ignore it.
-    if (isPressed || !_ignoreRelease)
+    // Send event to UI.
+    UIEvent event;
+    if (isPressed)
     {
-        UIEvent event;
-        if (isPressed)
+        if (_timeoutCount >= 1)
         {
-            if (_timeoutCount >= 1)
-            {
-                event.event = kButtonHeld;
-            }
-            else
-            {
-                event.event = kButtonDown;
-            }
+            event.event = kButtonHeld;
         }
         else
         {
-            event.event = kButtonUp;
+            event.event = kButtonDown;
         }
-        event.source = _source;
-        event.value = _timeoutCount;
-        UI::get().send_event(event);
     }
+    else
+    {
+        event.event = kButtonUp;
+    }
+    event.source = _source;
+    event.value = _timeoutCount;
+    UI::get().send_event(event);
 
     ++_timeoutCount;
 }
@@ -230,18 +232,20 @@ UI::UI()
     _button2(PIN_BUTTON2_PORT, PIN_BUTTON2_GPIO, PIN_BUTTON2_BIT, kButton2, false),
     _voiceMode(k4VoiceMode),
     _uiMode(kNoCardMode),
+    _ledMode(LedMode::kCardDetection),
     _voiceStates{0},
-    _editChannel(0),
     _isCardPresent(false),
     _debounceCardDetect(false),
+    _firstSwitchToPlayMode(true),
+    _isChannelLedFlushPending(false),
+    _ignoreButton1Release(false),
     _lastSampleStart(-1.0f),
+    _editChannel(0),
     _selectedBank(0),
     _button1LedDutyCycle(0),
     _button1LedDutyCycleDelta(kButton1LedDutyCycleDelta),
-    _firstSwitchToPlayMode(true),
-    _isChannelLedFlushPending(false),
-    _isShowingBankLed(false),
-    _button1LedFlashes(0)
+    _button1LedFlashes(0),
+    _ledTimeoutCount(0)
 {
 }
 
@@ -256,13 +260,9 @@ void UI::init()
     _runloop.addQueue(&_eventQueue, NULL, NULL);
 
     // Create LED blink timer.
-    _blinkTimer.init("blink", this, &UI::handle_blink_timer, kArPeriodicTimer, 50);
+    _blinkTimer.init("blink", this, &UI::handle_blink_timer, kArPeriodicTimer, 100);
     _runloop.addTimer(&_blinkTimer);
     _blinkTimer.start();
-
-    // Create bank LED timer.
-    _bankLedTimer.init("bank-led", this, &UI::handle_bank_led_timer, kArOneShotTimer, 500);
-    _runloop.addTimer(&_bankLedTimer);
 
     // Create pot edit release timer.
     _potReleaseTimer.init("pot-release", this, &UI::handle_pot_release_timer, kArOneShotTimer, kSampleStartPotReleaseDelay_ms);
@@ -303,28 +303,22 @@ void UI::set_ui_mode(UIMode mode)
     {
         // Switch to edit mode.
         case kEditMode:
+            _ledMode = LedMode::kVoiceEdit;
+
             _button1Led->on();
 
-            // Turn off all LEDs.
-            set_all_channel_leds(false);
-
-            // Select last channel being edited.
+            // Show LED for last channel being edited.
+            set_all_channel_leds(false, true, LEDBase::kRed);
             _channelLeds[_editChannel]->on();
-            ChannelLEDManager::get().flush();
+            update_channel_leds();
 
             _lastSampleStart = -1.0f;
             break;
 
         // Switch to play mode.
         case kPlayMode:
-            _button1Led->off();
-
             // Restore LEDs to current voice state.
-            for (n = 0; n < kVoiceCount; ++n)
-            {
-                _channelLeds[n]->set(_voiceStates[n]);
-            }
-            ChannelLEDManager::get().flush();
+            set_voice_activity_led_mode();
 
             if (_firstSwitchToPlayMode)
             {
@@ -341,8 +335,10 @@ void UI::set_ui_mode(UIMode mode)
 
         // Switch to the no-card mode.
         case kNoCardMode:
+            _ledMode = LedMode::kCardDetection;
             _button1Led->off();
             set_all_channel_leds(false);
+            update_channel_leds();
             break;
     }
 
@@ -384,13 +380,12 @@ void UI::set_voice_mode(VoiceMode mode)
     // Always switch to play mode on voice mode change.
     set_ui_mode(kPlayMode);
 
-    _button1Led->on();
-    _bankLedTimer.start();
+    _ledMode = LedMode::kVoiceModeSwitch;
+    _ledTimeoutCount = kVoiceModeSwitchLedDelayCount;
 }
 
 void UI::ui_thread()
 {
-    uint32_t n;
     while (true)
     {
         ar_runloop_result_t object;
@@ -432,6 +427,12 @@ void UI::handle_button_event(const UIEvent & event)
             switch (event.source)
             {
                 case kButton1:
+                    if (_ignoreButton1Release)
+                    {
+                        _ignoreButton1Release = false;
+                        return;
+                    }
+
                     // Only allow mode switches if the card is inserted.
                     switch (_uiMode)
                     {
@@ -456,19 +457,16 @@ void UI::handle_button_event(const UIEvent & event)
                     {
                         // Bank switch in play mode.
                         case kPlayMode:
-                            _isShowingBankLed = true;
-                            set_all_channel_leds(false);
+                            // Select the next valid bank.
+                            select_next_bank();
 
-                            if (++_selectedBank >= kVoiceCount)
-                            {
-                                _selectedBank = 0;
-                            }
+                            _ledMode = LedMode::kBankSwitch;
+                            _ledTimeoutCount = kBankSwitchLedDelayCount;
+                            set_all_channel_leds(false);
 
                             _channelLeds[_selectedBank]->set_color(LEDBase::kYellow);
                             _channelLeds[_selectedBank]->on();
-                            ChannelLEDManager::get().flush();
-
-                            _bankLedTimer.start();
+                            update_channel_leds();
 
                             load_sample_bank(_selectedBank);
                             break;
@@ -483,9 +481,10 @@ void UI::handle_button_event(const UIEvent & event)
                                 _editChannel = (_editChannel + 1) % kVoiceCount;
                             } while (!g_voice[_editChannel].is_valid());
 
+                            _channelLeds[_editChannel]->set_color(LEDBase::kRed);
                             _channelLeds[_editChannel]->on();
 
-                            ChannelLEDManager::get().flush();
+                            update_channel_leds();
 
                             // Set hysteresis on all pots.
                             for (n = 0; n < kVoiceCount; ++n)
@@ -511,8 +510,8 @@ void UI::handle_button_event(const UIEvent & event)
                 case kButton1:
                     if (event.value == kVoiceModeLongPressTime)
                     {
-                        // We don't want the button up event.
-                        _button1.ignore_release();
+                        // We don't want to process the button up event.
+                        _ignoreButton1Release = true;
 
                         // Select new voice mode.
                         if (_voiceMode == k4VoiceMode)
@@ -549,8 +548,14 @@ void UI::handle_card_event(const UIEvent & event)
             {
                 if (FileManager::get().mount())
                 {
-                    _blinkTimer.stop();
                     FileManager::get().scan_for_files();
+
+                    // Verify that the card has at least one bank before continuing.
+                    if (!FileManager::get().has_any_banks())
+                    {
+                        return;
+                    }
+
                     _isCardPresent = true;
 
                     if (_firstSwitchToPlayMode)
@@ -558,11 +563,14 @@ void UI::handle_card_event(const UIEvent & event)
                         // Restore selected bank.
                         if (persistent_data::g_lastSelectedBank.is_present())
                         {
+                            //! @todo Validate the restored selected bank.
                             _selectedBank = persistent_data::g_lastSelectedBank;
                         }
                         else
                         {
-                            _selectedBank = 0;
+                            // Select the first valid bank.
+                            _selectedBank = kMaxBankCount;
+                            select_next_bank();
                         }
 
                         // Restore voice mode.
@@ -579,7 +587,9 @@ void UI::handle_card_event(const UIEvent & event)
                     {
                         set_ui_mode(kPlayMode);
 
-                        _selectedBank = 0;
+                        // Select the first valid bank.
+                        _selectedBank = kMaxBankCount;
+                        select_next_bank();
                         load_sample_bank(_selectedBank);
                     }
                 }
@@ -605,13 +615,20 @@ void UI::handle_card_event(const UIEvent & event)
                 set_ui_mode(kNoCardMode);
                 _button1LedDutyCycle = 0;
                 _button1LedDutyCycleDelta = kButton1LedDutyCycleDelta;
-                _blinkTimer.start();
             }
             break;
 
         default:
             break;
     }
+}
+
+void UI::select_next_bank()
+{
+    assert(FileManager::get().has_any_banks());
+    do {
+        _selectedBank = (_selectedBank + 1) % kMaxBankCount;
+    } while (!FileManager::get().has_bank(_selectedBank));
 }
 
 void UI::load_sample_bank(uint32_t bankNumber)
@@ -645,57 +662,59 @@ void UI::set_voice_playing(uint32_t voice, bool state)
     assert(voice < kVoiceCount);
 
     _voiceStates[voice] = state;
-    if (_uiMode == kPlayMode && !_isShowingBankLed)
+
+    if (_ledMode == LedMode::kVoiceActivity)
     {
         _channelLeds[voice]->set(state);
-
-        if (!_isChannelLedFlushPending)
-        {
-            _isChannelLedFlushPending = true;
-            _runloop.perform(flush_channel_leds, this);
-        }
+        update_channel_leds();
     }
 }
 
 void UI::handle_blink_timer(Ar::Timer * timer)
 {
-    // Update button1 LED duty cycle.
-    _button1LedDutyCycle += _button1LedDutyCycleDelta;
-    if (_button1LedDutyCycle <= 0)
+    switch (_ledMode)
     {
-        _button1LedDutyCycle = 1;
-        _button1LedDutyCycleDelta = kButton1LedDutyCycleDelta;
-    }
-    else if (_button1LedDutyCycle >= 100)
-    {
-        _button1LedDutyCycle = 99;
-        _button1LedDutyCycleDelta = -kButton1LedDutyCycleDelta;
-    }
-    _button1Led->set_duty_cycle(_button1LedDutyCycle);
-}
+        case LedMode::kCardDetection:
+            // Update button1 LED duty cycle.
+            _button1LedDutyCycle += _button1LedDutyCycleDelta;
+            if (_button1LedDutyCycle <= 0)
+            {
+                _button1LedDutyCycle = 1;
+                _button1LedDutyCycleDelta = kButton1LedDutyCycleDelta;
+            }
+            else if (_button1LedDutyCycle >= 100)
+            {
+                _button1LedDutyCycle = 99;
+                _button1LedDutyCycleDelta = -kButton1LedDutyCycleDelta;
+            }
+            _button1Led->set_duty_cycle(_button1LedDutyCycle);
+            break;
 
-void UI::handle_bank_led_timer(Ar::Timer * timer)
-{
-    uint32_t n;
+        case LedMode::kBankSwitch:
+            if (_ledTimeoutCount-- == 0)
+            {
+                // Restore LEDs to current voice state.
+                set_voice_activity_led_mode();
+            }
+            break;
 
-    if (_button1LedFlashes)
-    {
-        _button1Led->set(!_button1Led->is_on());
-        if (--_button1LedFlashes)
-        {
-            _bankLedTimer.start();
-        }
-    }
-    else
-    {
-        // Restore LEDs to current voice state.
-        for (n = 0; n < kVoiceCount; ++n)
-        {
-            _channelLeds[n]->set_color(LEDBase::kRed);
-            _channelLeds[n]->set(_voiceStates[n]);
-        }
-        ChannelLEDManager::get().flush();
-        _isShowingBankLed = false;
+        case LedMode::kVoiceModeSwitch:
+            if (_ledTimeoutCount-- == 0)
+            {
+                // Toggle button1 LED.
+                _button1Led->set(!_button1Led->is_on());
+                _ledTimeoutCount = kVoiceModeSwitchLedDelayCount;
+
+                if (--_button1LedFlashes == 0)
+                {
+                    // Restore LEDs to current voice state.
+                    set_voice_activity_led_mode();
+                }
+            }
+            break;
+
+        default:
+            break;
     }
 }
 
@@ -807,14 +826,42 @@ void UI::pot_did_change(Pot& pot, uint32_t value)
     }
 }
 
-void UI::set_all_channel_leds(bool state)
+void UI::set_voice_activity_led_mode()
+{
+    _ledMode = LedMode::kVoiceActivity;
+
+    _button1Led->off();
+
+    uint32_t i;
+    for (i = 0; i < kVoiceCount; ++i)
+    {
+        _channelLeds[i]->set_color(LEDBase::kRed);
+        _channelLeds[i]->set(_voiceStates[i]);
+    }
+
+    update_channel_leds();
+}
+
+void UI::set_all_channel_leds(bool state, bool setColor, LEDBase::LEDColor color)
 {
     uint32_t i;
     for (i = 0; i < kVoiceCount; ++i)
     {
         _channelLeds[i]->set(state);
+        if (setColor)
+        {
+            _channelLeds[i]->set_color(color);
+        }
     }
-    ChannelLEDManager::get().flush();
+}
+
+void UI::update_channel_leds()
+{
+    if (!_isChannelLedFlushPending)
+    {
+        _isChannelLedFlushPending = true;
+        _runloop.perform(flush_channel_leds, this);
+    }
 }
 
 void UI::flush_channel_leds(void * param)
