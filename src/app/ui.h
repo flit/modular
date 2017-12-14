@@ -237,6 +237,9 @@ protected:
 
     void ui_thread();
 
+    void handle_button_event(const UIEvent & event);
+    void handle_card_event(const UIEvent & event);
+
     void handle_blink_timer(Ar::Timer * timer);
     void handle_bank_led_timer(Ar::Timer * timer);
     void handle_pot_release_timer(Ar::Timer * timer);

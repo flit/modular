@@ -403,187 +403,214 @@ void UI::ui_thread()
             switch (event.event)
             {
                 case kButtonDown:
-                    break;
-
                 case kButtonUp:
-                    switch (event.source)
-                    {
-                        case kButton1:
-                            // Only allow mode switches if the card is inserted.
-                            switch (_uiMode)
-                            {
-                                // Switch to edit mode.
-                                case kPlayMode:
-                                    set_ui_mode(kEditMode);
-                                    break;
-
-                                // Switch to play mode.
-                                case kEditMode:
-                                    set_ui_mode(kPlayMode);
-                                    break;
-
-                                // Do nothing.
-                                case kNoCardMode:
-                                    break;
-                            }
-                            break;
-
-                        case kButton2:
-                            switch (_uiMode)
-                            {
-                                // Bank switch in play mode.
-                                case kPlayMode:
-                                    _isShowingBankLed = true;
-                                    set_all_channel_leds(false);
-
-                                    if (++_selectedBank >= kVoiceCount)
-                                    {
-                                        _selectedBank = 0;
-                                    }
-
-                                    _channelLeds[_selectedBank]->set_color(LEDBase::kYellow);
-                                    _channelLeds[_selectedBank]->on();
-                                    ChannelLEDManager::get().flush();
-
-                                    _bankLedTimer.start();
-
-                                    load_sample_bank(_selectedBank);
-                                    break;
-
-                                // In edit mode, select next channel to edit.
-                                case kEditMode:
-                                    // Update edit LED.
-                                    _channelLeds[_editChannel]->off();
-
-                                    // Select next valid channel.
-                                    do {
-                                        _editChannel = (_editChannel + 1) % kVoiceCount;
-                                    } while (!g_voice[_editChannel].is_valid());
-
-                                    _channelLeds[_editChannel]->on();
-
-                                    ChannelLEDManager::get().flush();
-
-                                    // Set hysteresis on all pots.
-                                    for (n = 0; n < kVoiceCount; ++n)
-                                    {
-                                        _channelPots[n].set_hysteresis(kPotEditHysteresisPercent);
-                                    }
-                                    break;
-
-                                // Ignore button2 if we don't have a card present.
-                                case kNoCardMode:
-                                    break;
-                            }
-                            break;
-
-                        default:
-                            break;
-                    }
-                    break;
-
                 case kButtonHeld:
-                    switch (event.source)
-                    {
-                        case kButton1:
-                            if (event.value == kVoiceModeLongPressTime)
-                            {
-                                // We don't want the button up event.
-                                _button1.ignore_release();
-
-                                // Select new voice mode.
-                                if (_voiceMode == k4VoiceMode)
-                                {
-                                    set_voice_mode(k2VoiceMode);
-                                }
-                                else
-                                {
-                                    set_voice_mode(k4VoiceMode);
-                                }
-                            }
-                            break;
-
-                        case kButton2:
-                            break;
-
-                        default:
-                            break;
-                    }
-                    break;
-
-                case kPotAdjusted:
-//                  n = event.source - kPot1;
+                    handle_button_event(event);
                     break;
 
                 case kCardInserted:
-                    if (!_isCardPresent)
-                    {
-                        if (FileManager::get().mount())
-                        {
-                            _blinkTimer.stop();
-                            FileManager::get().scan_for_files();
-                            _isCardPresent = true;
-
-                            if (_firstSwitchToPlayMode)
-                            {
-                                // Restore selected bank.
-                                if (persistent_data::g_lastSelectedBank.is_present())
-                                {
-                                    _selectedBank = persistent_data::g_lastSelectedBank;
-                                }
-                                else
-                                {
-                                    _selectedBank = 0;
-                                }
-
-                                // Restore voice mode.
-                                if (persistent_data::g_lastVoiceMode.is_present())
-                                {
-                                    set_voice_mode(persistent_data::g_lastVoiceMode);
-                                }
-                                else
-                                {
-                                    set_voice_mode(k4VoiceMode);
-                                }
-                            }
-                            else
-                            {
-                                set_ui_mode(kPlayMode);
-
-                                _selectedBank = 0;
-                                load_sample_bank(_selectedBank);
-                            }
-                        }
-                        _cardDetectTimer.start();
-                    }
-                    break;
-
                 case kCardRemoved:
-                    if (_isCardPresent)
-                    {
-                        // Clear files in all voices. Each voice will clear pending buffers for
-                        // itself from the reader thread's queue.
-                        for (n = 0; n < kVoiceCount; ++n)
-                        {
-                            g_voice[n].clear_file();
-                            set_voice_playing(n, false);
-                        }
-                        FileManager::get().unmount();
-                        SD_HostReset(&g_sd.host);
-                        _isCardPresent = false;
-                        _cardDetectTimer.start();
-
-                        set_ui_mode(kNoCardMode);
-                        _button1LedDutyCycle = 0;
-                        _button1LedDutyCycleDelta = kButton1LedDutyCycleDelta;
-                        _blinkTimer.start();
-                    }
+                    handle_card_event(event);
                     break;
 
                 default:
                     break;
             }
         }
+    }
+}
+
+void UI::handle_button_event(const UIEvent & event)
+{
+    uint32_t n;
+    switch (event.event)
+    {
+        case kButtonDown:
+            break;
+
+        case kButtonUp:
+            switch (event.source)
+            {
+                case kButton1:
+                    // Only allow mode switches if the card is inserted.
+                    switch (_uiMode)
+                    {
+                        // Switch to edit mode.
+                        case kPlayMode:
+                            set_ui_mode(kEditMode);
+                            break;
+
+                        // Switch to play mode.
+                        case kEditMode:
+                            set_ui_mode(kPlayMode);
+                            break;
+
+                        // Do nothing.
+                        case kNoCardMode:
+                            break;
+                    }
+                    break;
+
+                case kButton2:
+                    switch (_uiMode)
+                    {
+                        // Bank switch in play mode.
+                        case kPlayMode:
+                            _isShowingBankLed = true;
+                            set_all_channel_leds(false);
+
+                            if (++_selectedBank >= kVoiceCount)
+                            {
+                                _selectedBank = 0;
+                            }
+
+                            _channelLeds[_selectedBank]->set_color(LEDBase::kYellow);
+                            _channelLeds[_selectedBank]->on();
+                            ChannelLEDManager::get().flush();
+
+                            _bankLedTimer.start();
+
+                            load_sample_bank(_selectedBank);
+                            break;
+
+                        // In edit mode, select next channel to edit.
+                        case kEditMode:
+                            // Update edit LED.
+                            _channelLeds[_editChannel]->off();
+
+                            // Select next valid channel.
+                            do {
+                                _editChannel = (_editChannel + 1) % kVoiceCount;
+                            } while (!g_voice[_editChannel].is_valid());
+
+                            _channelLeds[_editChannel]->on();
+
+                            ChannelLEDManager::get().flush();
+
+                            // Set hysteresis on all pots.
+                            for (n = 0; n < kVoiceCount; ++n)
+                            {
+                                _channelPots[n].set_hysteresis(kPotEditHysteresisPercent);
+                            }
+                            break;
+
+                        // Ignore button2 if we don't have a card present.
+                        case kNoCardMode:
+                            break;
+                    }
+                    break;
+
+                default:
+                    break;
+            }
+            break;
+
+        case kButtonHeld:
+            switch (event.source)
+            {
+                case kButton1:
+                    if (event.value == kVoiceModeLongPressTime)
+                    {
+                        // We don't want the button up event.
+                        _button1.ignore_release();
+
+                        // Select new voice mode.
+                        if (_voiceMode == k4VoiceMode)
+                        {
+                            set_voice_mode(k2VoiceMode);
+                        }
+                        else
+                        {
+                            set_voice_mode(k4VoiceMode);
+                        }
+                    }
+                    break;
+
+                case kButton2:
+                    break;
+
+                default:
+                    break;
+            }
+            break;
+
+        default:
+            break;
+    }
+}
+
+void UI::handle_card_event(const UIEvent & event)
+{
+    uint32_t n;
+    switch (event.event)
+    {
+        case kCardInserted:
+            if (!_isCardPresent)
+            {
+                if (FileManager::get().mount())
+                {
+                    _blinkTimer.stop();
+                    FileManager::get().scan_for_files();
+                    _isCardPresent = true;
+
+                    if (_firstSwitchToPlayMode)
+                    {
+                        // Restore selected bank.
+                        if (persistent_data::g_lastSelectedBank.is_present())
+                        {
+                            _selectedBank = persistent_data::g_lastSelectedBank;
+                        }
+                        else
+                        {
+                            _selectedBank = 0;
+                        }
+
+                        // Restore voice mode.
+                        if (persistent_data::g_lastVoiceMode.is_present())
+                        {
+                            set_voice_mode(persistent_data::g_lastVoiceMode);
+                        }
+                        else
+                        {
+                            set_voice_mode(k4VoiceMode);
+                        }
+                    }
+                    else
+                    {
+                        set_ui_mode(kPlayMode);
+
+                        _selectedBank = 0;
+                        load_sample_bank(_selectedBank);
+                    }
+                }
+                _cardDetectTimer.start();
+            }
+            break;
+
+        case kCardRemoved:
+            if (_isCardPresent)
+            {
+                // Clear files in all voices. Each voice will clear pending buffers for
+                // itself from the reader thread's queue.
+                for (n = 0; n < kVoiceCount; ++n)
+                {
+                    g_voice[n].clear_file();
+                    set_voice_playing(n, false);
+                }
+                FileManager::get().unmount();
+                SD_HostReset(&g_sd.host);
+                _isCardPresent = false;
+                _cardDetectTimer.start();
+
+                set_ui_mode(kNoCardMode);
+                _button1LedDutyCycle = 0;
+                _button1LedDutyCycleDelta = kButton1LedDutyCycleDelta;
+                _blinkTimer.start();
+            }
+            break;
+
+        default:
+            break;
     }
 }
 
