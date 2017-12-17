@@ -143,7 +143,12 @@ public:
     void clear_file();
 
     uint32_t get_number() const { return _number; }
-    bool is_valid() const { return _wav.is_valid(); }
+
+    //! @brief Whether a valid file has been set on the voice.
+    bool is_valid() const { return _isValid; }
+
+    //! @brief Whether the voice is able to play.
+    bool is_ready() const { return _isValid && _isReady; }
 
     void prime();
 
@@ -151,6 +156,7 @@ public:
     void note_off();
     bool is_playing() const { return _isPlaying; }
 
+    void manager_did_become_ready() { _isReady = true; }
     void playing_did_finish();
 
     void set_gain(float gain) { _gain = gain; }
@@ -172,6 +178,8 @@ protected:
     WaveFile _wav;
     WaveFile::AudioDataStream _data;
     SampleBufferManager _manager;
+    bool _isValid;
+    bool _isReady;
     bool _isPlaying;
     bool _doNoteOff;
     bool _doRetrigger;

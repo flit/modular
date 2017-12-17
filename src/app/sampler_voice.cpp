@@ -40,6 +40,9 @@ using namespace slab;
 // Definitions
 //------------------------------------------------------------------------------
 
+//! Set to 1 to cause the voice to automatically and repeatedly trigger.
+#define ENABLE_TEST_LOOP_MODE (0)
+
 const uint32_t kNoteOffSamples = 128;
 
 //------------------------------------------------------------------------------
@@ -176,9 +179,9 @@ void SampleBufferManager::queue_buffer_for_read(SampleBuffer * buffer)
     buffer->state = SampleBuffer::State::kFree;
 
     _emptyBuffers.put(buffer);
-    ReaderThread::get().enqueue(_voice);
-
     _samplesQueued += buffer->frameCount;
+
+    ReaderThread::get().enqueue(_voice);
 }
 
 SampleBuffer * SampleBufferManager::get_empty_buffer()
@@ -286,6 +289,7 @@ void SampleBufferManager::enqueue_full_buffer(SampleBuffer * buffer)
         {
             _waitingForFileStart = false;
             _isReady = true;
+            _voice->manager_did_become_ready();
         }
     }
 }
@@ -329,6 +333,8 @@ SamplerVoice::SamplerVoice()
 :   _wav(),
     _data(),
     _manager(),
+    _isValid(false),
+    _isReady(false),
     _isPlaying(false),
     _doNoteOff(false),
     _doRetrigger(false),
@@ -352,14 +358,24 @@ void SamplerVoice::init(uint32_t n, int16_t * buffer)
 
 void SamplerVoice::set_file(WaveFile& file)
 {
+    _isReady = false;
     _reset_voice();
     _wav = file;
     _data = _wav.get_audio_data();
-    _manager.set_file(_data.get_frames()); // This wil prime the manager.
+    _isValid = true;
+
+    // Prime the manager to start filling buffers.
+    _manager.set_file(_data.get_frames());
+
+#if ENABLE_TEST_LOOP_MODE
+    _isPlaying = true;
+#endif
 }
 
 void SamplerVoice::clear_file()
 {
+    _isValid = false;
+    _isReady = false;
     _reset_voice();
     _wav = WaveFile();
     _data = WaveFile::AudioDataStream();
@@ -386,7 +402,7 @@ void SamplerVoice::prime()
 void SamplerVoice::trigger()
 {
     // Ignore the trigger if the manager isn't ready to play.
-    if (!is_valid() || !_manager.is_ready())
+    if (!is_ready())
     {
         return;
     }
@@ -411,7 +427,7 @@ void SamplerVoice::trigger()
 void SamplerVoice::note_off()
 {
     // Ignore the note off event if the manager isn't ready to play.
-    if (!is_valid() || !_manager.is_ready())
+    if (!is_ready())
     {
         return;
     }
@@ -430,6 +446,10 @@ void SamplerVoice::playing_did_finish()
 {
     UI::get().set_voice_playing(_number, false);
     prime();
+
+#if ENABLE_TEST_LOOP_MODE
+    trigger();
+#endif
 }
 
 void SamplerVoice::render(int16_t * data, uint32_t frameCount)
@@ -438,7 +458,7 @@ void SamplerVoice::render(int16_t * data, uint32_t frameCount)
 
     // Get the current buffer if playing.
     SampleBuffer * voiceBuffer = nullptr;
-    if (is_valid() && is_playing())
+    if (is_ready() && is_playing())
     {
         voiceBuffer = _manager.get_current_buffer();
     }
