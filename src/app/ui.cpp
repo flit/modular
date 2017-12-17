@@ -97,7 +97,10 @@ UI::UI()
     _firstSwitchToPlayMode(true),
     _isChannelLedFlushPending(false),
     _ignoreButton1Release(false),
+    _potReleaseEditSampleStart(false),
+    _potReleaseEditSampleEnd(false),
     _lastSampleStart(-1.0f),
+    _lastSampleEnd(-1.0f),
     _editChannel(0),
     _selectedBank(0),
     _button1LedDutyCycle(0),
@@ -171,6 +174,9 @@ void UI::set_ui_mode(UIMode mode)
             update_channel_leds();
 
             _lastSampleStart = -1.0f;
+            _lastSampleEnd = -1.0f;
+            _potReleaseEditSampleStart = false;
+            _potReleaseEditSampleEnd = false;
             break;
 
         // Switch to play mode.
@@ -578,9 +584,20 @@ void UI::handle_blink_timer(Ar::Timer * timer)
 
 void UI::handle_pot_release_timer(Ar::Timer * timer)
 {
-    _channelPots[kSampleStartPot].set_hysteresis(1);
-    g_voice[_editChannel].set_sample_start(_lastSampleStart);
-    _lastSampleStart = -1.0f;
+    if (_potReleaseEditSampleStart)
+    {
+        _channelPots[kSampleStartPot].set_hysteresis(1);
+        g_voice[_editChannel].set_sample_start(_lastSampleStart);
+        _lastSampleStart = -1.0f;
+        _potReleaseEditSampleStart = false;
+    }
+    if (_potReleaseEditSampleEnd)
+    {
+        _channelPots[kSampleEndPot].set_hysteresis(1);
+        g_voice[_editChannel].set_sample_end(_lastSampleEnd);
+        _lastSampleEnd = -1.0f;
+        _potReleaseEditSampleEnd = false;
+    }
 }
 
 void UI::handle_card_detect_timer(Ar::Timer * timer)
@@ -616,15 +633,16 @@ void UI::pot_did_change(Pot& pot, uint32_t value)
 {
     uint32_t potNumber = pot.n;
     float fvalue = float(value) / float(kAdcMax);
+    float delta;
 
     switch (_uiMode)
     {
         // In play mode, the pots control the gain of their corresponding channel.
         case kPlayMode:
-            // In 2 voice mode, second pot for each channel adjusts pitch CV amount.
+            // In 2 voice mode, second pot for each channel is ignored.
             if ((_voiceMode == k2VoiceMode && (potNumber == 1 || potNumber == 3)))
             {
-//                 uint32_t voiceNumber = potNumber - 1;
+                // ignore pot
             }
             else
             {
@@ -648,33 +666,36 @@ void UI::pot_did_change(Pot& pot, uint32_t value)
         case kEditMode:
             switch (potNumber)
             {
-                case kPitchPot:
-                    // Shift value from 0..1 to 0.1..2.5
-                    fvalue = (fvalue * 2.4f) + 0.1f;
-                    g_voice[_editChannel].set_pitch(fvalue);
+                case kCoarsePitchPot:
+                    // Shift value from 0..1 to -3..+3 octaves
+                    fvalue = (fvalue * 6.0f) - 3.0f;
+                    g_voice[_editChannel].set_base_octave_offset(fvalue);
+                    break;
+                case kFinePitchPot:
+                    // Shift value from 0..1 to -100..+100 cents
+                    fvalue = (fvalue * 200.0f) - 100.0f;
+                    g_voice[_editChannel].set_base_cents_offset(fvalue);
                     break;
                 case kSampleStartPot:
-                {
                     // 0..1
-                    float delta = fabsf(fvalue - _lastSampleStart);
+                    delta = fabsf(fvalue - _lastSampleStart);
                     _lastSampleStart = fvalue;
                     if (delta > (kAdcLsbFloat * 16))
                     {
+                        _potReleaseEditSampleStart = true;
                         _potReleaseTimer.start();
                     }
                     break;
-                }
                 case kSampleEndPot:
                     // 0..1
-                    g_voice[_editChannel].set_sample_end(fvalue);
+                    delta = fabsf(fvalue - _lastSampleEnd);
+                    _lastSampleEnd = fvalue;
+                    if (delta > (kAdcLsbFloat * 16))
+                    {
+                        _potReleaseEditSampleEnd = true;
+                        _potReleaseTimer.start();
+                    }
                     break;
-                case kEffectPot:
-                {
-                    // 0..1 -> 1..32
-                    uint32_t bits = (fvalue * 32) + 1;
-                    g_voice[_editChannel].set_bits(bits);
-                    break;
-                }
             }
             break;
 

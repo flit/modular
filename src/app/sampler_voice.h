@@ -160,9 +160,9 @@ public:
     void playing_did_finish();
 
     void set_gain(float gain) { _gain = gain; }
-    void set_pitch(float pitch) { _pitch = pitch; }
+    void set_base_octave_offset(float octave) { _baseOctave = octave; }
+    void set_base_cents_offset(float cents) { _baseCents = cents; }
     void set_pitch_octave(float pitch) { _pitchOctave = pitch; }
-    void set_bits(uint32_t bits);
     void set_sample_start(float start);
     void set_sample_end(float end);
 
@@ -188,10 +188,9 @@ protected:
     float _lastBufferLastSample;
     float _fraction;
     float _gain;
-    float _pitch;
+    float _baseOctave;
+    float _baseCents;
     float _pitchOctave;
-    float _step;
-    float _inverseStep;
 
     void _reset_voice();
 };

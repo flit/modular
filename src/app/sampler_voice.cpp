@@ -343,7 +343,8 @@ SamplerVoice::SamplerVoice()
     _lastBufferLastSample(0),
     _fraction(0.0f),
     _gain(1.0f),
-    _pitch(1.0f),
+    _baseOctave(0.0f),
+    _baseCents(0.0f),
     _pitchOctave(0.0f)
 {
 }
@@ -352,7 +353,6 @@ void SamplerVoice::init(uint32_t n, int16_t * buffer)
 {
     _number = n;
     _manager.init(this, buffer);
-    set_bits(32);
     clear_file();
 }
 
@@ -360,6 +360,9 @@ void SamplerVoice::set_file(WaveFile& file)
 {
     _isReady = false;
     _reset_voice();
+    _baseOctave = 0.0f;
+    _baseCents = 0.0f;
+    _pitchOctave = 0.0f;
     _wav = file;
     _data = _wav.get_audio_data();
     _isValid = true;
@@ -377,18 +380,21 @@ void SamplerVoice::clear_file()
     _isValid = false;
     _isReady = false;
     _reset_voice();
+    _baseOctave = 0.0f;
+    _baseCents = 0.0f;
+    _pitchOctave = 0.0f;
     _wav = WaveFile();
     _data = WaveFile::AudioDataStream();
     _manager.set_file(0);
 }
 
+//! @brief Prepare voice to start playing from start sample.
 void SamplerVoice::_reset_voice()
 {
     _isPlaying = false;
     _doNoteOff = false;
     _doRetrigger = false;
     _noteOffSamplesRemaining = 0;
-    _pitchOctave = 0.0f;
     _fraction = 0.0f;
     _lastBufferLastSample = 0.0f;
 }
@@ -474,8 +480,7 @@ void SamplerVoice::render(int16_t * data, uint32_t frameCount)
         return;
     }
 
-    float pitchScaler = powf(2.0f, _pitchOctave);
-    float rate = _pitch * pitchScaler;
+    float rate = powf(2.0f, _baseOctave + _pitchOctave + (_baseCents / 1200.0f));
     int16_t * bufferData = voiceBuffer->data;
     uint32_t readHead = voiceBuffer->readHead;
     uint32_t bufferFrameCount = voiceBuffer->frameCount;
@@ -495,10 +500,7 @@ void SamplerVoice::render(int16_t * data, uint32_t frameCount)
 
             // Apply the gain.
             float s = s1;
-//             s /= 32768.0f;
-//             s = _step * floor((s * _inverseStep) + 0.5);
             s *= _gain;
-//             s *= 32768.0f;
             *data = int16_t(s);
             data += 2;
         }
@@ -589,10 +591,7 @@ void SamplerVoice::render(int16_t * data, uint32_t frameCount)
 
             // Perform simple linear interpolation, then apply the gain.
             float s = (s0 + readHeadFraction * (s1 - s0));
-//             s /= 32768.0f;
-//             s = _step * floor((s * _inverseStep) + 0.5);
             s *= gain;
-//             s *= 32768.0f;
             *data = int16_t(s);
             data += 2;
         }
@@ -625,12 +624,6 @@ void SamplerVoice::render(int16_t * data, uint32_t frameCount)
         _turnOnLedNextBuffer = false;
         UI::get().set_voice_playing(_number, true);
     }
-}
-
-void SamplerVoice::set_bits(uint32_t bits)
-{
-    _step = 2.0f * pow(0.5f, bits);
-    _inverseStep = 1.0f / _step;
 }
 
 void SamplerVoice::set_sample_start(float start)

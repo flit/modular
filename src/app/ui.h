@@ -62,10 +62,10 @@ enum UIMode : uint32_t
 //!
 enum EditPotNames : uint32_t
 {
-    kPitchPot = 0,
-    kSampleStartPot = 1,
-    kSampleEndPot = 2,
-    kEffectPot = 3,
+    kCoarsePitchPot = 0,
+    kFinePitchPot = 1,
+    kSampleStartPot = 2,
+    kSampleEndPot = 3,
 };
 
 /*!
@@ -132,7 +132,10 @@ protected:
     bool _firstSwitchToPlayMode;
     bool _isChannelLedFlushPending;
     bool _ignoreButton1Release;
+    bool _potReleaseEditSampleStart;
+    bool _potReleaseEditSampleEnd;
     float _lastSampleStart;
+    float _lastSampleEnd;
     uint32_t _editChannel;
     uint32_t _selectedBank;
     int32_t _button1LedDutyCycle;
