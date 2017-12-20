@@ -79,6 +79,7 @@ void load_thread(void * arg);
 void flash_leds();
 
 void init_dma();
+void init_irq_priorities();
 void init_adc_config();
 void init_audio_out();
 void init_fs();
@@ -282,7 +283,41 @@ void init_dma()
             EDMA_EnableChannelInterrupts(DMA0, channel, kEDMA_ErrorInterruptEnable);
         }
     }
+}
 
+void init_irq_priorities()
+{
+    // Audio DMA.
+    NVIC_SetPriority(DMA0_IRQn, 0);
+    NVIC_SetPriority(DMA1_IRQn, 0);
+
+    // SDHC
+    NVIC_SetPriority(SDHC_IRQn, 1);
+
+    // ADC command DMA
+    NVIC_SetPriority(DMA2_IRQn, 2);
+    NVIC_SetPriority(DMA4_IRQn, 2);
+
+    // ADC read DMA
+    NVIC_SetPriority(DMA3_IRQn, 2);
+    NVIC_SetPriority(DMA5_IRQn, 2);
+
+    // Pin IRQ
+    NVIC_SetPriority(PORTA_IRQn, 3);
+    NVIC_SetPriority(PORTB_IRQn, 3);
+    NVIC_SetPriority(PORTC_IRQn, 3);
+    NVIC_SetPriority(PORTD_IRQn, 3);
+    NVIC_SetPriority(PORTE_IRQn, 3);
+
+    // SPI used for channel LED update.
+    NVIC_SetPriority(SPI0_IRQn, 4);
+
+    // Timer used for button1 LED.
+    NVIC_SetPriority(FTM3_IRQn, 5);
+
+    // Error interrupts.
+    NVIC_SetPriority(I2S0_Tx_IRQn, 6);
+    NVIC_SetPriority(DMA_Error_IRQn, 6);
 }
 
 void init_adc_config()
@@ -342,6 +377,9 @@ void init_thread(void * arg)
 
     g_channelLedManager.init();
     flash_leds();
+
+    // Configure IRQ priorities.
+    init_irq_priorities();
 
     // Init persistent data.
     persistent_data::g_store.init();
