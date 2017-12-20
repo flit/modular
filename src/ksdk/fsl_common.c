@@ -36,6 +36,7 @@
 #if (defined(__CC_ARM)) || (defined(__ICCARM__))
 void __aeabi_assert(const char *failedExpr, const char *file, int line)
 {
+    __BKPT(0);
     printf("ASSERT ERROR \" %s \": file \"%s\" Line \"%d\" \n", failedExpr, file, line);
     for (;;)
     {
@@ -45,6 +46,7 @@ void __aeabi_assert(const char *failedExpr, const char *file, int line)
 #elif(defined(__GNUC__))
 void __assert_func(const char *file, int line, const char *func, const char *failedExpr)
 {
+    __BKPT(0);
     printf("ASSERT ERROR \" %s \": file \"%s\" Line \"%d\" function name \"%s\" \n", failedExpr, file, line, func);
     for (;;)
     {
