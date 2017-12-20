@@ -134,6 +134,7 @@ protected:
     bool _ignoreButton1Release;
     bool _potReleaseEditSampleStart;
     bool _potReleaseEditSampleEnd;
+    bool _potReleaseSaveGain;
     float _lastSampleStart;
     float _lastSampleEnd;
     uint32_t _editChannel;  //!< Voice selected for editing.
@@ -142,6 +143,13 @@ protected:
     int32_t _button1LedDutyCycleDelta;
     uint32_t _button1LedFlashes;
     uint32_t _ledTimeoutCount;
+    uint32_t _potReleaseSaveGainChannel;
+
+    struct Options
+    {
+        bool saveGainInBank;
+    };
+    Options _options;
 
     void ui_thread();
 

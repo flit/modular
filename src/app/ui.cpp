@@ -51,7 +51,7 @@ const uint32_t kPotEditHysteresisPercent = 5;
 const uint32_t kCardDetectInterval_ms = 250;
 
 //! Delay for applying a change to the sample start parameter.
-const uint32_t kSampleStartPotReleaseDelay_ms = 100;
+const uint32_t kPotReleaseDelay_ms = 100;
 
 //! Duty cycle percent change per 100 ms.
 const int32_t kButton1LedDutyCycleDelta = 2;
@@ -114,6 +114,7 @@ UI::UI()
     _ignoreButton1Release(false),
     _potReleaseEditSampleStart(false),
     _potReleaseEditSampleEnd(false),
+    _potReleaseSaveGain(false),
     _lastSampleStart(-1.0f),
     _lastSampleEnd(-1.0f),
     _editChannel(0),
@@ -121,7 +122,9 @@ UI::UI()
     _button1LedDutyCycle(0),
     _button1LedDutyCycleDelta(kButton1LedDutyCycleDelta),
     _button1LedFlashes(0),
-    _ledTimeoutCount(0)
+    _ledTimeoutCount(0),
+    _potReleaseSaveGainChannel(0),
+    _options{true}
 {
 }
 
@@ -141,7 +144,7 @@ void UI::init()
     _blinkTimer.start();
 
     // Create pot edit release timer.
-    _potReleaseTimer.init("pot-release", this, &UI::handle_pot_release_timer, kArOneShotTimer, kSampleStartPotReleaseDelay_ms);
+    _potReleaseTimer.init("pot-release", this, &UI::handle_pot_release_timer, kArOneShotTimer, kPotReleaseDelay_ms);
     _runloop.addTimer(&_potReleaseTimer);
 
     // Set up card detection timer.
@@ -634,6 +637,11 @@ void UI::handle_pot_release_timer(Ar::Timer * timer)
         _lastSampleEnd = -1.0f;
         _potReleaseEditSampleEnd = false;
     }
+    if (_potReleaseSaveGain)
+    {
+        save_voice_params(_potReleaseSaveGainChannel);
+        _potReleaseSaveGain = false;
+    }
 }
 
 void UI::handle_card_detect_timer(Ar::Timer * timer)
@@ -694,7 +702,16 @@ void UI::pot_did_change(Pot& pot, uint32_t value)
                     fvalue = powf(fvalue, 2.0f);
                 }
 
+                // Update gain in the voice.
                 g_voice[potNumber].set_gain(fvalue);
+
+                if (_options.saveGainInBank)
+                {
+                    // Set flag and start timer to save the voice after gain is edited.
+                    _potReleaseSaveGain = true;
+                    _potReleaseSaveGainChannel = potNumber;
+                    _potReleaseTimer.start();
+                }
             }
             break;
 
