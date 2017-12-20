@@ -157,6 +157,7 @@ protected:
     void handle_pot_release_timer(Ar::Timer * timer);
     void handle_card_detect_timer(Ar::Timer * timer);
 
+    void set_all_pot_hysteresis(uint32_t percent);
     void set_voice_activity_led_mode();
     void set_all_channel_leds(bool on, bool setColor=false, LEDBase::LEDColor color=LEDBase::kRed);
     void update_channel_leds();

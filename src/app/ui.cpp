@@ -211,10 +211,7 @@ void UI::set_ui_mode(UIMode mode)
                 _firstSwitchToPlayMode = false;
 
                 // Set no hysteresis on all pots.
-                for (n = 0; n < kVoiceCount; ++n)
-                {
-                    _channelPots[n].set_hysteresis(0);
-                }
+                set_all_pot_hysteresis(0);
                 return;
             }
             break;
@@ -229,10 +226,7 @@ void UI::set_ui_mode(UIMode mode)
     }
 
     // Set hysteresis on all pots.
-    for (n = 0; n < kVoiceCount; ++n)
-    {
-        _channelPots[n].set_hysteresis(kPotEditHysteresisPercent);
-    }
+    set_all_pot_hysteresis(kPotEditHysteresisPercent);
 }
 
 void UI::set_voice_mode(VoiceMode mode)
@@ -374,10 +368,7 @@ void UI::handle_button_event(const UIEvent & event)
                             update_channel_leds();
 
                             // Set hysteresis on all pots.
-                            for (n = 0; n < kVoiceCount; ++n)
-                            {
-                                _channelPots[n].set_hysteresis(kPotEditHysteresisPercent);
-                            }
+                            set_all_pot_hysteresis(kPotEditHysteresisPercent);
                             break;
 
                         // Ignore button2 if we don't have a card present.
@@ -747,6 +738,15 @@ void UI::pot_did_change(Pot& pot, uint32_t value)
         // Ignore pots when there is no card.
         case kNoCardMode:
             break;
+    }
+}
+
+void UI::set_all_pot_hysteresis(uint32_t percent)
+{
+    uint32_t n;
+    for (n = 0; n < kVoiceCount; ++n)
+    {
+        _channelPots[n].set_hysteresis(percent);
     }
 }
 
