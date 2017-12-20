@@ -130,6 +130,56 @@ protected:
 };
 
 /*!
+ * @brief Set of parameters controlling voice playback.
+ */
+struct VoiceParameters
+{
+    //! @brief Current version of the parameter set.
+    static const uint32_t kVersion = 1;
+
+    uint32_t version;
+    float gain;
+    float baseOctaveOffset;
+    float baseCentsOffset;
+    float startSample;
+    float endSample;
+
+    VoiceParameters()
+    :   version(kVersion),
+        gain(1.0f),
+        baseOctaveOffset(0.0f),
+        baseCentsOffset(0.0f),
+        startSample(0.0f),
+        endSample(1.0f)
+    {
+    }
+    ~VoiceParameters()=default;
+    VoiceParameters(const VoiceParameters & other)
+    {
+        this->operator=(other);
+    }
+    VoiceParameters & operator=(const VoiceParameters & other)
+    {
+        version = other.version;
+        gain = other.gain;
+        baseOctaveOffset = other.baseOctaveOffset;
+        baseCentsOffset = other.baseCentsOffset;
+        startSample = other.startSample;
+        endSample = other.endSample;
+        return *this;
+    }
+
+    void reset()
+    {
+        gain = 1.0f;
+        baseOctaveOffset = 0.0f;
+        baseCentsOffset = 0.0f;
+        startSample = 0.0f;
+        endSample = 1.0f;
+    }
+};
+
+/*!
  * @brief Manages playback of a single sample file.
  */
 class SamplerVoice
@@ -159,9 +209,9 @@ public:
     void manager_did_become_ready() { _isReady = true; }
     void playing_did_finish();
 
-    void set_gain(float gain) { _gain = gain; }
-    void set_base_octave_offset(float octave) { _baseOctave = octave; }
-    void set_base_cents_offset(float cents) { _baseCents = cents; }
+    void set_gain(float gain) { _params.gain = gain; }
+    void set_base_octave_offset(float octave) { _params.baseOctaveOffset = octave; }
+    void set_base_cents_offset(float cents) { _params.baseCentsOffset = cents; }
     void set_pitch_octave(float pitch) { _pitchOctave = pitch; }
     void set_sample_start(float start);
     void set_sample_end(float end);
@@ -172,6 +222,9 @@ public:
     WaveFile::AudioDataStream& get_audio_stream() { return _data; }
 
     SampleBufferManager& get_buffer_manager() { return _manager; }
+
+    const VoiceParameters & get_params() const { return _params; }
+    void set_params(const VoiceParameters & params);
 
 protected:
     uint32_t _number;
@@ -187,10 +240,8 @@ protected:
     uint32_t _noteOffSamplesRemaining;
     float _lastBufferLastSample;
     float _fraction;
-    float _gain;
-    float _baseOctave;
-    float _baseCents;
     float _pitchOctave;
+    VoiceParameters _params;
 
     void _reset_voice();
 };

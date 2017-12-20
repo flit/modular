@@ -342,10 +342,8 @@ SamplerVoice::SamplerVoice()
     _noteOffSamplesRemaining(0),
     _lastBufferLastSample(0),
     _fraction(0.0f),
-    _gain(1.0f),
-    _baseOctave(0.0f),
-    _baseCents(0.0f),
-    _pitchOctave(0.0f)
+    _pitchOctave(0.0f),
+    _params()
 {
 }
 
@@ -360,8 +358,7 @@ void SamplerVoice::set_file(WaveFile& file)
 {
     _isReady = false;
     _reset_voice();
-    _baseOctave = 0.0f;
-    _baseCents = 0.0f;
+    _params.reset();
     _pitchOctave = 0.0f;
     _wav = file;
     _data = _wav.get_audio_data();
@@ -380,8 +377,7 @@ void SamplerVoice::clear_file()
     _isValid = false;
     _isReady = false;
     _reset_voice();
-    _baseOctave = 0.0f;
-    _baseCents = 0.0f;
+    _params.reset();
     _pitchOctave = 0.0f;
     _wav = WaveFile();
     _data = WaveFile::AudioDataStream();
@@ -480,7 +476,7 @@ void SamplerVoice::render(int16_t * data, uint32_t frameCount)
         return;
     }
 
-    float rate = powf(2.0f, _baseOctave + _pitchOctave + (_baseCents / 1200.0f));
+    float rate = powf(2.0f, _params.baseOctaveOffset + _pitchOctave + (_params.baseCentsOffset / 1200.0f));
     int16_t * bufferData = voiceBuffer->data;
     uint32_t readHead = voiceBuffer->readHead;
     uint32_t bufferFrameCount = voiceBuffer->frameCount;
@@ -500,7 +496,7 @@ void SamplerVoice::render(int16_t * data, uint32_t frameCount)
 
             // Apply the gain.
             float s = s1;
-            s *= _gain;
+            s *= _params.gain;
             *data = int16_t(s);
             data += 2;
         }
@@ -536,7 +532,7 @@ void SamplerVoice::render(int16_t * data, uint32_t frameCount)
                 }
             }
 
-            float gain = _gain;
+            float gain = _params.gain;
             if (_doNoteOff)
             {
                 if (_noteOffSamplesRemaining-- == 0)
@@ -632,6 +628,8 @@ void SamplerVoice::set_sample_start(float start)
     _reset_voice();
     UI::get().set_voice_playing(_number, false);
 
+    _params.startSample = start;
+
     // Tell sample manager to set and load new start point.
     uint32_t sample = uint32_t(float(_manager.get_total_samples()) * start);
     _manager.set_start_sample(sample);
@@ -643,10 +641,19 @@ void SamplerVoice::set_sample_end(float end)
     _reset_voice();
     UI::get().set_voice_playing(_number, false);
 
+    _params.endSample = end;
+
     uint32_t startSample = _manager.get_start_sample();
     uint32_t s = _manager.get_total_samples() - startSample;
     uint32_t sample = startSample + uint32_t(float(s) * end);
     _manager.set_end_sample(sample);
+}
+
+void SamplerVoice::set_params(const VoiceParameters & params)
+{
+    _params = params;
+    set_sample_start(_params.startSample);
+    set_sample_end(_params.endSample);
 }
 
 //------------------------------------------------------------------------------
