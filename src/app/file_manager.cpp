@@ -63,7 +63,7 @@ void FileManager::_reset_banks()
     uint32_t bank;
     for (bank = 0; bank < kMaxBankCount; ++bank)
     {
-        _banks[bank].clear_sample_paths();
+        _banks[bank].reset();
     }
 }
 
@@ -152,7 +152,7 @@ void FileManager::_scan_bank_directory(uint32_t bankNumber, const char * dirPath
                 snprintf(_filePath, sizeof(_filePath), "%s/%s", dirPath, fileName);
                 SampleBank::FilePath path(_filePath);
 
-                _banks[bankNumber].set_sample_path(channel, path);
+                _banks[bankNumber].get_sample(channel).set_path(path);
             }
         }
     }

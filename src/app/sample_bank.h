@@ -47,22 +47,45 @@ class SampleBank
 public:
     using FilePath = SimpleString<_MAX_LFN + 1>;
 
+    /*!
+     * @brief Wraps a sample in a bank.
+     */
+    class Sample
+    {
+    public:
+        Sample();
+        ~Sample()=default;
+
+        void reset();
+
+        bool is_valid() const { return _isValid; }
+
+        const FilePath & get_path() const { return _path; }
+        void set_path(FilePath & path);
+
+        const VoiceParameters & get_params() const { return _params; }
+        void set_params(const VoiceParameters & params) { _params = params; }
+
+        bool load_to_voice(SamplerVoice & voice);
+
+    protected:
+        bool _isValid;
+        FilePath _path;
+        VoiceParameters _params;
+    };
+
     SampleBank();
     ~SampleBank()=default;
 
-    bool is_valid() const { return _isValid; }
-    bool has_sample(uint32_t sampleNumber) const;
-    const FilePath & get_sample_path(uint32_t sampleNumber) const;
+    void reset();
 
-    bool load_sample_to_voice(uint32_t sampleNumber, SamplerVoice & voice);
+    bool is_valid() const;
+    bool has_sample(uint32_t sampleNumber) const { return _samples[sampleNumber].is_valid(); }
 
-    void clear_sample_paths();
-    void set_sample_path(uint32_t sampleNumber, FilePath & path);
+    Sample & get_sample(uint32_t sampleNumber) { return _samples[sampleNumber]; }
 
 protected:
-    bool _isValid;
-    FilePath _samplePaths[kVoiceCount];
-    VoiceParameters _params;
+    Sample _samples[kVoiceCount];
 };
 
 } // namespace slab

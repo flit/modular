@@ -39,56 +39,71 @@ using namespace slab;
 //------------------------------------------------------------------------------
 
 SampleBank::SampleBank()
-:   _isValid(false)
 {
 }
 
-bool SampleBank::has_sample(uint32_t sampleNumber) const
+void SampleBank::reset()
 {
-    return _samplePaths[sampleNumber].get()[0] != 0;
-}
-
-const SampleBank::FilePath & SampleBank::get_sample_path(uint32_t sampleNumber) const
-{
-    return _samplePaths[sampleNumber];
-}
-
-void SampleBank::clear_sample_paths()
-{
-    _isValid = false;
-
     uint32_t i;
     for (i = 0; i < kVoiceCount; ++i)
     {
-        _samplePaths[0] = FilePath("");
+        _samples[i].reset();
     }
 }
 
-void SampleBank::set_sample_path(uint32_t sampleNumber, FilePath & path)
+bool SampleBank::is_valid() const
 {
-    _samplePaths[sampleNumber] = path;
+    uint32_t i;
+    for (i = 0; i < kVoiceCount; ++i)
+    {
+        if (_samples[i].is_valid())
+        {
+            return true;
+        }
+    }
+    return false;
+}
 
-    if (has_sample(sampleNumber))
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+SampleBank::Sample::Sample()
+:   _isValid(false),
+    _params()
+{
+}
+
+void SampleBank::Sample::reset()
+{
+    _isValid = false;
+    _path = FilePath("");
+    _params.reset();
+}
+
+void SampleBank::Sample::set_path(FilePath & path)
+{
+    _path = path;
+
+    if (_path.get()[0] != 0)
     {
         _isValid = true;
     }
 }
 
-bool SampleBank::load_sample_to_voice(uint32_t sampleNumber, SamplerVoice & voice)
+bool SampleBank::Sample::load_to_voice(SamplerVoice & voice)
 {
-    if (!has_sample(sampleNumber))
+    if (!_isValid)
     {
+        voice.clear_file();
         return false;
     }
 
     // Open and parse .wav file.
-    FilePath & path = _samplePaths[sampleNumber];
-    WaveFile wav(path.get());
+    WaveFile wav(_path.get());
 
     fs::error_t err = wav.parse();
     if (err != fs::kSuccess)
     {
-        DEBUG_PRINTF(ERROR_MASK, "Failed to parse %s\r\n", path.get());
+        DEBUG_PRINTF(ERROR_MASK, "Failed to parse %s\r\n", _path.get());
         voice.clear_file();
         return false;
     }
@@ -98,16 +113,17 @@ bool SampleBank::load_sample_to_voice(uint32_t sampleNumber, SamplerVoice & voic
         && wav.get_sample_rate() == 48000
         && wav.get_sample_size() == 16))
     {
-        DEBUG_PRINTF(ERROR_MASK, "File %s is an unsupported format\r\n", path.get());
+        DEBUG_PRINTF(ERROR_MASK, "File %s is an unsupported format\r\n", _path.get());
         voice.clear_file();
         return false;
     }
 
     // Set sample file in voice.
     voice.set_file(wav);
+    voice.set_params(_params);
 
     DEBUG_PRINTF(INIT_MASK, "%s: %lu ch; %lu frames\r\n",
-        path.get(),
+        _path.get(),
         wav.get_channels(),
         voice.get_audio_stream().get_frames());
 

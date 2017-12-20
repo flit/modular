@@ -136,8 +136,8 @@ protected:
     bool _potReleaseEditSampleEnd;
     float _lastSampleStart;
     float _lastSampleEnd;
-    uint32_t _editChannel;
-    uint32_t _selectedBank;
+    uint32_t _editChannel;  //!< Voice selected for editing.
+    uint32_t _selectedBank; //!< Current bank number for playback.
     int32_t _button1LedDutyCycle;
     int32_t _button1LedDutyCycleDelta;
     uint32_t _button1LedFlashes;
@@ -149,6 +149,9 @@ protected:
     void handle_card_event(const UIEvent & event);
 
     void select_next_bank();
+    void select_next_edit_channel();
+
+    void save_voice_params(uint32_t channel);
 
     void handle_blink_timer(Ar::Timer * timer);
     void handle_pot_release_timer(Ar::Timer * timer);

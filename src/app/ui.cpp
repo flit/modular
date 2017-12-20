@@ -70,13 +70,28 @@ const uint32_t kVoiceModeSwitchLedDelayCount = 1;
 //! The first index is the voice mode, second index is bank channel number. The value
 //! is the voice channel number that the bank channel is installed in. If the value
 //! is negative, then the voice channel equal to the absolute value is unused.
-static const int8_t kVoiceModeChannelMap[kVoiceModeCount][kVoiceCount] = {
+static const int8_t kBankToVoiceChannelMap[kVoiceModeCount][kVoiceCount] = {
         // k4VoiceMode
         { 0, 1, 2, 3, },
         // k3VoiceMode
         { 0, 2, 3, -1, },
         // k2VoiceMode
         { 0, 2, -1, -3, },
+        // k1VoiceMode
+        { 0, -1, -2, -3, },
+    };
+
+//! Map of voice channel to bank channel for each voice mode.
+//!
+//! First index: voice mode
+//! Second index: voice channel number
+static const int8_t kVoiceToBankChannelMap[kVoiceModeCount][kVoiceCount] = {
+        // k4VoiceMode
+        { 0, 1, 2, 3, },
+        // k3VoiceMode
+        { 0, 1, 2, -3, },
+        // k2VoiceMode
+        { 0, -2, 1, -3, },
         // k1VoiceMode
         { 0, -1, -2, -3, },
     };
@@ -158,6 +173,7 @@ void UI::set_ui_mode(UIMode mode)
         return;
     }
 
+    UIMode prevMode = _uiMode;
     _uiMode = mode;
 
     switch (mode)
@@ -181,6 +197,12 @@ void UI::set_ui_mode(UIMode mode)
 
         // Switch to play mode.
         case kPlayMode:
+            // If we're exiting edit mode, save edit changes to sample in bank.
+            if (prevMode == kEditMode)
+            {
+                save_voice_params(_editChannel);
+            }
+
             // Restore LEDs to current voice state.
             set_voice_activity_led_mode();
 
@@ -340,10 +362,11 @@ void UI::handle_button_event(const UIEvent & event)
                             // Update edit LED.
                             _channelLeds[_editChannel]->off();
 
+                            // Save params for the previous edit channel.
+                            save_voice_params(_editChannel);
+
                             // Select next valid channel.
-                            do {
-                                _editChannel = (_editChannel + 1) % kVoiceCount;
-                            } while (!g_voice[_editChannel].is_valid());
+                            select_next_edit_channel();
 
                             _channelLeds[_editChannel]->set_color(LEDBase::kRed);
                             _channelLeds[_editChannel]->on();
@@ -487,12 +510,34 @@ void UI::handle_card_event(const UIEvent & event)
     }
 }
 
+//! Select the next bank for playback that has samples. At least one valid bank
+//! must exist. (If there are no valid banks, we should not be in play mode.)
 void UI::select_next_bank()
 {
     assert(FileManager::get().has_any_banks());
     do {
         _selectedBank = (_selectedBank + 1) % kMaxBankCount;
     } while (!FileManager::get().has_bank(_selectedBank));
+}
+
+//! Select the next valid voice for editing.
+void UI::select_next_edit_channel()
+{
+    do {
+        _editChannel = (_editChannel + 1) % kVoiceCount;
+    } while (!g_voice[_editChannel].is_valid());
+}
+
+void UI::save_voice_params(uint32_t channel)
+{
+    // Map voice selected for editing to the bank channel.
+    uint32_t mappedBankChannel = kVoiceToBankChannelMap[_voiceMode][channel];
+    assert(mappedBankChannel >= 0);
+
+    // Copy params from the voice to the bank sample.
+    SampleBank & bank = FileManager::get().get_bank(_selectedBank);
+    const VoiceParameters & params = g_voice[channel].get_params();
+    bank.get_sample(mappedBankChannel).set_params(params);
 }
 
 void UI::load_sample_bank(uint32_t bankNumber)
@@ -505,10 +550,10 @@ void UI::load_sample_bank(uint32_t bankNumber)
     for (channel = 0; channel < kVoiceCount; ++channel)
     {
         set_voice_playing(channel, false);
-        int32_t mappedChannel = kVoiceModeChannelMap[_voiceMode][channel];
+        int32_t mappedChannel = kBankToVoiceChannelMap[_voiceMode][channel];
         if (mappedChannel >= 0 && bank.has_sample(channel))
         {
-            bank.load_sample_to_voice(channel, g_voice[mappedChannel]);
+            bank.get_sample(channel).load_to_voice(g_voice[mappedChannel]);
         }
         else
         {
