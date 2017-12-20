@@ -221,16 +221,6 @@
 			<locationURI>PARENT-2-PROJECT_LOC/src/app/led.h</locationURI>
 		</link>
 		<link>
-			<name>app/main.cpp</name>
-			<type>1</type>
-			<locationURI>PARENT-2-PROJECT_LOC/src/app/main.cpp</locationURI>
-		</link>
-		<link>
-			<name>app/main.h</name>
-			<type>1</type>
-			<locationURI>PARENT-2-PROJECT_LOC/src/app/main.h</locationURI>
-		</link>
-		<link>
 			<name>app/microseconds.cpp</name>
 			<type>1</type>
 			<locationURI>PARENT-2-PROJECT_LOC/src/app/microseconds.cpp</locationURI>
@@ -294,6 +284,16 @@
 			<name>app/ring_buffer.h</name>
 			<type>1</type>
 			<locationURI>PARENT-2-PROJECT_LOC/src/app/ring_buffer.h</locationURI>
+		</link>
+		<link>
+			<name>app/samplbaer.cpp</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/src/app/samplbaer.cpp</locationURI>
+		</link>
+		<link>
+			<name>app/samplbaer.h</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/src/app/samplbaer.h</locationURI>
 		</link>
 		<link>
 			<name>app/sample_bank.cpp</name>

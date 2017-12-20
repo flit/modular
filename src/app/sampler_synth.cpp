@@ -28,7 +28,7 @@
  */
 
 #include "sampler_synth.h"
-#include "main.h"
+#include "samplbaer.h"
 #include "microseconds.h"
 #include "audio_defs.h"
 

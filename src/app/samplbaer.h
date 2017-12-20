@@ -26,8 +26,8 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#if !defined(_MAIN_H_)
-#define _MAIN_H_
+#if !defined(_SAMPLBAER_H_)
+#define _SAMPLBAER_H_
 
 #include "sampler_voice.h"
 #include "sampler_synth.h"
@@ -93,7 +93,7 @@ extern adc16_config_t g_adcConfig;
 
 } // namespace slab
 
-#endif // _MAIN_H_
+#endif // _SAMPLBAER_H_
 //------------------------------------------------------------------------------
 // EOF
 //------------------------------------------------------------------------------

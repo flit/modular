@@ -28,7 +28,7 @@
  */
 
 #include "channel_adc_processor.h"
-#include "main.h"
+#include "samplbaer.h"
 #include "ui.h"
 #include "board.h"
 #include "debug_log.h"

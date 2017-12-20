@@ -29,7 +29,7 @@
 
 #include "file_manager.h"
 #include "debug_log.h"
-#include "main.h"
+#include "samplbaer.h"
 #include <ctype.h>
 #include <stdio.h>
 

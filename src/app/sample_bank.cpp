@@ -30,7 +30,7 @@
 #include "sample_bank.h"
 #include "debug_log.h"
 #include "wav_file.h"
-#include "main.h"
+#include "samplbaer.h"
 
 using namespace slab;
 

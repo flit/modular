@@ -28,7 +28,7 @@
  */
 
 #include "audio_output.h"
-#include "main.h"
+#include "samplbaer.h"
 #include "fsl_dmamux.h"
 #include <stdio.h>
 

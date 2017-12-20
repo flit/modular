@@ -28,7 +28,7 @@
  */
 
 #include "argon/argon.h"
-#include "main.h"
+#include "samplbaer.h"
 #include "board.h"
 #include "pin_irq_manager.h"
 #include "wav_file.h"

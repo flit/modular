@@ -30,7 +30,7 @@
 #include "ui.h"
 #include "channel_led.h"
 #include "debug_log.h"
-#include "main.h"
+#include "samplbaer.h"
 #include "board.h"
 #include "utility.h"
 #include "fsl_sd_disk.h"

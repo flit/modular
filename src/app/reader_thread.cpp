@@ -28,7 +28,7 @@
  */
 
 #include "reader_thread.h"
-#include "main.h"
+#include "samplbaer.h"
 #include "ui.h"
 #include "debug_log.h"
 
