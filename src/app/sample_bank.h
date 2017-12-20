@@ -26,13 +26,12 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#if !defined(_FILE_MANAGER_H_)
-#define _FILE_MANAGER_H_
+#if !defined(_SAMPLE_BANK_H_)
+#define _SAMPLE_BANK_H_
 
-#include "file_system.h"
-#include "singleton.h"
 #include "simple_string.h"
-#include "sample_bank.h"
+#include "audio_defs.h"
+#include "sampler_voice.h"
 
 //------------------------------------------------------------------------------
 // Definitions
@@ -40,40 +39,35 @@
 
 namespace slab {
 
-//! @brief Number of banks.
-const uint32_t kMaxBankCount = kVoiceCount;
-
 /*!
- * @brief Handles scanning filesystem to identify samples.
+ * @brief Holds information about a bank of samples.
  */
-class FileManager : public Singleton<FileManager>
+class SampleBank
 {
 public:
-    FileManager();
-    ~FileManager()=default;
+    using FilePath = SimpleString<_MAX_LFN + 1>;
 
-    bool mount();
-    void unmount();
+    SampleBank();
+    ~SampleBank()=default;
 
-    void scan_for_files();
+    bool is_valid() const { return _isValid; }
+    bool has_sample(uint32_t sampleNumber) const;
+    const FilePath & get_sample_path(uint32_t sampleNumber) const;
 
-    bool has_any_banks() const;
-    bool has_bank(uint32_t bankNumber) const;
-    SampleBank & get_bank(uint32_t bankNumber) { return _banks[bankNumber]; }
+    bool load_sample_to_voice(uint32_t sampleNumber, SamplerVoice & voice);
+
+    void clear_sample_paths();
+    void set_sample_path(uint32_t sampleNumber, FilePath & path);
 
 protected:
-    fs::FileSystem _fs;
-    SampleBank _banks[kMaxBankCount];
-    char _dirPath[_MAX_LFN + 1];
-    char _filePath[_MAX_LFN + 1];
-
-    void _reset_banks();
-    void _scan_bank_directory(uint32_t bankNumber, const char * dirPath);
+    bool _isValid;
+    FilePath _samplePaths[kVoiceCount];
+    VoiceParameters _params;
 };
 
 } // namespace slab
 
-#endif // _FILE_MANAGER_H_
+#endif // _SAMPLE_BANK_H_
 //------------------------------------------------------------------------------
 // EOF
 //------------------------------------------------------------------------------

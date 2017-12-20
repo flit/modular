@@ -26,54 +26,94 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#if !defined(_FILE_MANAGER_H_)
-#define _FILE_MANAGER_H_
 
-#include "file_system.h"
-#include "singleton.h"
-#include "simple_string.h"
 #include "sample_bank.h"
+#include "debug_log.h"
+#include "wav_file.h"
+#include "main.h"
+
+using namespace slab;
 
 //------------------------------------------------------------------------------
-// Definitions
+// Code
 //------------------------------------------------------------------------------
 
-namespace slab {
-
-//! @brief Number of banks.
-const uint32_t kMaxBankCount = kVoiceCount;
-
-/*!
- * @brief Handles scanning filesystem to identify samples.
- */
-class FileManager : public Singleton<FileManager>
+SampleBank::SampleBank()
+:   _isValid(false)
 {
-public:
-    FileManager();
-    ~FileManager()=default;
+}
 
-    bool mount();
-    void unmount();
+bool SampleBank::has_sample(uint32_t sampleNumber) const
+{
+    return _samplePaths[sampleNumber].get()[0] != 0;
+}
 
-    void scan_for_files();
+const SampleBank::FilePath & SampleBank::get_sample_path(uint32_t sampleNumber) const
+{
+    return _samplePaths[sampleNumber];
+}
 
-    bool has_any_banks() const;
-    bool has_bank(uint32_t bankNumber) const;
-    SampleBank & get_bank(uint32_t bankNumber) { return _banks[bankNumber]; }
+void SampleBank::clear_sample_paths()
+{
+    _isValid = false;
 
-protected:
-    fs::FileSystem _fs;
-    SampleBank _banks[kMaxBankCount];
-    char _dirPath[_MAX_LFN + 1];
-    char _filePath[_MAX_LFN + 1];
+    uint32_t i;
+    for (i = 0; i < kVoiceCount; ++i)
+    {
+        _samplePaths[0] = FilePath("");
+    }
+}
 
-    void _reset_banks();
-    void _scan_bank_directory(uint32_t bankNumber, const char * dirPath);
-};
+void SampleBank::set_sample_path(uint32_t sampleNumber, FilePath & path)
+{
+    _samplePaths[sampleNumber] = path;
 
-} // namespace slab
+    if (has_sample(sampleNumber))
+    {
+        _isValid = true;
+    }
+}
 
-#endif // _FILE_MANAGER_H_
+bool SampleBank::load_sample_to_voice(uint32_t sampleNumber, SamplerVoice & voice)
+{
+    if (!has_sample(sampleNumber))
+    {
+        return false;
+    }
+
+    // Open and parse .wav file.
+    FilePath & path = _samplePaths[sampleNumber];
+    WaveFile wav(path.get());
+
+    fs::error_t err = wav.parse();
+    if (err != fs::kSuccess)
+    {
+        DEBUG_PRINTF(ERROR_MASK, "Failed to parse %s\r\n", path.get());
+        voice.clear_file();
+        return false;
+    }
+
+    // Only support 48 kHz 16-bit format files with 1 or 2 channels.
+    if (!(wav.get_channels() <= 2
+        && wav.get_sample_rate() == 48000
+        && wav.get_sample_size() == 16))
+    {
+        DEBUG_PRINTF(ERROR_MASK, "File %s is an unsupported format\r\n", path.get());
+        voice.clear_file();
+        return false;
+    }
+
+    // Set sample file in voice.
+    voice.set_file(wav);
+
+    DEBUG_PRINTF(INIT_MASK, "%s: %lu ch; %lu frames\r\n",
+        path.get(),
+        wav.get_channels(),
+        voice.get_audio_stream().get_frames());
+
+    return true;
+}
+
 //------------------------------------------------------------------------------
 // EOF
 //------------------------------------------------------------------------------

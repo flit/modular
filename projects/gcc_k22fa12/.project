@@ -296,6 +296,16 @@
 			<locationURI>PARENT-2-PROJECT_LOC/src/app/ring_buffer.h</locationURI>
 		</link>
 		<link>
+			<name>app/sample_bank.cpp</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/src/app/sample_bank.cpp</locationURI>
+		</link>
+		<link>
+			<name>app/sample_bank.h</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/src/app/sample_bank.h</locationURI>
+		</link>
+		<link>
 			<name>app/sampler_synth.cpp</name>
 			<type>1</type>
 			<locationURI>PARENT-2-PROJECT_LOC/src/app/sampler_synth.cpp</locationURI>
