@@ -36,14 +36,6 @@ using namespace slab;
 // Code
 //------------------------------------------------------------------------------
 
-// static void clkdelay(uint32_t n)
-// {
-//     while (--n)
-//     {
-//         __NOP();
-//     }
-// }
-
 ChannelLEDManager::ChannelLEDManager()
 :   _editBuffer(0),
     _transferBuffer(0)
