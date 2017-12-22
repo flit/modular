@@ -57,6 +57,7 @@ enum UIMode : uint32_t
     kPlayMode,
     kEditMode,
     kNoCardMode,
+    kCalibrationMode,
 };
 
 //!
@@ -110,6 +111,7 @@ protected:
         kVoiceEdit,
         kBankSwitch,
         kVoiceModeSwitch,
+        kCalibration,
     };
 
     Ar::ThreadWithStack<4096> _thread;

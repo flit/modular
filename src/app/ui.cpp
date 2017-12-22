@@ -33,6 +33,7 @@
 #include "samplbaer.h"
 #include "board.h"
 #include "utility.h"
+#include "calibrator.h"
 #include "fsl_sd_disk.h"
 #include <assert.h>
 #include <cmath>
@@ -226,6 +227,13 @@ void UI::set_ui_mode(UIMode mode)
             set_all_channel_leds(false);
             update_channel_leds();
             break;
+
+        case kCalibrationMode:
+            _ledMode = LedMode::kCalibration;
+            set_all_channel_leds(true, true, LEDBase::kRed);
+            update_channel_leds();
+            set_all_pot_hysteresis(0);
+            break;
     }
 
     // Set hysteresis on all pots.
@@ -331,6 +339,7 @@ void UI::handle_button_event(const UIEvent & event)
 
                         // Do nothing.
                         case kNoCardMode:
+                        case kCalibrationMode:
                             break;
                     }
                     break;
@@ -377,6 +386,51 @@ void UI::handle_button_event(const UIEvent & event)
                         // Ignore button2 if we don't have a card present.
                         case kNoCardMode:
                             break;
+
+                        case kCalibrationMode:
+                        {
+                            // Tell the calibrator that a button was pressed.
+                            Calibrator & calibrator = Calibrator::get();
+                            calibrator.button_was_pressed();
+
+                            // When calibration is finished, reboot the system.
+                            if (calibrator.is_done())
+                            {
+                                // Turn off all LEDs and wait until they are updated before rebooting.
+                                set_all_channel_leds(false);
+                                update_channel_leds();
+                                while (ChannelLEDManager::get().is_transferring())
+                                {
+                                }
+
+#if DEBUG
+                                __BKPT(0);
+#endif
+
+                                NVIC_SystemReset();
+                            }
+                            else if (calibrator.is_calibrating_pots())
+                            {
+                                set_all_channel_leds(true, true,
+                                    calibrator.is_calibrating_low_point()
+                                        ? LEDBase::kRed
+                                        : LEDBase::kYellow);
+                                update_channel_leds();
+                            }
+                            else
+                            {
+                                // Light CV channel being calibrated in the correct color.
+                                // Low point is red, high point is yellow.
+                                set_all_channel_leds(false);
+                                _channelLeds[calibrator.get_current_channel()]->set_color(
+                                    calibrator.is_calibrating_low_point()
+                                        ? LEDBase::kRed
+                                        : LEDBase::kYellow);
+                                _channelLeds[calibrator.get_current_channel()]->on();
+                                update_channel_leds();
+                            }
+                            break;
+                        }
                     }
                     break;
 
@@ -616,6 +670,11 @@ void UI::handle_blink_timer(Ar::Timer * timer)
             }
             break;
 
+        case LedMode::kCalibration:
+            // Toggle button1 LED.
+            _button1Led->set(!_button1Led->is_on());
+            break;
+
         default:
             break;
     }
@@ -753,7 +812,7 @@ void UI::pot_did_change(Pot& pot, uint32_t value)
             break;
 
         // Ignore pots when there is no card.
-        case kNoCardMode:
+        default:
             break;
     }
 }

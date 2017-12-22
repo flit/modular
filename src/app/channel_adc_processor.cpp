@@ -32,6 +32,7 @@
 #include "ui.h"
 #include "board.h"
 #include "debug_log.h"
+#include "calibrator.h"
 
 using namespace slab;
 
@@ -98,6 +99,25 @@ void ChannelAdcProcessor::cv_thread()
         VoiceMode mode = ui.get_voice_mode();
         ChannelGate::Event event;
         float fvalue;
+
+        // Handle calibration mode.
+        if (ui.get_ui_mode() == kCalibrationMode)
+        {
+            uint32_t pots[kVoiceCount] = {
+                                            data0.results[1],
+                                            data0.results[2],
+                                            data1.results[0],
+                                            data1.results[1]
+                                            };
+            uint32_t cvs[kVoiceCount] = {
+                                            data1.results[2],
+                                            data0.results[3],
+                                            data0.results[0],
+                                            data1.results[3]
+                                            };
+            Calibrator::get().update_readings(pots, cvs);
+            continue;
+        }
 
         // Process gate and CV inputs, trigger voices and adjust pitch. This is where the
         // voice mode determines whether an input channel is treated as a gate or CV.

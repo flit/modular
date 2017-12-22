@@ -41,6 +41,7 @@
 #include "reader_thread.h"
 #include "channel_adc_processor.h"
 #include "analog_in.h"
+#include "calibrator.h"
 #include "fsl_sd_disk.h"
 #include "fsl_edma.h"
 #include "fsl_dmamux.h"
@@ -101,6 +102,7 @@ SamplerSynth g_sampler;
 ReaderThread g_readerThread;
 PinIrqManager g_pinManager;
 ChannelLEDManager g_channelLedManager;
+Calibrator g_calibrator;
 SamplerVoice g_voice[kVoiceCount];
 ChannelGate g_gates[kVoiceCount];
 ChannelCV g_cvs[kVoiceCount];
@@ -113,19 +115,11 @@ ChannelLED<3> g_ch4Led;
 LEDBase * g_channelLeds[] = { &g_ch1Led, &g_ch2Led, &g_ch3Led, &g_ch4Led};
 FaderLED<BUTTON1_LED_FTM_BASE, BUTTON1_LED_FTM_CHANNEL> g_button1Led;
 
-struct CalibrationData
-{
-    uint32_t a;
-    uint32_t b;
-    uint32_t c;
-    uint32_t d;
-};
-
 namespace persistent_data {
 PersistentDataStore g_store;
-PersistentData<kCalibrationDataKey, CalibrationData> g_calibrationData;
+PersistentData<kCalibrationDataKey, calibration::Data> g_calibrationData;
 PersistentData<kLastSelectedBankKey, uint32_t> g_lastSelectedBank;
-PersistentData<kLastVoiceMode, VoiceMode> g_lastVoiceMode;
+PersistentData<kLastVoiceModeKey, VoiceMode> g_lastVoiceMode;
 }
 
 adc16_config_t g_adcConfig;
@@ -412,18 +406,29 @@ void init_thread(void * arg)
     g_ui.set_pots(g_pots);
     g_ui.init();
 
-    // Init SD card and filesystem.
-    g_cardManager.init();
+    // Check if we need to perform the calibration procedure.
+    bool needsCalibration = !persistent_data::g_calibrationData.is_present()
+            || (persistent_data::g_calibrationData.read().version != calibration::Data::kVersion);
+    if (needsCalibration)
+    {
+        g_calibrator.init();
+        g_adcProcessor.init();
+        g_ui.set_ui_mode(kCalibrationMode);
+        g_ui.start();
+    }
+    else
+    {
+        // Init SD card and filesystem.
+        g_cardManager.init();
 
-    g_readerThread.start();
-
-    // Start other threads.
-    g_ui.start();
-    g_audioOut.start();
-    g_adcProcessor.init();
+        // Start other threads.
+        g_readerThread.start();
+        g_ui.start();
+        g_audioOut.start();
+        g_adcProcessor.init();
+    }
 
     DEBUG_PRINTF(INIT_MASK, "done.\r\n");
-
     delete g_initThread;
 }
 
