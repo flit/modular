@@ -63,6 +63,13 @@ public:
         return _average;
     }
 
+    void clear()
+    {
+        _sum = 0;
+        _average = 0;
+        RingBuffer<uint32_t, N>::clear();
+    }
+
 protected:
     uint32_t _sum;
     uint32_t _average;
