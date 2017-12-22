@@ -58,13 +58,21 @@ public:
 
     void init();
 
-    void set_channel_state(uint32_t channel, ChannelLedState state);
+    void set_channel_state(uint32_t channel, ChannelLedState state)
+    {
+        uint32_t channelBitOffset = channel * 2;
+        _editBuffer = (_editBuffer & ~(0x3 << channelBitOffset))
+                        | (static_cast<uint8_t>(state) << channelBitOffset);
+    }
+
     void flush();
+    bool is_transferring() const { return _isTransferring; }
 
 protected:
     dspi_master_handle_t _spiHandle;    //!< Non-blocking transfer handle for DSPI driver.
     uint8_t _editBuffer;    //!< Buffer updated prior to flush.
     uint8_t _transferBuffer;    //!< Buffer used for the transfer.
+    bool _isTransferring;   //!< Whether a transfer is in progress.
 
     static void _transfer_callback(SPI_Type *base, dspi_master_handle_t *handle, status_t status, void *userData);
 

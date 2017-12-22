@@ -38,7 +38,8 @@ using namespace slab;
 
 ChannelLEDManager::ChannelLEDManager()
 :   _editBuffer(0),
-    _transferBuffer(0)
+    _transferBuffer(0),
+    _isTransferring(false)
 {
 }
 
@@ -65,15 +66,10 @@ void ChannelLEDManager::init()
     GPIO_PinWrite(PIN_CH_LED_OE_N_GPIO, PIN_CH_LED_OE_N_BIT, 0);
 }
 
-void ChannelLEDManager::set_channel_state(uint32_t channel, ChannelLedState state)
-{
-    uint32_t channelBitOffset = channel * 2;
-    _editBuffer = (_editBuffer & ~(0x3 << channelBitOffset))
-                    | (static_cast<uint8_t>(state) << channelBitOffset);
-}
-
 void ChannelLEDManager::flush()
 {
+    _isTransferring = true;
+
     // Copy edit buffer to transfer buffer.
     _transferBuffer = _editBuffer;
 
@@ -93,6 +89,9 @@ void ChannelLEDManager::_transfer_callback(SPI_Type *base, dspi_master_handle_t 
 {
     // Latch. Can stay high until next flush.
     GPIO_PinWrite(PIN_CH_LED_LATCH_GPIO, PIN_CH_LED_LATCH_BIT, 1);
+
+    // Clear transferring flag.
+    reinterpret_cast<ChannelLEDManager *>(userData)->_isTransferring = false;
 }
 
 //------------------------------------------------------------------------------
