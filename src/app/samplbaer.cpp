@@ -40,7 +40,6 @@
 #include "debug_log.h"
 #include "reader_thread.h"
 #include "channel_adc_processor.h"
-#include "analog_in.h"
 #include "calibrator.h"
 #include "fsl_sd_disk.h"
 #include "fsl_edma.h"
@@ -181,50 +180,6 @@ void flash_leds()
 
         g_channelLedManager.flush();
         Ar::Thread::sleep(100);
-    }
-}
-
-void calibrate_pots()
-{
-    AnalogIn ch1(CH1_POT_ADC, CH1_POT_CHANNEL);
-    AnalogIn ch2(CH2_POT_ADC, CH2_POT_CHANNEL);
-    AnalogIn ch3(CH3_POT_ADC, CH3_POT_CHANNEL);
-    AnalogIn ch4(CH4_POT_ADC, CH4_POT_CHANNEL);
-    ch1.init(g_adcConfig);
-    ch2.init(g_adcConfig);
-    ch3.init(g_adcConfig);
-    ch4.init(g_adcConfig);
-
-    uint32_t reading[4];
-    uint32_t minReading[4] = { ~0ul, ~0ul, ~0ul, ~0ul };
-    uint32_t maxReading[4] = { 0 };
-    uint32_t n;
-    uint32_t i;
-
-    for (n = 0; n < 100; ++n)
-    {
-        reading[0] = ch1.read();
-        reading[1] = ch2.read();
-        reading[2] = ch3.read();
-        reading[3] = ch4.read();
-
-        for (i = 0; i < 4; ++i)
-        {
-            if (reading[i] < minReading[i])
-            {
-                minReading[i] = reading[i];
-            }
-            if (reading[i] > maxReading[i])
-            {
-                maxReading[i] = reading[i];
-            }
-        }
-    }
-
-    for (i = 0; i < 4; ++i)
-    {
-        uint32_t noise = maxReading[i] - minReading[i];
-        g_pots[i].set_noise(noise);
     }
 }
 
@@ -388,8 +343,6 @@ void init_thread(void * arg)
     }
 
     init_adc_config();
-    calibrate_pots();
-
     init_dma();
     init_audio_out();
 
