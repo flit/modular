@@ -31,6 +31,7 @@
 
 #include <stdint.h>
 #include "ring_buffer.h"
+#include "calibration.h"
 
 //------------------------------------------------------------------------------
 // Definitions
@@ -39,7 +40,7 @@
 namespace slab {
 
 /*!
- * @brief
+ * @brief Processes ADC data for CV inputs.
  */
 class ChannelCV
 {
@@ -47,14 +48,19 @@ public:
     ChannelCV();
     ~ChannelCV()=default;
 
-    void init(uint32_t number);
+    void init(uint32_t number, const calibration::Points & points);
 
+    //! @brief Convert ADC reading to V/oct.
     float process(uint32_t value);
 
+    //! @brief Get the CV input's channel number.
     uint32_t get_number() const { return _number; }
 
 protected:
-    uint32_t _number;
+    uint32_t _number;   //!< Channel number.
+    float _offset;  //!< Calibration offset.
+    float _scale;   //!< Calibration scale factor.
+    float _out; //!< y^-1 value for filtering.
 #if DEBUG
     RingBuffer<uint16_t, 128> _history;
 #endif

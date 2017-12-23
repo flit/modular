@@ -45,14 +45,18 @@ const uint32_t kAdcMax = 65535;
 
 Pot::Pot()
 :   _number(0),
+    _scale(0.0f),
+    _out(0.0f),
     _last(0),
     _hysteresis(0)
 {
 }
 
-void Pot::init(uint32_t number)
+void Pot::init(uint32_t number, const calibration::Points & points)
 {
     _number = number;
+    _offset = float(points.low);
+    _scale = float(kAdcMax) / float(points.high - points.low);
 }
 
 void Pot::set_hysteresis(uint32_t percent)
@@ -60,30 +64,30 @@ void Pot::set_hysteresis(uint32_t percent)
     _hysteresis = kAdcMax * percent / 100;
 }
 
-uint32_t Pot::process(uint32_t value)
+void Pot::process(uint32_t value)
 {
 #if DEBUG
     _history.put(value);
 #endif
 
-    // Set gain for this channel.
-    if (value <= kAdcMax)
+    // Apply calibration.
+    float corrected = float(value) - _offset;
+    corrected *= _scale;
+    constrain(corrected, 0.0f, float(kAdcMax));
+
+    _out += 0.05f * (corrected - _out);
+    value = _out;
+
+    uint32_t hysLow = (_last > _hysteresis / 2) ? (_last - _hysteresis / 2) : 0;
+    uint32_t hysHigh = min(_last + _hysteresis / 2, kAdcMax);
+
+    if (value < hysLow || value > hysHigh)
     {
-        value = _avg.update(value);
+        _last = value;
+        _hysteresis = (4) << 4;
 
-        uint32_t hysLow = (_last > _hysteresis / 2) ? (_last - _hysteresis / 2) : 0;
-        uint32_t hysHigh = min(_last + _hysteresis / 2, kAdcMax);
-
-        if (value < hysLow || value > hysHigh)
-        {
-            _last = value;
-            _hysteresis = (4) << 4;
-
-            UI::get().pot_did_change(*this, value);
-        }
+        UI::get().pot_did_change(*this, value);
     }
-
-    return 0;
 }
 
 //------------------------------------------------------------------------------

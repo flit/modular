@@ -28,6 +28,8 @@
  */
 
 #include "channel_cv.h"
+#include "utility.h"
+#include <math.h>
 
 using namespace slab;
 
@@ -42,30 +44,48 @@ const float kAdcMax = 65535.0f;
 //------------------------------------------------------------------------------
 
 ChannelCV::ChannelCV()
-:   _number(0)
+:   _number(0),
+    _offset(0.0f),
+    _scale(0.0f),
+    _out(0.0f)
 {
 }
 
-void ChannelCV::init(uint32_t number)
+void ChannelCV::init(uint32_t number, const calibration::Points & points)
 {
     _number = number;
+    _offset = float(points.low);
+    _scale = (kAdcMax / 5.0f * 2.0f) / float(points.high - points.low);
+    _scale = _scale * 5.0f / kAdcMax; // Incorporate v/oct scaling into scaling factor.
 }
 
 float ChannelCV::process(uint32_t value)
 {
-    // Invert value to compensate for inverting opamp config;
+    // Invert value to compensate for inverting opamp config.
     value = kAdcMax - value;
 
 #if DEBUG
     _history.put(value);
 #endif
 
-    float result = 0;
+    // Apply calibration.
+    float corrected = float(value) - _offset;
+    corrected *= _scale; // Also scales from 0..1 to 0..5.
+    constrain(corrected, 0.0f, 5.0f);
 
-    // Convert to volt-per-octave, from 0..1 to -2..+3
-    result = (static_cast<float>(value) * 5.0f / kAdcMax) - 2.0f;
+    // If the pitch is changing more than half a semitone, just jump to
+    // the new value. Otherwise filter it.
+    if (fabsf(_out - corrected) > (1.0f / 24.0))
+    {
+        _out = corrected;
+    }
+    else
+    {
+        _out += 0.2f * (corrected - _out);
+    }
 
-    return result;
+    // Transpose down two octaves.
+    return _out - 2.0f;
 }
 
 //------------------------------------------------------------------------------

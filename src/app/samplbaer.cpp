@@ -330,6 +330,19 @@ void init_thread(void * arg)
     persistent_data::g_lastSelectedBank.init();
     persistent_data::g_lastVoiceMode.init();
 
+    // Check calibration data status.
+    calibration::Data calData;
+    bool needsCalibration = true;
+    if (persistent_data::g_calibrationData.is_present())
+    {
+        calData = persistent_data::g_calibrationData.read();
+        needsCalibration = (calData.version != calibration::Data::kVersion);
+    }
+    else
+    {
+        calData.clear();
+    }
+
     // Must init reader thread before initing voices.
     g_readerThread.init();
 
@@ -338,8 +351,8 @@ void init_thread(void * arg)
     for (i = 0; i < kVoiceCount; ++i)
     {
         g_gates[i].init(i);
-        g_pots[i].init(i);
-        g_cvs[i].init(i);
+        g_pots[i].init(i, calData.pots[i]);
+        g_cvs[i].init(i, calData.cvs[i]);
         g_voice[i].init(i, (int16_t *)&g_sampleBufs[i]);
     }
 
@@ -361,8 +374,6 @@ void init_thread(void * arg)
     g_ui.init();
 
     // Check if we need to perform the calibration procedure.
-    bool needsCalibration = !persistent_data::g_calibrationData.is_present()
-            || (persistent_data::g_calibrationData.read().version != calibration::Data::kVersion);
     if (needsCalibration)
     {
         g_calibrator.init();

@@ -80,6 +80,27 @@ inline constexpr T align_down(T v)
     return v & (~(T(A) - 1));
 }
 
+template <typename T>
+inline void constrain(T & v, T _min, T _max)
+{
+    if (v < _min)
+    {
+        v = _min;
+    }
+    else if (v > _max)
+    {
+        v = _max;
+    }
+}
+
+template <typename T>
+inline T constrained(T v, T _min, T _max)
+{
+    return (v < _min) ? _min
+            : ((v > _max) ? _max
+                : v);
+}
+
 } // namespace slab
 
 #endif // _UTILITY_H_

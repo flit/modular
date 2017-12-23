@@ -29,7 +29,8 @@
 #if !defined(_POT_H_)
 #define _POT_H_
 
-#include "moving_average.h"
+#include "calibration.h"
+#include "ring_buffer.h"
 
 //------------------------------------------------------------------------------
 // Definitions
@@ -38,7 +39,7 @@
 namespace slab {
 
 /*!
- * @brief
+ * @brief Processes ADC data for pots.
  */
 class Pot
 {
@@ -46,19 +47,24 @@ public:
     Pot();
     ~Pot()=default;
 
-    void init(uint32_t number);
+    void init(uint32_t number, const calibration::Points & points);
 
+    //! @brief Set hysteresis percent that prevents readings from being sent to UI.
     void set_hysteresis(uint32_t percent);
 
-    uint32_t process(uint32_t value);
+    //! @brief Process ADC reading and pass to UI.
+    void process(uint32_t value);
 
+    //! @brief Get the pot's channel number.
     uint32_t get_number() const { return _number; }
 
 protected:
-    uint32_t _number;
-    uint32_t _last;
-    uint32_t _hysteresis;
-    MovingAverage<32> _avg;
+    uint32_t _number;   //!< Channel number.
+    float _offset;  //!< Calibration offset.
+    float _scale;   //!< Calibration scale factor.
+    float _out; //!< y^-1 value for filtering.
+    uint32_t _last; //!< Previous filtered value for hysteresis.
+    uint32_t _hysteresis;   //!< Hysteresis amount.
 #if DEBUG
     RingBuffer<uint16_t, 128> _history;
 #endif
