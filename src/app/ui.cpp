@@ -734,7 +734,7 @@ void UI::handle_card_detect_timer(Ar::Timer * timer)
 
 void UI::pot_did_change(Pot& pot, uint32_t value)
 {
-    uint32_t potNumber = pot.n;
+    uint32_t potNumber = pot.get_number();
     float fvalue = float(value) / float(kAdcMax);
     float delta;
 

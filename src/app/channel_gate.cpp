@@ -49,14 +49,16 @@ const uint32_t kMinTransitionCounts = 3;
 //------------------------------------------------------------------------------
 
 ChannelGate::ChannelGate()
-:   _last(-1),
+:   _number(0),
+    _last(-1),
     _state(kInitial),
     _transitionCount(0)
 {
 }
 
-void ChannelGate::init()
+void ChannelGate::init(uint32_t number)
 {
+    _number = number;
 }
 
 ChannelGate::Event ChannelGate::process(uint32_t value)

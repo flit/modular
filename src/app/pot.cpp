@@ -44,9 +44,15 @@ const uint32_t kAdcMax = 65535;
 //------------------------------------------------------------------------------
 
 Pot::Pot()
-:   _last(0),
+:   _number(0),
+    _last(0),
     _hysteresis(0)
 {
+}
+
+void Pot::init(uint32_t number)
+{
+    _number = number;
 }
 
 void Pot::set_hysteresis(uint32_t percent)
@@ -56,8 +62,9 @@ void Pot::set_hysteresis(uint32_t percent)
 
 uint32_t Pot::process(uint32_t value)
 {
+#if DEBUG
     _history.put(value);
-//     value <<= 4; // 12-bit to 16-bit
+#endif
 
     // Set gain for this channel.
     if (value <= kAdcMax)

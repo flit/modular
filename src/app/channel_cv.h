@@ -47,13 +47,14 @@ public:
     ChannelCV();
     ~ChannelCV()=default;
 
-    void init();
+    void init(uint32_t number);
 
     float process(uint32_t value);
 
-    uint32_t n;
+    uint32_t get_number() const { return _number; }
 
 protected:
+    uint32_t _number;
 #if DEBUG
     RingBuffer<uint16_t, 128> _history;
 #endif

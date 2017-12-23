@@ -46,20 +46,22 @@ public:
     Pot();
     ~Pot()=default;
 
-    void set_noise(uint32_t noise) { _noise = noise; }
+    void init(uint32_t number);
+
     void set_hysteresis(uint32_t percent);
 
     uint32_t process(uint32_t value);
 
-    uint32_t n;
+    uint32_t get_number() const { return _number; }
 
 protected:
     uint32_t _number;
     uint32_t _last;
-    MovingAverage<32> _avg;
-    RingBuffer<uint16_t, 128> _history;
     uint32_t _hysteresis;
-    uint32_t _noise;
+    MovingAverage<32> _avg;
+#if DEBUG
+    RingBuffer<uint16_t, 128> _history;
+#endif
 };
 
 } // namespace slab

@@ -55,11 +55,11 @@ public:
     ChannelGate();
     ~ChannelGate()=default;
 
-    void init();
+    void init(uint32_t number);
 
     Event process(uint32_t value);
 
-    uint32_t n;
+    uint32_t get_number() const { return _number; }
 
 protected:
     enum State : uint32_t
@@ -71,6 +71,7 @@ protected:
         kFalling,
     };
 
+    uint32_t _number;
     int32_t _last;
     State _state;
     uint32_t _transitionCount;

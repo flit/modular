@@ -35,18 +35,20 @@ using namespace slab;
 // Definitions
 //------------------------------------------------------------------------------
 
-const uint32_t kAdcMax = 65535.0f;
+const float kAdcMax = 65535.0f;
 
 //------------------------------------------------------------------------------
 // Code
 //------------------------------------------------------------------------------
 
 ChannelCV::ChannelCV()
+:   _number(0)
 {
 }
 
-void ChannelCV::init()
+void ChannelCV::init(uint32_t number)
 {
+    _number = number;
 }
 
 float ChannelCV::process(uint32_t value)

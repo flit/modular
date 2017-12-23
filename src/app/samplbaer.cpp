@@ -337,8 +337,9 @@ void init_thread(void * arg)
     uint32_t i;
     for (i = 0; i < kVoiceCount; ++i)
     {
-        g_gates[i].n = i;
-        g_pots[i].n = i;
+        g_gates[i].init(i);
+        g_pots[i].init(i);
+        g_cvs[i].init(i);
         g_voice[i].init(i, (int16_t *)&g_sampleBufs[i]);
     }
 
