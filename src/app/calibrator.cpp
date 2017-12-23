@@ -50,7 +50,7 @@ Calibrator::Calibrator()
 
 void Calibrator::init()
 {
-    memset(&_data, 0, sizeof(_data));
+    _data.clear();
     _data.version = calibration::Data::kVersion;
 }
 

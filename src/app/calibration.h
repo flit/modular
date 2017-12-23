@@ -55,6 +55,11 @@ struct Data
     uint32_t version;
     Points pots[kVoiceCount];
     Points cvs[kVoiceCount];
+
+    void clear()
+    {
+        memset(pots, 0, sizeof(pots) + sizeof(cvs));
+    }
 };
 
 } // namespace calibration
