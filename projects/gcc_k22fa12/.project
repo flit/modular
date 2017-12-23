@@ -111,6 +111,11 @@
 			<locationURI>PARENT-2-PROJECT_LOC/src/app/button.h</locationURI>
 		</link>
 		<link>
+			<name>app/calibration.h</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/src/app/calibration.h</locationURI>
+		</link>
+		<link>
 			<name>app/calibrator.cpp</name>
 			<type>1</type>
 			<locationURI>PARENT-2-PROJECT_LOC/src/app/calibrator.cpp</locationURI>

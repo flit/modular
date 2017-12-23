@@ -26,76 +26,41 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#if !defined(_SAMPLBAER_H_)
-#define _SAMPLBAER_H_
+#if !defined(_CALIBRATION_H_)
+#define _CALIBRATION_H_
 
-#include "sampler_voice.h"
-#include "sampler_synth.h"
-#include "channel_gate.h"
-#include "channel_cv.h"
-#include "card_manager.h"
-#include "file_manager.h"
 #include "audio_defs.h"
-#include "ui.h"
-#include "persistent_data_store.h"
-#include "calibration.h"
-#include "fsl_adc16.h"
+#include <stdint.h>
+#include <string.h>
 
 //------------------------------------------------------------------------------
 // Definitions
 //------------------------------------------------------------------------------
 
 namespace slab {
+namespace calibration {
 
-enum thread_priorties : uint8_t
+//! @brief Pair of calibration points.
+struct Points
 {
-    kAudioThreadPriority = 180,
-    kReaderThreadPriority = 120,
-    kCVThreadPriority = 80,
-    kUIThreadPriority = 60,
-    kInitThreadPriority = 40,
+    uint32_t low;
+    uint32_t high;
 };
 
-//! DMA channel numbers used by the application.
-enum dma_channels : uint32_t
+//! @brief Pot and CV calibration data.
+struct Data
 {
-    kAudioPingDmaChannel = 0,
-    kAudioPongDmaChannel = 1,
-    kAdc0CommandDmaChannel = 2,
-    kAdc0ReadDmaChannel = 3,
-    kAdc1CommandDmaChannel = 4,
-    kAdc1ReadDmaChannel = 5,
-    kAllocatedDmaChannelCount = 6,  //!< Number of DMA channels used by the application.
+    static const uint32_t kVersion = 1;
+
+    uint32_t version;
+    Points pots[kVoiceCount];
+    Points cvs[kVoiceCount];
 };
 
-namespace persistent_data {
-
-//! Keys for persistent data values.
-enum data_keys : uint32_t
-{
-    kCalibrationDataKey = 'calb',
-    kLastSelectedBankKey = 'lbnk',
-    kLastVoiceModeKey = 'vmod',
-};
-
-extern PersistentData<kCalibrationDataKey, calibration::Data> g_calibrationData;
-extern PersistentData<kLastSelectedBankKey, uint32_t> g_lastSelectedBank;
-extern PersistentData<kLastVoiceModeKey, VoiceMode> g_lastVoiceMode;
-
-} // namespace persistent_data
-
-extern SamplerSynth g_sampler;
-extern SamplerVoice g_voice[kVoiceCount];
-extern ChannelGate g_gates[kVoiceCount];
-extern ChannelCV g_cvs[kVoiceCount];
-extern Pot g_pots[kVoiceCount];
-extern CardManager g_cardManager;
-extern FileManager g_fileManager;
-extern adc16_config_t g_adcConfig;
-
+} // namespace calibration
 } // namespace slab
 
-#endif // _SAMPLBAER_H_
+#endif // _CALIBRATION_H_
 //------------------------------------------------------------------------------
 // EOF
 //------------------------------------------------------------------------------
