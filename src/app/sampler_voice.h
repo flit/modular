@@ -63,7 +63,6 @@ struct SampleBuffer
     int16_t * data;
     uint32_t startFrame;
     uint32_t frameCount;
-    uint32_t readHead;
 };
 
 /*!
@@ -238,10 +237,13 @@ protected:
     bool _doRetrigger;
     bool _turnOnLedNextBuffer;
     uint32_t _noteOffSamplesRemaining;
-    float _lastBufferLastSample;
+    uint32_t _readHead;
     float _fraction;
     float _pitchOctave;
     VoiceParameters _params;
+
+    static const uint32_t kInterpolationBufferLength = 1;
+    float _interpolationBuffer[kInterpolationBufferLength]; //!< Last few samples from previous buffer.
 
     void _reset_voice();
 };

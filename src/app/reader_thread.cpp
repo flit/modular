@@ -435,14 +435,11 @@ void ReaderThread::fill_buffer(SamplerVoice * voice)
         fill_from_stereo(request->data, framesRead);
     }
 
-    // If we hit EOF, fill the remainder of the buffer with zeroes.
-    // @todo Should set request buffer frameCount instead of filling with zeroes.
-    if (framesRead < request->frameCount)
-    {
-        memset((uint8_t *)(request->data + framesRead), 0, (request->frameCount - framesRead) * sizeof(int16_t));
-    }
+    // Set request buffer frameCount to the number of frames read. This will always be
+    // the size of the buffer except when we hit EOF.
+    request->frameCount = framesRead;
 
-    request->readHead = 0;
+    // Push the filled buffer back to the voice's SBM.
     manager.enqueue_full_buffer(request);
 
     uint32_t stop1 = Microseconds::get();

@@ -33,6 +33,7 @@
 #include "debug_log.h"
 #include "utility.h"
 #include <cmath>
+#include <algorithm>
 
 using namespace slab;
 
@@ -94,7 +95,6 @@ void SampleBufferManager::_reset_buffers()
         _buffer[i].state = SampleBuffer::State::kUnused;
         _buffer[i].startFrame = 0;
         _buffer[i].frameCount = kBufferSize;
-        _buffer[i].readHead = 0;
         _buffer[i].reread = false;
     }
 }
@@ -138,7 +138,6 @@ void SampleBufferManager::prime()
     if (_activeBufferCount)
     {
         _currentBuffer = &_buffer[0];
-        _buffer[0].readHead = 0;
     }
 
     // Queue up the rest of the available buffers to be filled.
@@ -340,7 +339,7 @@ SamplerVoice::SamplerVoice()
     _doRetrigger(false),
     _turnOnLedNextBuffer(false),
     _noteOffSamplesRemaining(0),
-    _lastBufferLastSample(0),
+    _readHead(0),
     _fraction(0.0f),
     _pitchOctave(0.0f),
     _params()
@@ -391,8 +390,9 @@ void SamplerVoice::_reset_voice()
     _doNoteOff = false;
     _doRetrigger = false;
     _noteOffSamplesRemaining = 0;
+    _readHead = 0;
     _fraction = 0.0f;
-    _lastBufferLastSample = 0.0f;
+    std::fill_n(&_interpolationBuffer[0], kInterpolationBufferLength, 0);
 }
 
 void SamplerVoice::prime()
@@ -478,10 +478,9 @@ void SamplerVoice::render(int16_t * data, uint32_t frameCount)
 
     float rate = powf(2.0f, _params.baseOctaveOffset + _pitchOctave + (_params.baseCentsOffset / 1200.0f));
     int16_t * bufferData = voiceBuffer->data;
-    uint32_t readHead = voiceBuffer->readHead;
+    uint32_t readHead = _readHead;
     uint32_t bufferFrameCount = voiceBuffer->frameCount;
-    float s0 = 0.0f;
-    float s1 = 0.0f;
+    float s;
 
     // Special case for unmodified pitch.
     if (rate == 1.0f && !_doNoteOff)
@@ -492,10 +491,8 @@ void SamplerVoice::render(int16_t * data, uint32_t frameCount)
         // Render sample data into the output buffer.
         for (i = 0; i < framesFromBuffer; ++i)
         {
-            s1 = float(bufferData[readHead++]);
-
             // Apply the gain.
-            float s = s1;
+            s = float(bufferData[readHead++]);
             s *= _params.gain;
             *data = int16_t(s);
             data += 2;
@@ -504,8 +501,6 @@ void SamplerVoice::render(int16_t * data, uint32_t frameCount)
     else
     {
         float readHeadFraction = _fraction;
-        s1 = _lastBufferLastSample;
-
         bool updateBuffer = false;
 
         // Render sample data into the output buffer at the specified playback rate.
@@ -521,14 +516,11 @@ void SamplerVoice::render(int16_t * data, uint32_t frameCount)
                 // Check if we reached the end of this sample buffer.
                 if (readHead >= bufferFrameCount)
                 {
+                    std::copy_n(&bufferData[bufferFrameCount - kInterpolationBufferLength], kInterpolationBufferLength, _interpolationBuffer);
+
                     _manager.retire_buffer(voiceBuffer);
 
                     updateBuffer = true;
-                }
-                else
-                {
-                    s0 = s1;
-                    s1 = float(bufferData[readHead]);
                 }
             }
 
@@ -549,7 +541,6 @@ void SamplerVoice::render(int16_t * data, uint32_t frameCount)
                     updateBuffer = true;
                     readHead = bufferFrameCount;
                     readHeadFraction = 0.0f;
-                    s1 = 0.0f;
                 }
                 else
                 {
@@ -565,9 +556,8 @@ void SamplerVoice::render(int16_t * data, uint32_t frameCount)
                 if (!_isPlaying)
                 {
                     // Set some variables used outside the loop below.
-                    readHead = voiceBuffer->readHead;
+                    readHead = 0;
                     readHeadFraction = 0.0f;
-                    s1 = 0.0f;
                     break;
                 }
 
@@ -578,15 +568,23 @@ void SamplerVoice::render(int16_t * data, uint32_t frameCount)
                     break;
                 }
                 bufferData = voiceBuffer->data;
-                readHead = voiceBuffer->readHead + (readHead - bufferFrameCount);
+                readHead -= bufferFrameCount;
                 bufferFrameCount = voiceBuffer->frameCount;
-
-                s0 = s1;
-                s1 = float(bufferData[readHead]);
             }
 
             // Perform simple linear interpolation, then apply the gain.
-            float s = (s0 + readHeadFraction * (s1 - s0));
+            float s0;
+            if (readHead == 0)
+            {
+                s0 = _interpolationBuffer[kInterpolationBufferLength - 1];
+            }
+            else
+            {
+                s0 = float(bufferData[readHead - 1]);
+            }
+            float s1 = float(bufferData[readHead]);
+            s = (s0 + readHeadFraction * (s1 - s0));
+
             s *= gain;
             *data = int16_t(s);
             data += 2;
@@ -595,12 +593,8 @@ void SamplerVoice::render(int16_t * data, uint32_t frameCount)
         _fraction = readHeadFraction;
     }
 
-    // Save local read head back into buffer and record the last sample from this output buffer.
-    if (voiceBuffer)
-    {
-        voiceBuffer->readHead = readHead;
-    }
-    _lastBufferLastSample = s1;
+    // Save local read head.
+    _readHead = readHead;
 
     // Fill any leftover frames with silence.
     for (; i < frameCount; ++i)
@@ -612,7 +606,9 @@ void SamplerVoice::render(int16_t * data, uint32_t frameCount)
     // Did we finish this buffer?
     if (readHead >= bufferFrameCount && voiceBuffer)
     {
+        std::copy_n(&bufferData[bufferFrameCount - kInterpolationBufferLength], kInterpolationBufferLength, _interpolationBuffer);
         _manager.retire_buffer(voiceBuffer);
+        _readHead -= bufferFrameCount;
     }
 
     if (_turnOnLedNextBuffer)
