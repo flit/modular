@@ -399,6 +399,7 @@ void UI::handle_button_event(const UIEvent & event)
                                 // Turn off all LEDs and wait until they are updated before rebooting.
                                 set_all_channel_leds(false);
                                 update_channel_leds();
+                                _runloop.run(kArNoTimeout, nullptr); // Run runloop to flush leds.
                                 while (ChannelLEDManager::get().is_transferring())
                                 {
                                 }
