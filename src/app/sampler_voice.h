@@ -57,12 +57,80 @@ struct SampleBuffer
         kReading,
     };
 
+    enum class InterpolationMode
+    {
+        kLinear,
+        kCubic,
+        kHermite,
+    };
+
     uint8_t number;
     State state;
     bool reread;
     int16_t * data;
     uint32_t startFrame;
     uint32_t frameCount;
+
+    template <InterpolationMode mode>
+    float read(float fractionalFrame, const float * preBufferFrames)
+    {
+        uint32_t intOffset = static_cast<uint32_t>(fractionalFrame);
+        float fractOffset = fractionalFrame - static_cast<float>(intOffset);
+
+        float x0;
+        float x1;
+
+        if (mode == InterpolationMode::kLinear)
+        {
+            // Linear interpolator.
+            if (intOffset == 0)
+            {
+                x0 = preBufferFrames[2];
+            }
+            else
+            {
+                x0 = data[intOffset - 1];
+            }
+            x1 = data[intOffset];
+            return (x0 + fractOffset * (x1 - x0));
+        }
+        else
+        {
+            float xm1;
+            if (intOffset > 2)
+            {
+                xm1 = data[intOffset - 3];
+                x0 = data[intOffset - 2];
+                x1 = data[intOffset - 1];
+            }
+            else
+            {
+                xm1 = preBufferFrames[intOffset];
+                x0 = (intOffset > 1) ? data[intOffset - 2] : preBufferFrames[intOffset + 1];
+                x1 = (intOffset > 0) ? data[intOffset - 1] : preBufferFrames[intOffset + 2];
+            }
+            float x2 = data[intOffset];
+
+            if (mode == InterpolationMode::kCubic)
+            {
+                // Cubic interpolator.
+                float a0 = x2 - x1 - xm1 + x0;
+                float a1 = xm1 - x0 - a0;
+                float a2 = x1 - xm1;
+                return ((a0 * (fractOffset * fractOffset * fractOffset)) + (a1 * (fractOffset * fractOffset)) + (a2 * fractOffset) + x0);
+            }
+            else
+            {
+                // 4 point, 3rd order Hermite interpolator by Laurent de Soras.
+                float c = (x1 - xm1) * 0.5f;
+                float v = x0 - x1;
+                float w = c + v;
+                float a = w + v + (x2 - x0) * 0.5f;
+                float wa = w + a;
+                return ((((a * fractOffset) - wa) * fractOffset + c) * fractOffset + x0);
+            }
+        }
+    }
 };
 
 /*!
@@ -199,6 +267,7 @@ public:
     //! @brief Whether the voice is able to play.
     bool is_ready() const { return _isValid && _isReady; }
 
+    //! @brief Prepare voice for playing from start.
     void prime();
 
     void trigger();
@@ -237,12 +306,11 @@ protected:
     bool _doRetrigger;
     bool _turnOnLedNextBuffer;
     uint32_t _noteOffSamplesRemaining;
-    uint32_t _readHead;
-    float _fraction;
+    float _readHead;    //!< Fractional read head within current buffer.
     float _pitchOctave;
     VoiceParameters _params;
 
-    static const uint32_t kInterpolationBufferLength = 1;
+    static const uint32_t kInterpolationBufferLength = 3;
     float _interpolationBuffer[kInterpolationBufferLength]; //!< Last few samples from previous buffer.
 
     void _reset_voice();
