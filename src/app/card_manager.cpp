@@ -46,8 +46,10 @@ CardManager::CardManager()
 void CardManager::init()
 {
     // Configure SD host.
+    // Setting card detect to gpio even though we're using command polling to
+    // effectively disable the driver's card detect support, which is unreliable.
     static const sdmmchost_detect_card_t cd = {
-        .cdType = kSDMMCHOST_DetectCardByHostDATA3,
+        .cdType = kSDMMCHOST_DetectCardByGpioCD,
         .cdTimeOut_ms = (~0U),
         .cardInserted = nullptr,
         .cardRemoved = nullptr,
