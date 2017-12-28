@@ -73,6 +73,8 @@ SampleBufferManager::SampleBufferManager()
     _didReadFileStart(false),
     _waitingForFileStart(true),
     _isReady(false),
+    _snapToZeroStart(false),
+    _snapToZeroEnd(false),
     _preppedCount(0)
 {
 }
@@ -120,6 +122,8 @@ void SampleBufferManager::set_file(uint32_t totalFrames)
     _didReadFileStart = false;
     _waitingForFileStart = true;
     _isReady = false;
+    _snapToZeroStart = false;
+    _snapToZeroEnd = false;
     _preppedCount = 0;
     _reset_buffers();
 
@@ -281,6 +285,7 @@ void SampleBufferManager::enqueue_full_buffer(SampleBuffer * buffer)
     {
         _samplesRead += buffer->frameCount;
         buffer->state = SampleBuffer::State::kReady;
+        buffer->zeroSnapOffset = 0;
 
         DEBUG_PRINTF(QUEUE_MASK, "V%lu: queuing b%d for play\r\n", _number, buffer->number);
         _fullBuffers.put(buffer);
@@ -288,6 +293,11 @@ void SampleBufferManager::enqueue_full_buffer(SampleBuffer * buffer)
         if (isBuffer0)
         {
             _didReadFileStart = true;
+
+            if (_snapToZeroStart)
+            {
+                _find_zero_crossing(buffer);
+            }
         }
 
         // Wait until we get a full set of buffers before allowing play to start.
@@ -298,6 +308,44 @@ void SampleBufferManager::enqueue_full_buffer(SampleBuffer * buffer)
             _voice->manager_did_become_ready();
         }
     }
+}
+
+//! Finds the first zero crossing, meaning positive to negative or vice versa, or
+//! an actual zero sample. If the sample is not zero, it sets the prior sample
+//! to zero. The zero sample position is set in the buffer's zeroSnapOffset member.
+//!
+//! @note The buffer must have a frame count of at least 2, or this method will do nothing.
+void SampleBufferManager::_find_zero_crossing(SampleBuffer * buffer)
+{
+    if (buffer->frameCount < 2)
+    {
+        return;
+    }
+
+    uint32_t i;
+    int16_t previousSample = buffer->data[0];
+    int16_t * sample = &buffer->data[1];
+    for (i = 1; i < buffer->frameCount; ++i, ++sample)
+    {
+        int16_t thisSample = *sample;
+        if ((thisSample <= 0 && previousSample >= 0)
+            || (thisSample >= 0 && previousSample <= 0))
+        {
+            if (i > 0)
+            {
+                buffer->data[i - 1] = 0;
+                buffer->zeroSnapOffset = i - 1;
+            }
+            else
+            {
+                *sample = 0;
+                buffer->zeroSnapOffset = i;
+            }
+            return;
+        }
+        previousSample = thisSample;
+    }
+    assert(false);
 }
 
 void SampleBufferManager::set_start_end_sample(int32_t start, int32_t end)
@@ -324,6 +372,7 @@ void SampleBufferManager::set_start_end_sample(int32_t start, int32_t end)
         _isReady = false;
         _didReadFileStart = false;
         _waitingForFileStart = true;
+        _snapToZeroStart = (_startSample != 0);
         _preppedCount = 0;
         prime();
     }
@@ -483,6 +532,12 @@ void SamplerVoice::render(int16_t * data, uint32_t frameCount)
     uint32_t bufferFrameCount = voiceBuffer->frameCount;
     uint32_t remainingFrames = frameCount;
     float s;
+
+    // Skip ahead to the buffer's zero snap offset. This will only apply to the file start.
+    if (readHead == 0.0f)
+    {
+        readHead = voiceBuffer->zeroSnapOffset;
+    }
 
     // Special case for unmodified pitch.
     if (rate == 1.0f && !_doNoteOff)

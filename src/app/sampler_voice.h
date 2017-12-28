@@ -73,6 +73,7 @@ struct SampleBuffer
     bool reread;    //!< Whether to auto re-queue the buffer for reading after current read is finished.
     int16_t * data; //!< Pointer to the buffer's data. The size is #SampleBufferManager::kBufferSize.
     uint32_t startFrame;    //!< Frame number within the source file for this buffer's first frame.
+    uint32_t zeroSnapOffset;    //!< Offset frame snapped to zero. This is frame from which we should start reading. Only applies to the file start buffer (will be zero for all others).
     uint32_t frameCount;    //!< Number of valid frames within this buffer.
 
     //! @brief Fill a buffer with interpolated samples.
@@ -223,9 +224,13 @@ protected:
     bool _didReadFileStart;
     bool _waitingForFileStart;
     bool _isReady;
+    bool _snapToZeroStart;
+    bool _snapToZeroEnd;
     uint32_t _preppedCount;
 
     void _reset_buffers();
+
+    void _find_zero_crossing(SampleBuffer * buffer);
 };
 
 /*!
