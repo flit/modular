@@ -293,37 +293,33 @@ void SampleBufferManager::enqueue_full_buffer(SampleBuffer * buffer)
     }
 }
 
-void SampleBufferManager::set_start_sample(uint32_t start)
+void SampleBufferManager::set_start_end_sample(int32_t start, int32_t end)
 {
     // Voice must not be playing.
     assert(!_voice->is_playing());
 
-    _isReady = false;
-    _didReadFileStart = false;
-    _waitingForFileStart = true;
-    _preppedCount = 0;
-    _startSample = start;
-    if (_endSample < _startSample)
+    // Handle sentinels to use current values.
+    uint32_t ustart = (start == -1L) ? _startSample : start;
+    uint32_t uend = (end == -1L) ? _endSample : end;
+    DEBUG_PRINTF(MISC_MASK, "set_start_end: %lu - %lu\r\n", ustart, uend);
+
+    uint32_t originalStart = _startSample;
+
+    // Update parameters.
+    _startSample = constrained(ustart, 0UL, _totalSamples);
+    _endSample = constrained(uend, ustart, _totalSamples);
+
+    _activeBufferCount = min(round_up_div(get_active_samples(), kBufferSize), kBufferCount);
+
+    // Reload start of the file if the start sample changed.
+    if (_startSample != originalStart)
     {
-        _endSample = _startSample;
+        _isReady = false;
+        _didReadFileStart = false;
+        _waitingForFileStart = true;
+        _preppedCount = 0;
+        prime();
     }
-    DEBUG_PRINTF(MISC_MASK, "set_start: %lu - %lu\r\n", _startSample, _endSample);
-
-    _activeBufferCount = min(round_up_div(get_active_samples(), kBufferSize), kBufferCount);
-
-    prime();
-}
-
-void SampleBufferManager::set_end_sample(uint32_t end)
-{
-    // Voice must not be playing.
-    assert(!_voice->is_playing());
-    assert(end >= _startSample);
-
-    _endSample = end;
-    DEBUG_PRINTF(MISC_MASK, "set_end: %lu - %lu\r\n", _startSample, _endSample);
-
-    _activeBufferCount = min(round_up_div(get_active_samples(), kBufferSize), kBufferCount);
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -608,8 +604,8 @@ void SamplerVoice::set_sample_start(float start)
     _params.startSample = start;
 
     // Tell sample manager to set and load new start point.
-    uint32_t sample = uint32_t(float(_manager.get_total_samples()) * start);
-    _manager.set_start_sample(sample);
+    uint32_t sample = float(_manager.get_total_samples()) * start;
+    _manager.set_start_end_sample(sample, -1);
 }
 
 void SamplerVoice::set_sample_end(float end)
@@ -620,17 +616,24 @@ void SamplerVoice::set_sample_end(float end)
 
     _params.endSample = end;
 
-    uint32_t startSample = _manager.get_start_sample();
-    uint32_t s = _manager.get_total_samples() - startSample;
-    uint32_t sample = startSample + uint32_t(float(s) * end);
-    _manager.set_end_sample(sample);
+    uint32_t sample = float(_manager.get_total_samples()) * end;
+    _manager.set_start_end_sample(-1, sample);
 }
 
 void SamplerVoice::set_params(const VoiceParameters & params)
 {
+    // Stop playing and turn off LED.
+    _reset_voice();
+    UI::get().set_voice_playing(_number, false);
+
+    // Update params.
     _params = params;
-    set_sample_start(_params.startSample);
-    set_sample_end(_params.endSample);
+
+    // Update playback range in SBM.
+    float totalSamples = _manager.get_total_samples();
+    uint32_t start = totalSamples * _params.startSample;
+    uint32_t end = totalSamples * _params.endSample;
+    _manager.set_start_end_sample(start, end);
 }
 
 //------------------------------------------------------------------------------

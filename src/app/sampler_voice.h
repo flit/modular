@@ -149,10 +149,18 @@ public:
     void init(SamplerVoice * voice, int16_t * buffer);
     void set_file(uint32_t totalFrames);
 
+    //! @brief Prepare for playback from start.
     void prime();
 
-    void set_start_sample(uint32_t start);
-    void set_end_sample(uint32_t end);
+    //! @brief Modify the sample playback range.
+    //!
+    //! Out of range and out of order values are accepted. Start and end are limited so that start
+    //! cannot be greater than end, and vice versa. The start and end are also limited to the valid
+    //! total sample range of the data.
+    //!
+    //! @param start Sample number to start playing from, or -1 to use current value.
+    //! @param start Sample number at which playback will cease. Pass -1 to use current value.
+    void set_start_end_sample(int32_t start, int32_t end);
 
     bool is_ready() const { return _isReady; }
     SampleBuffer * get_current_buffer();
