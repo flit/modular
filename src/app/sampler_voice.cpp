@@ -256,8 +256,9 @@ void SampleBufferManager::enqueue_full_buffer(SampleBuffer * buffer)
 {
     assert(buffer);
     bool isBuffer0 = (buffer->number == 0);
+    bool isOutOfOrder = (buffer->startFrame != _samplesRead);
 
-    if (buffer->reread)
+    if (buffer->reread || isOutOfOrder)
     {
         DEBUG_PRINTF(QUEUE_MASK, "V%lu: queuing b%d for reread\r\n", _number, buffer->number);
 
@@ -286,8 +287,6 @@ void SampleBufferManager::enqueue_full_buffer(SampleBuffer * buffer)
 
         if (isBuffer0)
         {
-            // Only set this flag if buffer0 actually contains the start samples.
-            assert(buffer->startFrame == _startSample);
             _didReadFileStart = true;
         }
 
