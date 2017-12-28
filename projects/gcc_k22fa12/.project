@@ -81,6 +81,11 @@
 			<locationURI>PARENT-2-PROJECT_LOC/src/app/ar_config.h</locationURI>
 		</link>
 		<link>
+			<name>app/audio_buffer.h</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/src/app/audio_buffer.h</locationURI>
+		</link>
+		<link>
 			<name>app/audio_defs.h</name>
 			<type>1</type>
 			<locationURI>PARENT-2-PROJECT_LOC/src/app/audio_defs.h</locationURI>

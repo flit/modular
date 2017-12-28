@@ -33,6 +33,8 @@
 #include "wav_file.h"
 #include "protected_queue.h"
 #include "audio_defs.h"
+#include "audio_buffer.h"
+#include <assert.h>
 
 //------------------------------------------------------------------------------
 // Definitions
@@ -47,6 +49,7 @@ class SamplerVoice;
  */
 struct SampleBuffer
 {
+    //! @brief States of the buffer.
     enum State : uint8_t
     {
         kUnused,
@@ -57,6 +60,7 @@ struct SampleBuffer
         kReading,
     };
 
+    //! @brief Options for interpolation.
     enum class InterpolationMode
     {
         kLinear,
@@ -64,13 +68,30 @@ struct SampleBuffer
         kHermite,
     };
 
-    uint8_t number;
-    State state;
-    bool reread;
-    int16_t * data;
-    uint32_t startFrame;
-    uint32_t frameCount;
+    uint8_t number; //!< Sample buffer number, mostly for debugging.
+    State state;    //!< Current state of the buffer.
+    bool reread;    //!< Whether to auto re-queue the buffer for reading after current read is finished.
+    int16_t * data; //!< Pointer to the buffer's data. The size is #SampleBufferManager::kBufferSize.
+    uint32_t startFrame;    //!< Frame number within the source file for this buffer's first frame.
+    uint32_t frameCount;    //!< Number of valid frames within this buffer.
 
+    //! @brief Fill a buffer with interpolated samples.
+    template <InterpolationMode mode>
+    uint32_t read_into(float * buffer, uint32_t count, float & fractionalFrame, float rate, const float * preBufferFrames)
+    {
+        assert(fractionalFrame + float(count) * rate < frameCount + 1);
+        uint32_t n;
+        float localFractionalFrame = fractionalFrame;
+        for (n = 0; n < count; ++n)
+        {
+            *buffer++ = read<mode>(localFractionalFrame, preBufferFrames);
+            localFractionalFrame += rate;
+        }
+        fractionalFrame = localFractionalFrame;
+        return 0;
+    }
+
+    //! @brief Return one interpolated sample at a fractional position within this buffer.
     template <InterpolationMode mode>
     float read(float fractionalFrame, const float * preBufferFrames)
     {
@@ -96,15 +117,18 @@ struct SampleBuffer
         }
         else
         {
+            // Read the 4 points used for interpolation.
             float xm1;
             if (intOffset > 2)
             {
+                // All four points come from this buffer.
                 xm1 = data[intOffset - 3];
                 x0 = data[intOffset - 2];
                 x1 = data[intOffset - 1];
             }
             else
             {
+                // Mix of points from both the previous buffer and this one.
                 xm1 = preBufferFrames[intOffset];
                 x0 = (intOffset > 1) ? data[intOffset - 2] : preBufferFrames[intOffset + 1];
                 x1 = (intOffset > 0) ? data[intOffset - 1] : preBufferFrames[intOffset + 2];
@@ -113,7 +137,7 @@ struct SampleBuffer
 
             if (mode == InterpolationMode::kCubic)
             {
-                // Cubic interpolator.
+                // 4 point cubic interpolator.
                 float a0 = x2 - x1 - xm1 + x0;
                 float a1 = xm1 - x0 - a0;
                 float a2 = x1 - xm1;
@@ -317,6 +341,9 @@ protected:
     float _readHead;    //!< Fractional read head within current buffer.
     float _pitchOctave;
     VoiceParameters _params;
+
+    static float s_workBufferData[kAudioBufferSize];
+    static AudioBuffer s_workBuffer;
 
     static const uint32_t kInterpolationBufferLength = 3;
     float _interpolationBuffer[kInterpolationBufferLength]; //!< Last few samples from previous buffer.

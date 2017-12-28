@@ -44,7 +44,15 @@ using namespace slab;
 //! Set to 1 to cause the voice to automatically and repeatedly trigger.
 #define ENABLE_TEST_LOOP_MODE (0)
 
+//! Number of samples to fade out.
 const uint32_t kNoteOffSamples = 128;
+
+//------------------------------------------------------------------------------
+// Variables
+//------------------------------------------------------------------------------
+
+float SamplerVoice::s_workBufferData[kAudioBufferSize];
+AudioBuffer SamplerVoice::s_workBuffer(s_workBufferData, kAudioBufferSize);
 
 //------------------------------------------------------------------------------
 // Code
@@ -474,6 +482,7 @@ void SamplerVoice::render(int16_t * data, uint32_t frameCount)
     int16_t * bufferData = voiceBuffer->data;
     float readHead = _readHead;
     uint32_t bufferFrameCount = voiceBuffer->frameCount;
+    uint32_t remainingFrames = frameCount;
     float s;
 
     // Special case for unmodified pitch.
@@ -494,8 +503,9 @@ void SamplerVoice::render(int16_t * data, uint32_t frameCount)
         }
 
         readHead = integerReadHead;
+        remainingFrames -= framesFromBuffer;
     }
-    else
+    else if (_doNoteOff)
     {
         bool updateBuffer = false;
 
@@ -538,6 +548,7 @@ void SamplerVoice::render(int16_t * data, uint32_t frameCount)
             if (updateBuffer)
             {
                 updateBuffer = false;
+                readHead -= bufferFrameCount;
 
                 // If we're no longer playing, exit this loop.
                 if (!_isPlaying)
@@ -554,7 +565,6 @@ void SamplerVoice::render(int16_t * data, uint32_t frameCount)
                     break;
                 }
                 bufferData = voiceBuffer->data;
-                readHead -= bufferFrameCount;
                 bufferFrameCount = voiceBuffer->frameCount;
             }
 
@@ -568,25 +578,92 @@ void SamplerVoice::render(int16_t * data, uint32_t frameCount)
 
             readHead += rate;
         }
+
+        remainingFrames -= i;
+    }
+    else
+    {
+        assert(readHead < bufferFrameCount);
+        while (remainingFrames)
+        {
+            assert(remainingFrames <= frameCount);
+            uint32_t framesAtRate = std::ceil(remainingFrames * rate);
+            uint32_t integerReadHead = readHead;
+            uint32_t framesRemainingInBuffer = bufferFrameCount - integerReadHead;
+            uint32_t outputFrames;
+
+            // Handle case where there are fewer remaining frames in the buffer than
+            // the playback rate, in which case we need to just move to the next buffer.
+            if (framesRemainingInBuffer < rate)
+            {
+                readHead += rate;
+            }
+            else
+            {
+                if (framesAtRate > framesRemainingInBuffer)
+                {
+                    outputFrames = min(uint32_t(std::floor(framesRemainingInBuffer / rate)), remainingFrames);
+                }
+                else
+                {
+                    outputFrames = remainingFrames;
+                }
+
+                // Render sample data into the output buffer at the specified playback rate.
+                voiceBuffer->read_into<SampleBuffer::InterpolationMode::kHermite>(s_workBuffer, outputFrames, readHead, rate, _interpolationBuffer);
+                s_workBuffer.multiply_scalar(_params.gain, outputFrames);
+                s_workBuffer.copy_into(data, 2, outputFrames);
+
+                remainingFrames -= outputFrames;
+                data += outputFrames * 2;
+            }
+
+            if (readHead > (bufferFrameCount - 1))
+            {
+                readHead -= bufferFrameCount;
+                std::copy_n(&bufferData[bufferFrameCount - kInterpolationBufferLength], kInterpolationBufferLength, _interpolationBuffer);
+
+                _manager.retire_buffer(voiceBuffer);
+
+                // If we're no longer playing, exit this loop.
+                if (!_isPlaying)
+                {
+                    // Set some variables used outside the loop below.
+                    readHead = 0.0f;
+                    break;
+                }
+
+                // Get the next buffer and update locals.
+                voiceBuffer = _manager.get_current_buffer();
+                if (!voiceBuffer)
+                {
+                    break;
+                }
+                bufferData = voiceBuffer->data;
+                bufferFrameCount = voiceBuffer->frameCount;
+            }
+            assert(readHead < bufferFrameCount);
+        }
     }
 
     // Save local read head.
     _readHead = readHead;
 
     // Fill any leftover frames with silence.
-    for (; i < frameCount; ++i)
+    while (remainingFrames--)
     {
         *data = 0;
         data += 2;
     }
 
     // Did we finish this buffer?
-    if (readHead >= bufferFrameCount && voiceBuffer)
+    if (_readHead >= bufferFrameCount && voiceBuffer)
     {
         std::copy_n(&bufferData[bufferFrameCount - kInterpolationBufferLength], kInterpolationBufferLength, _interpolationBuffer);
         _manager.retire_buffer(voiceBuffer);
         _readHead -= bufferFrameCount;
     }
+    assert(_readHead < bufferFrameCount);
 
     if (_turnOnLedNextBuffer)
     {

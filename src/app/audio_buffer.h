@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015 Immo Software
+ * Copyright (c) 2015-2017 Immo Software
  *
  * Redistribution and use in source and binary forms, with or without modification,
  * are permitted provided that the following conditions are met:
@@ -29,6 +29,8 @@
 #if !defined(_AUDIO_BUFFER_H_)
 #define _AUDIO_BUFFER_H_
 
+#include "arm_math.h"
+#include <cassert>
 #include <stddef.h>
 #include <stdint.h>
 
@@ -59,7 +61,7 @@ public:
         return *this;
     }
 
-    ~AudioBuffer() {}
+    ~AudioBuffer()=default;
 
     void set(float * samples, uint32_t count)
     {
@@ -72,25 +74,60 @@ public:
     uint32_t get_count() const { return m_count; }
 
     void clear() { set_scalar(0.0f); }
-    void set_scalar(float value);
-    void multiply_scalar(float value);
-    void multiply_vector(float * vector);
+
+    void set_scalar(float value)
+    {
+        arm_fill_f32(value, m_samples, m_count);
+    }
+
+    void multiply_scalar(float value)
+    {
+        arm_scale_f32(m_samples, value, m_samples, m_count);
+    }
+
+    void multiply_scalar(float value, uint32_t count, uint32_t start=0)
+    {
+        assert(start + count <= m_count);
+        arm_scale_f32(&m_samples[start], value, &m_samples[start], count);
+    }
+
+    void multiply_vector(const float * vector)
+    {
+        arm_mult_f32(m_samples, const_cast<float *>(vector), m_samples, m_count);
+    }
+
+    void multiply_vector(const float * vector, uint32_t count, uint32_t start=0)
+    {
+        assert(start + count <= m_count);
+        arm_mult_f32(&m_samples[start], const_cast<float *>(vector), &m_samples[start], count);
+    }
+
+    template <typename T>
+    void copy_into(T * buffer, uint32_t step, uint32_t count, uint32_t start=0, float scale=1.0f)
+    {
+        uint32_t i;
+        float * sample = &m_samples[start];
+        if (scale == 1.0f)
+        {
+            for (i = 0; i < count; ++i)
+            {
+                *buffer = static_cast<T>(*sample++);
+                buffer += step;
+            }
+        }
+        else
+        {
+            for (i = 0; i < count; ++i)
+            {
+                *buffer = static_cast<T>(*sample++ * scale);
+                buffer += step;
+            }
+        }
+    }
 
     operator float * () { return m_samples; }
     operator const float * () const { return m_samples; }
     operator bool () { return m_samples != NULL; }
-
-//     class Cursor
-//     {
-//     public:
-//         Cursor(AudioBuffer & buffer) : m_buffer(buffer) {}
-//         ~Cursor() {}
-//
-//     protected:
-//         AudioBuffer & m_buffer;
-//     };
-//
-//     Cursor get_cursor() { return Cursor(*this); }
 
 protected:
     float * m_samples;
