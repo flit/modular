@@ -47,8 +47,8 @@ using namespace slab;
 // Definitions
 //------------------------------------------------------------------------------
 
-//! App starts at 128kB offset.
-#define APP_START_ADDR (0x20000)
+//! App starts at 64kB offset.
+#define APP_START_ADDR (0x10000)
 
 //! Name of the firmware update file.
 #define FW_UPDATE_FILENAME "/firmware.bin"
