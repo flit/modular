@@ -106,16 +106,6 @@
 			<locationURI>PARENT-2-PROJECT_LOC/src/app/fault_handlers.cpp</locationURI>
 		</link>
 		<link>
-			<name>app/file_manager.cpp</name>
-			<type>1</type>
-			<locationURI>PARENT-2-PROJECT_LOC/src/app/file_manager.cpp</locationURI>
-		</link>
-		<link>
-			<name>app/file_manager.h</name>
-			<type>1</type>
-			<locationURI>PARENT-2-PROJECT_LOC/src/app/file_manager.h</locationURI>
-		</link>
-		<link>
 			<name>app/file_system.cpp</name>
 			<type>1</type>
 			<locationURI>PARENT-2-PROJECT_LOC/src/app/file_system.cpp</locationURI>
