@@ -78,18 +78,16 @@ struct SampleBuffer
 
     //! @brief Fill a buffer with interpolated samples.
     template <InterpolationMode mode>
-    uint32_t read_into(float * buffer, uint32_t count, float & fractionalFrame, float rate, const float * preBufferFrames)
+    float read_into(float * buffer, uint32_t count, float fractionalFrame, float rate, const float * preBufferFrames)
     {
         assert(fractionalFrame + float(count) * rate < frameCount + 1);
         uint32_t n;
-        float localFractionalFrame = fractionalFrame;
         for (n = 0; n < count; ++n)
         {
-            *buffer++ = read<mode>(localFractionalFrame, preBufferFrames);
-            localFractionalFrame += rate;
+            *buffer++ = read<mode>(fractionalFrame, preBufferFrames);
+            fractionalFrame += rate;
         }
-        fractionalFrame = localFractionalFrame;
-        return 0;
+        return fractionalFrame;
     }
 
     //! @brief Return one interpolated sample at a fractional position within this buffer.
