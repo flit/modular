@@ -108,9 +108,9 @@ bool SampleBank::Sample::load_to_voice(SamplerVoice & voice)
         return false;
     }
 
-    // Only support 48 kHz 16-bit format files with 1 or 2 channels.
+    // Only support 16-bit format files with 1 or 2 channels. If the sample rate is not
+    // 48k then it will be played off-pitch.
     if (!(wav.get_channels() <= 2
-        && wav.get_sample_rate() == 48000
         && wav.get_sample_size() == 16))
     {
         DEBUG_PRINTF(ERROR_MASK, "File %s is an unsupported format\r\n", _path.get());
