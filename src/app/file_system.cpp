@@ -140,6 +140,21 @@ File::File(const char * path)
     set(path);
 }
 
+File::File(const File & other)
+:   _isOpen(other._isOpen)
+{
+    strncpy(_path, other._path, sizeof(_path));
+    _fp = other._fp;
+}
+
+File::File(File && other)
+:   _isOpen(other._isOpen)
+{
+    strncpy(_path, other._path, sizeof(_path));
+    _fp = other._fp;
+    other._isOpen = false;
+}
+
 File::~File()
 {
     close();
@@ -150,6 +165,15 @@ File& File::operator = (const File& other)
     strncpy(_path, other._path, sizeof(_path));
     _fp = other._fp;
     _isOpen = other._isOpen;
+    return *this;
+}
+
+File& File::operator = (File&& other)
+{
+    strncpy(_path, other._path, sizeof(_path));
+    _fp = other._fp;
+    _isOpen = other._isOpen;
+    other._isOpen = false;
     return *this;
 }
 
@@ -218,9 +242,9 @@ File::error_t File::write(uint32_t count, const void * data, uint32_t * actualCo
     return convert_ff_err(result);
 }
 
-bool File::seek(uint32_t offset)
+File::error_t File::seek(uint32_t offset)
 {
-    return f_lseek(&_fp, offset) == FR_OK;
+    return convert_ff_err(f_lseek(&_fp, offset));
 }
 
 //------------------------------------------------------------------------------

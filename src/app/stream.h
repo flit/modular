@@ -50,7 +50,7 @@ public:
 
     virtual error_t read(uint32_t count, void * data, uint32_t * actualCount)=0;
     virtual error_t write(uint32_t count, const void * data, uint32_t * actualCount)=0;
-    virtual bool seek(uint32_t offset)=0;
+    virtual error_t seek(uint32_t offset)=0;
 
     virtual uint32_t get_size() const=0;
     virtual uint32_t get_offset() const=0;

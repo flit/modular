@@ -184,11 +184,10 @@ fs::error_t WaveFile::AudioDataStream::read(uint32_t count, void * data, uint32_
     return _file->read(count, data, actualCount);
 }
 
-bool WaveFile::AudioDataStream::seek(uint32_t offset)
+fs::error_t WaveFile::AudioDataStream::seek(uint32_t offset)
 {
     assert(_file);
-    _file->seek(_file->_dataOffset + offset);
-    return true;
+    return _file->seek(_file->_dataOffset + offset);
 }
 
 uint32_t WaveFile::AudioDataStream::get_size() const

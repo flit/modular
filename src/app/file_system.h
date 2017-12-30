@@ -62,9 +62,12 @@ class File : public Stream
 public:
     File();
     File(const char * path);
+    File(const File & other);
+    File(File && other);
     virtual ~File();
 
     File& operator = (const File& other);
+    File& operator = (File&& other);
 
     void set(const char * path);
 
@@ -73,7 +76,7 @@ public:
 
     virtual error_t read(uint32_t count, void * data, uint32_t * actualCount) override;
     virtual error_t write(uint32_t count, const void * data, uint32_t * actualCount) override;
-    virtual bool seek(uint32_t offset) override;
+    virtual error_t seek(uint32_t offset) override;
 
     virtual uint32_t get_size() const override { return f_size(&_fp); }
     virtual uint32_t get_offset() const override { return f_tell(&_fp); }
