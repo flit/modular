@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016 Immo Software
+ * Copyright (c) 2016-2017 Immo Software
  *
  * Redistribution and use in source and binary forms, with or without modification,
  * are permitted provided that the following conditions are met:
@@ -45,8 +45,8 @@ class Stream
 public:
     using error_t = uint32_t;
 
-    Stream() {}
-    virtual ~Stream() {}
+    Stream()=default;
+    virtual ~Stream()=default;
 
     virtual error_t read(uint32_t count, void * data, uint32_t * actualCount)=0;
     virtual error_t write(uint32_t count, const void * data, uint32_t * actualCount)=0;

@@ -103,6 +103,34 @@ protected:
     void set_all_leds(bool state);
 };
 
+/*!
+ * @brief Stream class for data in memory.
+ */
+class MemoryStream : public Stream
+{
+public:
+    MemoryStream(void * ptr, uint32_t length)
+    :   Stream(),
+        _base(static_cast<uint8_t *>(ptr)),
+        _length(length),
+        _offset(0)
+    {
+    }
+    virtual ~MemoryStream()=default;
+
+    virtual error_t read(uint32_t count, void * data, uint32_t * actualCount) override;
+    virtual error_t write(uint32_t count, const void * data, uint32_t * actualCount) override;
+    virtual error_t seek(uint32_t offset) override;
+
+    virtual uint32_t get_size() const { return _length; }
+    virtual uint32_t get_offset() const { return _offset; }
+
+protected:
+    uint8_t * _base;
+    uint32_t _length;
+    uint32_t _offset;
+};
+
 //! @brief Encapsulation of the bootloader.
 //!
 //! The bootloader thread will automatically start once Argon runs.
@@ -222,6 +250,37 @@ void LEDFlasher::flasher_thread()
         }
         Ar::Thread::sleep(LED_FLASH_TIME_MS);
     }
+}
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+Stream::error_t MemoryStream::read(uint32_t count, void * data, uint32_t * actualCount)
+{
+    if (_offset + count > _length)
+    {
+        count = _length - _offset;
+    }
+    if (count)
+    {
+        memcpy(data, _base + _offset, count);
+        _offset += count;
+    }
+    if (actualCount)
+    {
+        *actualCount = count;
+    }
+    return 0;
+}
+
+Stream::error_t MemoryStream::write(uint32_t count, const void * data, uint32_t * actualCount)
+{
+    return 1;
+}
+
+Stream::error_t MemoryStream::seek(uint32_t offset)
+{
+    _offset = constrained(offset, 0UL, _length);
+    return 0;
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -497,12 +556,16 @@ bool Bootloader::validate_update_file()
         return false;
     }
 
-    // Update if either of:
+    // Update if one of:
     // - Update's CRC does not match existing app's CRC.
     // - There is no existing app (update CRC is highly unlikely to match 0xffffffff, but
     //   it doesn't hurt to have an explicit check).
+    // - Update CRC matches app CRC but the app header/CRC is tested as invalid, maybe the
+    //   flash got corrupted somehow.
     bool doUpdate = (header.crc32 != _app->crc32)
-                    || (_app->crc32 == ERASED_WORD);
+                    || (_app->crc32 == ERASED_WORD)
+                    || ((header.crc32 == _app->crc32)
+                        && (!have_valid_app()));
 
     // Verify CRC of the file before we do the update.
     doUpdate = doUpdate && check_crc(_updateFile);
@@ -527,9 +590,22 @@ bool Bootloader::find_update_file()
 
 bool Bootloader::have_valid_app()
 {
-    return (_app->initialStack != ERASED_WORD
-            && _app->resetHandler != ERASED_WORD
-            && _app->signature == APP_SIGNATURE);
+    bool areVectorsGood = (_app->initialStack != ERASED_WORD
+                        && _app->initialStack != 0
+                        && _app->resetHandler != ERASED_WORD
+                        && _app->resetHandler != 0
+                        && _app->signature == APP_SIGNATURE
+                        && _app->crc32 != ERASED_WORD
+                        && _app->crc32 != 0
+                        && _app->appSize != ERASED_WORD
+                        && _app->appSize != 0);
+    bool isCrcOk = false;
+    if (areVectorsGood)
+    {
+        MemoryStream appInFlash(reinterpret_cast<void *>(APP_START_ADDR), _app->appSize);
+        isCrcOk = check_crc(appInFlash);
+    }
+    return areVectorsGood && isCrcOk;
 }
 
 void Bootloader::bootloader_thread()
