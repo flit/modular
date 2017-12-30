@@ -36,6 +36,7 @@
 #include "channel_led.h"
 #include "microseconds.h"
 #include "debug_log.h"
+#include "crc32.h"
 #include "fsl_flash.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -132,9 +133,12 @@ protected:
     bool program_sector(uint32_t sectorAddress);
     bool load_sector_data(uint32_t bytesToRead);
 
+    bool check_crc(Stream & data);
+
     void start_app();
     void perform_update();
-    bool check_update();
+    bool find_update_file();
+    bool validate_update_file();
     bool have_valid_app();
     void bootloader_thread();
 };
@@ -219,6 +223,8 @@ void LEDFlasher::flasher_thread()
         Ar::Thread::sleep(LED_FLASH_TIME_MS);
     }
 }
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 Bootloader::Bootloader()
 :   _thread("bootloader", this, &Bootloader::bootloader_thread, 100, kArStartThread),
@@ -313,6 +319,55 @@ bool Bootloader::load_sector_data(uint32_t bytesToRead)
     return true;
 }
 
+//! @brief Compute and validate CRC of a firmware object.
+bool Bootloader::check_crc(Stream & data)
+{
+    Crc32 crc;
+
+    // Read header.
+    AppVectors header;
+    uint32_t bytesRead;
+    fs::error_t err = data.seek(0);
+    if (err)
+    {
+        DEBUG_PRINTF(ERROR_MASK, "failed to seek: %lu\r\n", err);
+        return false;
+    }
+    err = data.read(sizeof(header), &header, &bytesRead);
+    if (err || bytesRead != sizeof(header))
+    {
+        DEBUG_PRINTF(ERROR_MASK, "unable to read file header: %lu\r\n", err);
+        return false;
+    }
+
+    // Compute CRC over header, substituting 0 for the CRC32 field.
+    uint32_t zeroWord = 0;
+    crc.compute(&header, offsetof(AppVectors, crc32))
+        .compute(&zeroWord, sizeof(zeroWord))
+        .compute(&header.appSize, sizeof(header.appSize));
+
+    // Compute CRC over the rest of the data.
+    uint32_t remainingBytes = _updateFile.get_size() - sizeof(header);
+    while (remainingBytes)
+    {
+        uint32_t bytesToRead = min(kSectorSize, remainingBytes);
+        err = data.read(bytesToRead, _sectorBuffer, &bytesRead);
+        if (err || bytesRead != bytesToRead)
+        {
+            DEBUG_PRINTF(ERROR_MASK, "failed to read file chunk: %lu\r\n", err);
+            return false;
+        }
+
+        crc.compute(_sectorBuffer, bytesRead);
+
+        remainingBytes -= bytesRead;
+    }
+
+    // Check computed CRC.
+    uint32_t computedCrc = crc.get();
+    return (computedCrc == header.crc32);
+}
+
 //! @brief Copy the firmware update to flash.
 //!
 //! The first step is to erase the app's vector table sector. This sector will not be
@@ -400,35 +455,27 @@ void Bootloader::perform_update()
         return;
     }
 
+#if !DEBUG
     // Delete the firmware update file since it was successfully programmed.
     DEBUG_PRINTF(INIT_MASK, "update complete; deleting %s\r\n", FW_UPDATE_FILENAME);
     _updateFile.remove();
+#endif
 }
 
-//! @brief Check if we should perform an update.
+//! @brief Validates the firmware update file.
 //!
-//! First an attempt is made to open the firmware update file. If the file is present,
-//! then the app signature in its header is checked. The size of the file is also compared
-//! against the size stored in the header, to make sure all data is present. If those
-//! checks pass, the CRC stored in the file's header is compared against the CRC in the
-//! header of the current version of the app resident in flash.
+//! First checks the app signature in the firmware update file header. The size of the
+//! file is also compared against the size stored in the header, to make sure all data is
+//! present. If those checks pass, the CRC stored in the file's header is compared against
+//! the CRC in the header of the current version of the app resident in flash.
 //!
 //! Note that filesystem is assumed to already be mounted when this method is called.
-bool Bootloader::check_update()
+bool Bootloader::validate_update_file()
 {
-    _updateFile = fs::File(FW_UPDATE_FILENAME);
-    fs::error_t err = _updateFile.open();
-    if (err)
-    {
-        DEBUG_PRINTF(ERROR_MASK, "failed to open update file\r\n");
-        return false;
-    }
-    DEBUG_PRINTF(INIT_MASK, "opened firmware update file\r\n");
-
     // Read the vector table from the update file.
     AppVectors header;
     uint32_t bytesRead;
-    err = _updateFile.read(sizeof(header), &header, &bytesRead);
+    fs::error_t err = _updateFile.read(sizeof(header), &header, &bytesRead);
     if (err || bytesRead != sizeof(header))
     {
         DEBUG_PRINTF(ERROR_MASK, "unable to read file header\r\n");
@@ -456,7 +503,26 @@ bool Bootloader::check_update()
     //   it doesn't hurt to have an explicit check).
     bool doUpdate = (header.crc32 != _app->crc32)
                     || (_app->crc32 == ERASED_WORD);
+
+    // Verify CRC of the file before we do the update.
+//     doUpdate = doUpdate && check_crc(_updateFile);
+
     return doUpdate;
+}
+
+//! @brief Looks for and opens the firmware update file.
+bool Bootloader::find_update_file()
+{
+    _updateFile = fs::File(FW_UPDATE_FILENAME);
+    fs::error_t err = _updateFile.open();
+    if (err)
+    {
+        DEBUG_PRINTF(ERROR_MASK, "failed to open update file\r\n");
+        return false;
+    }
+    DEBUG_PRINTF(INIT_MASK, "opened firmware update file\r\n");
+
+    return true;
 }
 
 bool Bootloader::have_valid_app()
@@ -495,7 +561,7 @@ void Bootloader::bootloader_thread()
             fs::error_t result = _fs.mount();
             if (result == fs::kSuccess)
             {
-                if (check_update())
+                if (find_update_file() && validate_update_file())
                 {
                     perform_update();
                 }

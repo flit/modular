@@ -96,6 +96,16 @@
 			<locationURI>PARENT-2-PROJECT_LOC/src/app/channel_led.h</locationURI>
 		</link>
 		<link>
+			<name>app/crc32.cpp</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/src/app/crc32.cpp</locationURI>
+		</link>
+		<link>
+			<name>app/crc32.h</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/src/app/crc32.h</locationURI>
+		</link>
+		<link>
 			<name>app/debug_log.h</name>
 			<type>1</type>
 			<locationURI>PARENT-2-PROJECT_LOC/src/app/debug_log.h</locationURI>
@@ -204,6 +214,16 @@
 			<name>ksdk/fsl_common.h</name>
 			<type>1</type>
 			<locationURI>PARENT-2-PROJECT_LOC/src/ksdk/fsl_common.h</locationURI>
+		</link>
+		<link>
+			<name>ksdk/fsl_crc.c</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/src/ksdk/fsl_crc.c</locationURI>
+		</link>
+		<link>
+			<name>ksdk/fsl_crc.h</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/src/ksdk/fsl_crc.h</locationURI>
 		</link>
 		<link>
 			<name>ksdk/fsl_debug_console.c</name>
