@@ -44,8 +44,9 @@ using namespace slab;
 // Definitions
 //------------------------------------------------------------------------------
 
-const uint32_t kAdcMax = 65535;
+const float kAdcMax = 65535.0f;
 const float kAdcLsbFloat = 1.0f / 4096.0f;
+
 const uint32_t kPotEditHysteresisPercent = 5;
 
 //! Interval for checking SD card presence.
@@ -733,10 +734,10 @@ void UI::handle_card_detect_timer(Ar::Timer * timer)
     }
 }
 
-void UI::pot_did_change(Pot& pot, uint32_t value)
+void UI::pot_did_change(Pot& pot, float value)
 {
     uint32_t potNumber = pot.get_number();
-    float fvalue = float(value) / float(kAdcMax);
+    float fvalue = value / kAdcMax;
     float delta;
 
     switch (_uiMode)
@@ -750,11 +751,14 @@ void UI::pot_did_change(Pot& pot, uint32_t value)
             }
             else
             {
-                // Below a certain threshold, force gain to 0. This compensates for the physical nature
-                // of the gain pot, which may not result in an ADC value of zero when fully turnd down.
-                if (value < 15)
+                // Detect lower and upper ends of range and snap to 0/1.
+                if (value < 100.0f)
                 {
                     fvalue = 0.0f;
+                }
+                else if (value > kAdcMax - 100.0f)
+                {
+                    fvalue = 1.0f;
                 }
                 else
                 {

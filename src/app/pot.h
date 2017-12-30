@@ -50,7 +50,7 @@ public:
     void init(uint32_t number, const calibration::Points & points);
 
     //! @brief Set hysteresis percent that prevents readings from being sent to UI.
-    void set_hysteresis(uint32_t percent);
+    void set_hysteresis(float percent);
 
     //! @brief Process ADC reading and pass to UI.
     void process(uint32_t value);
@@ -63,8 +63,8 @@ protected:
     float _offset;  //!< Calibration offset.
     float _scale;   //!< Calibration scale factor.
     float _out; //!< y^-1 value for filtering.
-    uint32_t _last; //!< Previous filtered value for hysteresis.
-    uint32_t _hysteresis;   //!< Hysteresis amount.
+    float _last; //!< Previous filtered value for hysteresis.
+    float _hysteresis;   //!< Hysteresis amount.
 #if DEBUG
     RingBuffer<uint16_t, 128> _history;
 #endif

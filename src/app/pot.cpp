@@ -37,7 +37,7 @@ using namespace slab;
 // Definitions
 //------------------------------------------------------------------------------
 
-const uint32_t kAdcMax = 65535;
+const float kAdcMax = 65535.0f;
 
 //------------------------------------------------------------------------------
 // Code
@@ -47,8 +47,8 @@ Pot::Pot()
 :   _number(0),
     _scale(0.0f),
     _out(0.0f),
-    _last(0),
-    _hysteresis(0)
+    _last(0.0f),
+    _hysteresis(0.0f)
 {
 }
 
@@ -56,12 +56,12 @@ void Pot::init(uint32_t number, const calibration::Points & points)
 {
     _number = number;
     _offset = float(points.low);
-    _scale = float(kAdcMax) / float(points.high - points.low);
+    _scale = kAdcMax / float(points.high - points.low);
 }
 
-void Pot::set_hysteresis(uint32_t percent)
+void Pot::set_hysteresis(float percent)
 {
-    _hysteresis = kAdcMax * percent / 100;
+    _hysteresis = kAdcMax * percent / 100.0f;
 }
 
 void Pot::process(uint32_t value)
@@ -73,20 +73,20 @@ void Pot::process(uint32_t value)
     // Apply calibration.
     float corrected = float(value) - _offset;
     corrected *= _scale;
-    constrain(corrected, 0.0f, float(kAdcMax));
+    constrain(corrected, 0.0f, kAdcMax);
 
     _out += 0.05f * (corrected - _out);
-    value = _out;
+    float floatValue = _out;
 
-    uint32_t hysLow = (_last > _hysteresis / 2) ? (_last - _hysteresis / 2) : 0;
-    uint32_t hysHigh = min(_last + _hysteresis / 2, kAdcMax);
+    float hysLow = max(_last - _hysteresis / 2.0f, 0.0f);
+    float hysHigh = min(_last + _hysteresis / 2.0f, kAdcMax);
 
-    if (value < hysLow || value > hysHigh)
+    if (floatValue < hysLow || floatValue > hysHigh)
     {
-        _last = value;
-        _hysteresis = (4) << 4;
+        _last = floatValue;
+        _hysteresis = 64.0f;
 
-        UI::get().pot_did_change(*this, value);
+        UI::get().pot_did_change(*this, floatValue);
     }
 }
 

@@ -88,7 +88,7 @@ public:
 
     void set_voice_playing(uint32_t voice, bool state);
 
-    void pot_did_change(Pot& pot, uint32_t value);
+    void pot_did_change(Pot& pot, float value);
 
     UIMode get_ui_mode() const { return _uiMode; }
     VoiceMode get_voice_mode() const { return _voiceMode; }
