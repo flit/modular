@@ -505,7 +505,7 @@ bool Bootloader::validate_update_file()
                     || (_app->crc32 == ERASED_WORD);
 
     // Verify CRC of the file before we do the update.
-//     doUpdate = doUpdate && check_crc(_updateFile);
+    doUpdate = doUpdate && check_crc(_updateFile);
 
     return doUpdate;
 }

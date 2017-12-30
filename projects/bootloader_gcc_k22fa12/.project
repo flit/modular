@@ -216,16 +216,6 @@
 			<locationURI>PARENT-2-PROJECT_LOC/src/ksdk/fsl_common.h</locationURI>
 		</link>
 		<link>
-			<name>ksdk/fsl_crc.c</name>
-			<type>1</type>
-			<locationURI>PARENT-2-PROJECT_LOC/src/ksdk/fsl_crc.c</locationURI>
-		</link>
-		<link>
-			<name>ksdk/fsl_crc.h</name>
-			<type>1</type>
-			<locationURI>PARENT-2-PROJECT_LOC/src/ksdk/fsl_crc.h</locationURI>
-		</link>
-		<link>
 			<name>ksdk/fsl_debug_console.c</name>
 			<type>1</type>
 			<locationURI>PARENT-2-PROJECT_LOC/src/ksdk/fsl_debug_console.c</locationURI>

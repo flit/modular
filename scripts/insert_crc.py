@@ -34,10 +34,12 @@ def main():
     with open(binFile, "rb") as inputFile:
         data = bytearray(inputFile.read())
 
-    crc = binascii.crc32(data) & 0xffffffff
+    # Insert app signature and firmware size before computing CRC, then
+    # insert the computed CRC.
     insert_le32(data, SIG_OFFSET, APP_SIGNATURE)
-    insert_le32(data, CRC_OFFSET, crc)
     insert_le32(data, LEN_OFFSET, len(data))
+    crc = binascii.crc32(data) & 0xffffffff
+    insert_le32(data, CRC_OFFSET, crc)
 
     with open(args.output, "wb") as outputFile:
         outputFile.write(data)
