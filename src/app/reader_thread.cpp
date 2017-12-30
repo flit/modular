@@ -405,14 +405,16 @@ void ReaderThread::fill_buffer(SamplerVoice * voice)
     uint32_t start = Microseconds::get();
 #endif
 
-    if (!stream.seek(request->startFrame * frameSize))
+    fs::error_t status;
+    status = stream.seek(request->startFrame * frameSize);
+    if (status != fs::kSuccess)
     {
         DEBUG_PRINTF(ERROR_MASK, "R: seek error (b%i v%lu)\r\n", request->number, voice->get_number());
         UI::get().send_event(UIEvent(kCardRemoved));
         return;
     }
     uint32_t bytesRead;
-    fs::error_t status = stream.read(bytesToRead, targetBuffer, &bytesRead);
+    status = stream.read(bytesToRead, targetBuffer, &bytesRead);
     if (status != fs::kSuccess)
     {
         DEBUG_PRINTF(ERROR_MASK, "R: read error = %lu (b%i v%lu)\r\n", status, request->number, voice->get_number());

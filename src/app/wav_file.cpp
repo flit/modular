@@ -76,7 +76,7 @@ fs::error_t WaveFile::parse()
     }
 
     // Move to start of the file.
-    if (!seek(0))
+    if (seek(0))
     {
         return fs::kGenericError;
     }
@@ -163,7 +163,7 @@ bool WaveFile::find_chunk(uint32_t chunkID, ChunkHeader * header)
 
         // Skip over this chunk's data.
         uint32_t newOffset = get_offset() + header->chunkSize;
-        if (!seek(newOffset))
+        if (seek(newOffset))
         {
             return false;
         }
