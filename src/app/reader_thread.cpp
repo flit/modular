@@ -391,6 +391,7 @@ void ReaderThread::fill_buffer(SamplerVoice * voice)
     uint32_t channelCount = voice->get_wave_file().get_channels();
     uint32_t bytesToRead = request->frameCount * frameSize;
     assert(channelCount <= 2);
+    assert(bytesToRead > 0);
 
     // Read mono files directly into the voice buffer, stereo into a temp buffer.
     void * targetBuffer = request->data;

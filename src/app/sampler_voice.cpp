@@ -149,7 +149,15 @@ void SampleBufferManager::prime()
     // Playing will start from the file start buffer.
     if (_activeBufferCount)
     {
-        _currentBuffer = &_buffer[0];
+        if (_didReadFileStart)
+        {
+            _currentBuffer = &_buffer[0];
+            _currentBuffer->state = SampleBuffer::State::kPlaying;
+        }
+        else
+        {
+            _currentBuffer = nullptr;
+        }
     }
 
     // Queue up the rest of the available buffers to be filled.
@@ -167,7 +175,7 @@ void SampleBufferManager::prime()
         else
         {
             DEBUG_PRINTF(QUEUE_MASK, "V%lu: prime: queuing b%lu for read\r\n", _number, i);
-            queue_buffer_for_read(&_buffer[i]);
+            _queue_buffer_for_read(&_buffer[i]);
         }
     }
     DEBUG_PRINTF(QUEUE_MASK, "V%lu: end prime\r\n", _number);
@@ -177,12 +185,12 @@ SampleBuffer * SampleBufferManager::get_current_buffer()
 {
     if (!_currentBuffer)
     {
-        _currentBuffer = dequeue_next_buffer();
+        _currentBuffer = _dequeue_next_buffer();
     }
     return _currentBuffer;
 }
 
-void SampleBufferManager::queue_buffer_for_read(SampleBuffer * buffer)
+void SampleBufferManager::_queue_buffer_for_read(SampleBuffer * buffer)
 {
     buffer->startFrame = _samplesQueued;
     buffer->frameCount = min(kBufferSize, _endSample - _samplesQueued);
@@ -202,6 +210,7 @@ SampleBuffer * SampleBufferManager::get_empty_buffer()
     SampleBuffer * buffer;
     if (_emptyBuffers.get(buffer))
     {
+        assert(buffer->state == SampleBuffer::State::kFree);
         buffer->state = SampleBuffer::State::kReading;
         return buffer;
     }
@@ -213,7 +222,11 @@ SampleBuffer * SampleBufferManager::get_empty_buffer()
 
 void SampleBufferManager::retire_buffer(SampleBuffer * buffer)
 {
+    Ar::Mutex::Guard guard(_primeMutex);
+
+    assert(buffer->state == SampleBuffer::State::kPlaying);
     _samplesPlayed += buffer->frameCount;
+    buffer->state = (buffer->number == 0) ? SampleBuffer::State::kReady : SampleBuffer::State::kFree;
 
     if (_samplesPlayed >= _endSample)
     {
@@ -230,18 +243,21 @@ void SampleBufferManager::retire_buffer(SampleBuffer * buffer)
         if (buffer->number != 0 && _samplesQueued < _endSample)
         {
             DEBUG_PRINTF(RETIRE_MASK|QUEUE_MASK, "V%lu: retire: queue b%d to read @ %lu\r\n", _number, buffer->number, _samplesPlayed);
-            queue_buffer_for_read(buffer);
+            _queue_buffer_for_read(buffer);
         }
 
-        dequeue_next_buffer();
+        _dequeue_next_buffer();
     }
 }
 
-SampleBuffer * SampleBufferManager::dequeue_next_buffer()
+SampleBuffer * SampleBufferManager::_dequeue_next_buffer()
 {
+    Ar::Mutex::Guard guard(_primeMutex);
+
     SampleBuffer * buffer;
     if (_fullBuffers.get(buffer))
     {
+        assert(buffer->state == SampleBuffer::State::kReady);
         DEBUG_PRINTF(CURBUF_MASK, "V%lu: current buffer = %d\r\n", _number, buffer->number);
         _currentBuffer = buffer;
         buffer->state = SampleBuffer::State::kPlaying;
@@ -258,12 +274,15 @@ SampleBuffer * SampleBufferManager::dequeue_next_buffer()
 //! @todo clean up
 void SampleBufferManager::enqueue_full_buffer(SampleBuffer * buffer)
 {
+    Ar::Mutex::Guard guard(_primeMutex);
+
     assert(buffer);
     bool isBuffer0 = (buffer->number == 0);
     bool isOutOfOrder = (buffer->startFrame != _samplesRead);
 
     if (buffer->reread || isOutOfOrder)
     {
+        assert(!(isOutOfOrder && !isBuffer0 && !buffer->reread));
         DEBUG_PRINTF(QUEUE_MASK, "V%lu: queuing b%d for reread\r\n", _number, buffer->number);
 
         if (isBuffer0)
@@ -278,7 +297,7 @@ void SampleBufferManager::enqueue_full_buffer(SampleBuffer * buffer)
         {
             // Queue up this buffer to be re-read instead of putting it in the full buffers queue.
             // This call will set the buffer state appropriately.
-            queue_buffer_for_read(buffer);
+            _queue_buffer_for_read(buffer);
         }
     }
     else

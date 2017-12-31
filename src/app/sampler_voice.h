@@ -50,7 +50,7 @@ class SamplerVoice;
 struct SampleBuffer
 {
     //! @brief States of the buffer.
-    enum State : uint8_t
+    enum class State : uint8_t
     {
         kUnused,
         kStartFile,
@@ -190,8 +190,6 @@ public:
     SampleBuffer * get_empty_buffer();
 
     void enqueue_full_buffer(SampleBuffer * buffer);
-    void queue_buffer_for_read(SampleBuffer * buffer);
-    SampleBuffer * dequeue_next_buffer();
     void retire_buffer(SampleBuffer * buffer);
 
     uint32_t get_total_samples() const { return _totalSamples; }
@@ -203,7 +201,7 @@ public:
     uint32_t get_samples_queued() const { return _samplesQueued; }
 
 protected:
-    typedef ProtectedQueue<SampleBuffer*, kBufferCount> BufferQueue;
+    typedef SimpleQueue<SampleBuffer*, kBufferCount> BufferQueue;
 
     SamplerVoice * _voice;
     uint32_t _number;
@@ -227,6 +225,9 @@ protected:
     uint32_t _preppedCount;
 
     void _reset_buffers();
+
+    void _queue_buffer_for_read(SampleBuffer * buffer);
+    SampleBuffer * _dequeue_next_buffer();
 
     void _find_zero_crossing(SampleBuffer * buffer);
 };
