@@ -130,6 +130,13 @@ ChannelGate::Event ChannelGate::process(uint32_t value)
     return result;
 }
 
+void ChannelGate::reset()
+{
+    _last = -1;
+    _state = kInitial;
+    _transitionCount = 0;
+}
+
 //------------------------------------------------------------------------------
 // EOF
 //------------------------------------------------------------------------------

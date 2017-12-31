@@ -130,7 +130,7 @@ void ChannelAdcProcessor::cv_thread()
             DEBUG_PRINTF(TRIG_MASK, "ch1 triggered\r\n");
             g_voice[0].trigger();
         }
-        else if (mode == k2VoiceMode && event == ChannelGate::kNoteOff)
+        else if ((mode == k2VoiceMode || mode == k3VoiceMode) && event == ChannelGate::kNoteOff)
         {
             DEBUG_PRINTF(TRIG_MASK, "ch1 note off\r\n");
             g_voice[0].note_off();
@@ -146,7 +146,7 @@ void ChannelAdcProcessor::cv_thread()
                 g_voice[1].trigger();
             }
         }
-        else if (mode == k2VoiceMode)
+        else if (mode == k2VoiceMode || mode == k3VoiceMode)
         {
             fvalue = g_cvs[1].process(data0.results[3]);
             g_voice[0].set_pitch_octave(fvalue);
@@ -166,7 +166,7 @@ void ChannelAdcProcessor::cv_thread()
         }
 
         // Channel 4
-        if (mode == k4VoiceMode)
+        if (mode == k4VoiceMode || mode == k3VoiceMode)
         {
             event = g_gates[3].process(data1.results[3]);
             if (event == ChannelGate::kNoteOn)

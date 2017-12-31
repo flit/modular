@@ -257,12 +257,45 @@ void UI::set_voice_mode(VoiceMode mode)
     switch (mode)
     {
         case k4VoiceMode:
+            // Make sure voices are not affected by CV pitch.
+            g_voice[0].set_pitch_octave(0.0f);
             g_voice[1].set_pitch_octave(0.0f);
+            g_voice[2].set_pitch_octave(0.0f);
             g_voice[3].set_pitch_octave(0.0f);
+
+            // Reset inputs.
+            g_gates[0].reset();
+            g_gates[1].reset();
+            g_gates[2].reset();
+            g_gates[3].reset();
+
+            // 4 flashes.
             _button1LedFlashes = 8;
             break;
 
+        case k3VoiceMode:
+            // Make sure gated voices are not affected by CV pitch.
+            g_voice[2].set_pitch_octave(0.0f);
+            g_voice[3].set_pitch_octave(0.0f);
+
+            // Reset inputs.
+            g_gates[0].reset();
+            g_cvs[1].reset();
+            g_gates[2].reset();
+            g_gates[3].reset();
+
+            // 3 flashes.
+            _button1LedFlashes = 6;
+            break;
+
         case k2VoiceMode:
+            // Reset inputs.
+            g_gates[0].reset();
+            g_cvs[1].reset();
+            g_gates[2].reset();
+            g_cvs[3].reset();
+
+            // 2 flashes.
             _button1LedFlashes = 4;
             break;
 
@@ -452,13 +485,19 @@ void UI::handle_button_event(const UIEvent & event)
                         _ignoreButton1Release = true;
 
                         // Select new voice mode.
-                        if (_voiceMode == k4VoiceMode)
+                        switch (_voiceMode)
                         {
-                            set_voice_mode(k2VoiceMode);
-                        }
-                        else
-                        {
-                            set_voice_mode(k4VoiceMode);
+                            case k4VoiceMode:
+                                set_voice_mode(k3VoiceMode);
+                                break;
+                            case k3VoiceMode:
+                                set_voice_mode(k2VoiceMode);
+                                break;
+                            case k2VoiceMode:
+                                set_voice_mode(k4VoiceMode);
+                                break;
+                            default:
+                                break;
                         }
                     }
                     break;

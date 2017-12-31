@@ -58,6 +58,7 @@ public:
     void init(uint32_t number);
 
     Event process(uint32_t value);
+    void reset();
 
     uint32_t get_number() const { return _number; }
 

@@ -53,6 +53,9 @@ public:
     //! @brief Convert ADC reading to V/oct.
     float process(uint32_t value);
 
+    //! @brief Clear filter history.
+    void reset();
+
     //! @brief Get the CV input's channel number.
     uint32_t get_number() const { return _number; }
 
