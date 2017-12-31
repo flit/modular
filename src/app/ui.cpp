@@ -109,6 +109,7 @@ UI::UI()
     _uiMode(kNoCardMode),
     _ledMode(LedMode::kCardDetection),
     _voiceStates{0},
+    _voiceRetriggered{0},
     _isCardPresent(false),
     _debounceCardDetect(false),
     _firstSwitchToPlayMode(true),
@@ -629,6 +630,19 @@ void UI::set_voice_playing(uint32_t voice, bool state)
     }
 }
 
+void UI::indicate_voice_retriggered(uint32_t voice)
+{
+    assert(voice < kVoiceCount);
+
+    _voiceRetriggered[voice] = true;
+
+    if (_ledMode == LedMode::kVoiceActivity)
+    {
+        _channelLeds[voice]->off();
+        update_channel_leds();
+    }
+}
+
 void UI::handle_blink_timer(Ar::Timer * timer)
 {
     switch (_ledMode)
@@ -648,6 +662,26 @@ void UI::handle_blink_timer(Ar::Timer * timer)
             }
             _button1Led->set_duty_cycle(_button1LedDutyCycle);
             break;
+
+        case LedMode::kVoiceActivity:
+        {
+            uint32_t i;
+            bool needUpdate = false;
+            for (i = 0; i < kVoiceCount; ++i)
+            {
+                if (_voiceRetriggered[i])
+                {
+                    _channelLeds[i]->set(_voiceStates[i]);
+                    _voiceRetriggered[i] = false;
+                    needUpdate = true;
+                }
+            }
+            if (needUpdate)
+            {
+                update_channel_leds();
+            }
+            break;
+        }
 
         case LedMode::kBankSwitch:
             if (_ledTimeoutCount-- == 0)
@@ -842,6 +876,7 @@ void UI::set_voice_activity_led_mode()
     {
         _channelLeds[i]->set_color(LEDBase::kRed);
         _channelLeds[i]->set(_voiceStates[i]);
+        _voiceRetriggered[i] = false;
     }
 
     update_channel_leds();

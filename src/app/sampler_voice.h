@@ -340,7 +340,6 @@ protected:
     bool _isPlaying;
     bool _doNoteOff;
     bool _doRetrigger;
-    bool _turnOnLedNextBuffer;
     uint32_t _noteOffSamplesRemaining;
     float _readHead;    //!< Fractional read head within current buffer.
     float _pitchOctave;

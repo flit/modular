@@ -87,6 +87,7 @@ public:
     void send_event(const UIEvent& event) { _eventQueue.send(event); }
 
     void set_voice_playing(uint32_t voice, bool state);
+    void indicate_voice_retriggered(uint32_t voice);
 
     void pot_did_change(Pot& pot, float value);
 
@@ -129,6 +130,7 @@ protected:
     UIMode _uiMode;
     LedMode _ledMode;
     bool _voiceStates[kVoiceCount];
+    bool _voiceRetriggered[kVoiceCount];
     bool _isCardPresent;
     bool _debounceCardDetect;
     bool _firstSwitchToPlayMode;

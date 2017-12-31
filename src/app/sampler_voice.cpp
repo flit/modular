@@ -408,7 +408,6 @@ SamplerVoice::SamplerVoice()
     _isPlaying(false),
     _doNoteOff(false),
     _doRetrigger(false),
-    _turnOnLedNextBuffer(false),
     _noteOffSamplesRemaining(0),
     _readHead(0.0f),
     _pitchOctave(0.0f),
@@ -606,8 +605,7 @@ void SamplerVoice::render(int16_t * data, uint32_t frameCount)
                     prime();
                     _isPlaying = savedRetrigger;
 
-                    _turnOnLedNextBuffer = savedRetrigger;
-                    UI::get().set_voice_playing(_number, false);
+                    UI::get().indicate_voice_retriggered(_number);
 
                     updateBuffer = true;
                     readHead = bufferFrameCount;
@@ -738,12 +736,6 @@ void SamplerVoice::render(int16_t * data, uint32_t frameCount)
         _readHead -= bufferFrameCount;
     }
     assert(_readHead < bufferFrameCount);
-
-    if (_turnOnLedNextBuffer)
-    {
-        _turnOnLedNextBuffer = false;
-        UI::get().set_voice_playing(_number, true);
-    }
 }
 
 void SamplerVoice::set_sample_start(float start)
