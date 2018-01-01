@@ -26,12 +26,11 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#if !defined(_SAMPLE_BANK_H_)
-#define _SAMPLE_BANK_H_
+#if !defined(_SERIALIZER_H_)
+#define _SERIALIZER_H_
 
-#include "simple_string.h"
-#include "audio_defs.h"
-#include "sampler_voice.h"
+#include <stdint.h>
+#include "stream.h"
 
 //------------------------------------------------------------------------------
 // Definitions
@@ -39,70 +38,90 @@
 
 namespace slab {
 
+class Archive;
+
 /*!
- * @brief Holds information about a bank of samples.
+ * @brief Mix-in class.
  */
-class SampleBank
+class Serializable
 {
 public:
-    using FilePath = SimpleString<_MAX_LFN + 1>;
+    Serializable();
+    virtual ~Serializable()=default;
 
-    /*!
-     * @brief Wraps a sample in a bank.
-     */
-    class Sample
+    virtual bool serialize(Archive & serializer) { return true; }
+    virtual bool deserialize(Archive & serializer) { return true; }
+
+};
+
+/*!
+ * @brief
+ */
+class Archive
+{
+public:
+
+    virtual bool read(const char * name, void * value, uint32_t length)=0;
+    virtual bool write(const char * name, const void * value, uint32_t length)=0;
+
+    template <typename T>
+    bool read(const char * name, T * value)
     {
-    public:
-        Sample();
-        ~Sample()=default;
+        return read(name, value, sizeof(T));
+    }
 
-        void reset();
+    template <typename T>
+    bool write(const char * name, const T & value)
+    {
+        return write(name, &value, sizeof(T));
+    }
 
-        bool is_valid() const { return _isValid; }
+};
 
-        const FilePath & get_path() const { return _path; }
-        void set_path(const FilePath & path);
+/*!
+ * @brief
+ */
+class BinaryArchive : public Archive
+{
+public:
+    BinaryArchive(Stream & stream) : _stream(stream) {}
+    virtual ~BinaryArchive()=default;
 
-        const VoiceParameters & get_params() const { return _params; }
-        void set_params(const VoiceParameters & params) { _params = params; }
+    bool open(uint32_t * dataVersion);
+    bool init(uint32_t dataVersion);
 
-        bool load_to_voice(SamplerVoice & voice);
+    virtual bool read(const char * name, void * value, uint32_t length) override;
+    virtual bool write(const char * name, const void * value, uint32_t length) override;
 
-        bool load_params(Archive & settings) { return _params.load(settings); }
-        bool save_params(Archive & settings) { return _params.save(settings); }
+    template <typename T>
+    bool read(const char * name, T * value)
+    {
+        return read(name, value, sizeof(T));
+    }
 
-    protected:
-        bool _isValid;
-        FilePath _path;
-        VoiceParameters _params;
-    };
-
-    SampleBank();
-    ~SampleBank()=default;
-
-    void reset();
-
-    const FilePath & get_path() const { return _dirPath; }
-    void set_path(const FilePath & path) { _dirPath = path; }
-
-    bool is_valid() const;
-    bool has_sample(uint32_t sampleNumber) const { return _samples[sampleNumber].is_valid(); }
-
-    Sample & get_sample(uint32_t sampleNumber) { return _samples[sampleNumber]; }
-
-    void load_params();
-    void save_params();
+    template <typename T>
+    bool write(const char * name, const T & value)
+    {
+        return write(name, &value, sizeof(T));
+    }
 
 protected:
-    FilePath _dirPath;
-    Sample _samples[kVoiceCount];
+    Stream & _stream;
 
-    static const uint32_t kSettingsFileDataVersion = 2;
+    static const uint32_t kSignature = 'barc';
+    static const uint32_t kFormatVersion = 1;
+
+    struct Header
+    {
+        uint32_t signature;
+        uint32_t formatVersion;
+        uint32_t dataVersion;
+    };
 };
 
 } // namespace slab
 
-#endif // _SAMPLE_BANK_H_
+#endif // _SERIALIZER_H_
 //------------------------------------------------------------------------------
 // EOF
 //------------------------------------------------------------------------------

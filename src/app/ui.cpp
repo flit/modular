@@ -628,6 +628,9 @@ void UI::save_voice_params(uint32_t channel)
     SampleBank & bank = FileManager::get().get_bank(_selectedBank);
     const VoiceParameters & params = g_voice[channel].get_params();
     bank.get_sample(mappedBankChannel).set_params(params);
+
+    // Save params to disk.
+    bank.save_params();
 }
 
 void UI::load_sample_bank(uint32_t bankNumber)

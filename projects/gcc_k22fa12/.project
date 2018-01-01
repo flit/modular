@@ -336,6 +336,16 @@
 			<locationURI>PARENT-2-PROJECT_LOC/src/app/sampler_voice.h</locationURI>
 		</link>
 		<link>
+			<name>app/serializer.cpp</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/src/app/serializer.cpp</locationURI>
+		</link>
+		<link>
+			<name>app/serializer.h</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/src/app/serializer.h</locationURI>
+		</link>
+		<link>
 			<name>app/simple_queue.h</name>
 			<type>1</type>
 			<locationURI>PARENT-2-PROJECT_LOC/src/app/simple_queue.h</locationURI>

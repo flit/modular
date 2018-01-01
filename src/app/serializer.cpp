@@ -26,83 +26,85 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#if !defined(_SAMPLE_BANK_H_)
-#define _SAMPLE_BANK_H_
 
-#include "simple_string.h"
-#include "audio_defs.h"
-#include "sampler_voice.h"
+#include "serializer.h"
+#include "string.h"
+
+using namespace slab;
 
 //------------------------------------------------------------------------------
-// Definitions
+// Code
 //------------------------------------------------------------------------------
 
-namespace slab {
-
-/*!
- * @brief Holds information about a bank of samples.
- */
-class SampleBank
+bool BinaryArchive::open(uint32_t * dataVersion)
 {
-public:
-    using FilePath = SimpleString<_MAX_LFN + 1>;
-
-    /*!
-     * @brief Wraps a sample in a bank.
-     */
-    class Sample
+    Header header;
+    if (!read(nullptr, &header, sizeof(header)))
     {
-    public:
-        Sample();
-        ~Sample()=default;
+        return false;
+    }
 
-        void reset();
+    if (header.signature != kSignature || header.formatVersion != kFormatVersion)
+    {
+        return false;
+    }
 
-        bool is_valid() const { return _isValid; }
+    if (dataVersion)
+    {
+        *dataVersion = header.dataVersion;
+    }
 
-        const FilePath & get_path() const { return _path; }
-        void set_path(const FilePath & path);
+    return true;
+}
 
-        const VoiceParameters & get_params() const { return _params; }
-        void set_params(const VoiceParameters & params) { _params = params; }
+bool BinaryArchive::init(uint32_t dataVersion)
+{
+    Header header;
+    header.signature = kSignature;
+    header.formatVersion = kFormatVersion;
+    header.dataVersion = dataVersion;
 
-        bool load_to_voice(SamplerVoice & voice);
+    return write(nullptr, &header, sizeof(header));
+}
 
-        bool load_params(Archive & settings) { return _params.load(settings); }
-        bool save_params(Archive & settings) { return _params.save(settings); }
+bool BinaryArchive::read(const char * name, void * value, uint32_t length)
+{
+    uint32_t bytesRead;
+    uint32_t lengthInArchive = 0;
+    if (_stream.read(sizeof(lengthInArchive), &lengthInArchive, &bytesRead)
+        || (bytesRead != sizeof(lengthInArchive)))
+    {
+        return false;
+    }
 
-    protected:
-        bool _isValid;
-        FilePath _path;
-        VoiceParameters _params;
-    };
+    if (lengthInArchive != length)
+    {
+        return false;
+    }
 
-    SampleBank();
-    ~SampleBank()=default;
+    if (_stream.read(length, value, &bytesRead)
+        || (bytesRead != length))
+    {
+        return false;
+    }
 
-    void reset();
+    return true;
+}
 
-    const FilePath & get_path() const { return _dirPath; }
-    void set_path(const FilePath & path) { _dirPath = path; }
+bool BinaryArchive::write(const char * name, const void * value, uint32_t length)
+{
+    if (_stream.write(sizeof(length), &length, nullptr))
+    {
+        return false;
+    }
+    if (_stream.write(length, value, nullptr))
+    {
+        return false;
+    }
 
-    bool is_valid() const;
-    bool has_sample(uint32_t sampleNumber) const { return _samples[sampleNumber].is_valid(); }
+    return true;
+}
 
-    Sample & get_sample(uint32_t sampleNumber) { return _samples[sampleNumber]; }
-
-    void load_params();
-    void save_params();
-
-protected:
-    FilePath _dirPath;
-    Sample _samples[kVoiceCount];
-
-    static const uint32_t kSettingsFileDataVersion = 2;
-};
-
-} // namespace slab
-
-#endif // _SAMPLE_BANK_H_
 //------------------------------------------------------------------------------
 // EOF
 //------------------------------------------------------------------------------

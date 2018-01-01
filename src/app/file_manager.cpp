@@ -127,6 +127,8 @@ void FileManager::_scan_bank_directory(uint32_t bankNumber, const char * dirPath
     fs::DirectoryIterator dir = _fs.open_dir(dirPath);
     FILINFO info;
 
+    _banks[bankNumber].set_path(dirPath);
+
     while (dir.next(&info))
     {
         // Skip directories and hidden or system files.
@@ -155,6 +157,11 @@ void FileManager::_scan_bank_directory(uint32_t bankNumber, const char * dirPath
                 _banks[bankNumber].get_sample(channel).set_path(path);
             }
         }
+    }
+
+    if (_banks[bankNumber].is_valid())
+    {
+        _banks[bankNumber].load_params();
     }
 }
 

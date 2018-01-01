@@ -34,6 +34,7 @@
 #include "protected_queue.h"
 #include "audio_defs.h"
 #include "audio_buffer.h"
+#include "serializer.h"
 #include <assert.h>
 
 //------------------------------------------------------------------------------
@@ -237,10 +238,6 @@ protected:
  */
 struct VoiceParameters
 {
-    //! @brief Current version of the parameter set.
-    static const uint32_t kVersion = 1;
-
-    uint32_t version;
     float gain;
     float baseOctaveOffset;
     float baseCentsOffset;
@@ -248,8 +245,7 @@ struct VoiceParameters
     float endSample;
 
     VoiceParameters()
-    :   version(kVersion),
-        gain(1.0f),
+    :   gain(1.0f),
         baseOctaveOffset(0.0f),
         baseCentsOffset(0.0f),
         startSample(0.0f),
@@ -263,7 +259,6 @@ struct VoiceParameters
     }
     VoiceParameters & operator=(const VoiceParameters & other)
     {
-        version = other.version;
         gain = other.gain;
         baseOctaveOffset = other.baseOctaveOffset;
         baseCentsOffset = other.baseCentsOffset;
@@ -279,6 +274,24 @@ struct VoiceParameters
         baseCentsOffset = 0.0f;
         startSample = 0.0f;
         endSample = 1.0f;
+    }
+
+    bool load(Archive & settings)
+    {
+        settings.read("base_octave_offset", &baseOctaveOffset);
+        settings.read("base_cents_offset", &baseCentsOffset);
+        settings.read("start_sample", &startSample);
+        settings.read("end_sample", &endSample);
+        return true;
+    }
+
+    bool save(Archive & settings)
+    {
+        settings.write("base_octave_offset", baseOctaveOffset);
+        settings.write("base_cents_offset", baseCentsOffset);
+        settings.write("start_sample", startSample);
+        settings.write("end_sample", endSample);
+        return true;
     }
 };
 

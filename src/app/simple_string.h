@@ -54,7 +54,18 @@ public:
     SimpleString<N>& operator =(const SimpleString<N>& other)=default;
     ~SimpleString()=default;
 
+    char* get() { return _string; }
     const char* get() const { return _string; }
+
+    void set(const char * s) { strncpy(_string, s, N); }
+
+    template <uint32_t J>
+    void set(const SimpleString<J> s) { strncpy(_string, s.get(), N); }
+
+    void append(const char * s) { strncat(_string, s, N); }
+
+    template <uint32_t J>
+    void append(const SimpleString<J> & s) { strncat(_string, s.get(), N); }
 
 protected:
     char _string[N];

@@ -64,6 +64,103 @@ bool SampleBank::is_valid() const
     return false;
 }
 
+void SampleBank::load_params()
+{
+    FilePath settingsPath(_dirPath);
+    settingsPath.append("/settings.bin");
+    fs::File settingsFile(settingsPath.get());
+    if (settingsFile.open() != fs::kSuccess)
+    {
+        return;
+    }
+
+    uint32_t version;
+    BinaryArchive archive(settingsFile);
+    if (!archive.open(&version)
+        || version != kSettingsFileDataVersion)
+    {
+        return;
+    }
+
+    uint32_t i;
+    for (i = 0; i < kVoiceCount; ++i)
+    {
+        if (!_samples[i].is_valid())
+        {
+            continue;
+        }
+
+        uint32_t voiceNumber;
+        if (!archive.read("voice-number", &voiceNumber))
+        {
+            return;
+        }
+
+        if (voiceNumber != i)
+        {
+            return;
+        }
+
+        char path[_MAX_LFN + 1];
+        if (!archive.read("path", &path, sizeof(path)))
+        {
+            return;
+        }
+
+        if (strncmp(path, _samples[i].get_path().get(), strlen(path)) != 0)
+        {
+            return;
+        }
+
+        if (!_samples[i].load_params(archive))
+        {
+            return;
+        }
+    }
+}
+
+void SampleBank::save_params()
+{
+    FilePath settingsPath(_dirPath);
+    settingsPath.append("/settings.bin");
+    fs::File settingsFile(settingsPath.get());
+    settingsFile.remove();
+    if (settingsFile.open(true, true) != fs::kSuccess)
+    {
+        return;
+    }
+
+    BinaryArchive archive(settingsFile);
+    if (!archive.init(kSettingsFileDataVersion))
+    {
+        return;
+    }
+
+    uint32_t i;
+    for (i = 0; i < kVoiceCount; ++i)
+    {
+        if (!_samples[i].is_valid())
+        {
+            continue;
+        }
+
+        if (!archive.write("voice-number", i))
+        {
+            return;
+        }
+
+        if (!archive.write("path", _samples[i].get_path().get(), _MAX_LFN + 1))
+        {
+            return;
+        }
+
+        if (!_samples[i].save_params(archive))
+        {
+            return;
+        }
+    }
+}
+
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 SampleBank::Sample::Sample()
@@ -79,7 +176,7 @@ void SampleBank::Sample::reset()
     _params.reset();
 }
 
-void SampleBank::Sample::set_path(FilePath & path)
+void SampleBank::Sample::set_path(const FilePath & path)
 {
     _path = path;
 
