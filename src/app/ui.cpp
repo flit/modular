@@ -179,6 +179,9 @@ void UI::set_ui_mode(UIMode mode)
         return;
     }
 
+    // Set hysteresis on all pots before we change modes.
+    set_all_pot_hysteresis(kPotEditHysteresisPercent);
+
     UIMode prevMode = _uiMode;
     _uiMode = mode;
 
@@ -237,9 +240,6 @@ void UI::set_ui_mode(UIMode mode)
             set_all_pot_hysteresis(0);
             break;
     }
-
-    // Set hysteresis on all pots.
-    set_all_pot_hysteresis(kPotEditHysteresisPercent);
 }
 
 void UI::set_voice_mode(VoiceMode mode)
