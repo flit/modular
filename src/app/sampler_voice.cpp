@@ -102,10 +102,7 @@ void SampleBufferManager::_reset_buffers()
     uint32_t i;
     for (i = 0; i < kBufferCount; ++i)
     {
-        _buffer[i].state = SampleBuffer::State::kUnused;
-        _buffer[i].startFrame = 0;
-        _buffer[i].frameCount = kBufferSize;
-        _buffer[i].reread = false;
+        _buffer[i].set_unused();
     }
 }
 
@@ -147,17 +144,14 @@ void SampleBufferManager::prime()
     _emptyBuffers.clear();
 
     // Playing will start from the file start buffer.
-    if (_activeBufferCount)
+    if (_activeBufferCount && _didReadFileStart)
     {
-        if (_didReadFileStart)
-        {
-            _currentBuffer = &_buffer[0];
-            _currentBuffer->state = SampleBuffer::State::kPlaying;
-        }
-        else
-        {
-            _currentBuffer = nullptr;
-        }
+        _currentBuffer = &_buffer[0];
+        _currentBuffer->state = SampleBuffer::State::kPlaying;
+    }
+    else
+    {
+        _currentBuffer = nullptr;
     }
 
     // Queue up the rest of the available buffers to be filled.
@@ -324,7 +318,7 @@ void SampleBufferManager::enqueue_full_buffer(SampleBuffer * buffer)
         {
             _waitingForFileStart = false;
             _isReady = true;
-            _voice->manager_did_become_ready();
+            _voice->manager_ready_did_change(true);
         }
     }
 }
@@ -378,17 +372,27 @@ void SampleBufferManager::set_start_end_sample(int32_t start, int32_t end)
     DEBUG_PRINTF(MISC_MASK, "set_start_end: %lu - %lu\r\n", ustart, uend);
 
     uint32_t originalStart = _startSample;
+    uint32_t originalEnd = _endSample;
 
     // Update parameters.
     _startSample = constrained(ustart, 0UL, _totalSamples);
     _endSample = constrained(uend, ustart, _totalSamples);
 
+    // Update number of used buffers.
     _activeBufferCount = min(round_up_div(get_active_samples(), kBufferSize), kBufferCount);
 
-    // Reload start of the file if the start sample changed.
-    if (_startSample != originalStart)
+    // Set any unused buffers to kUnused state.
+    uint32_t i;
+    for (i = _activeBufferCount; i < kBufferCount; ++i)
+    {
+        _buffer[i].set_unused();
+    }
+
+    // Reload start of the file if the start or end point changed.
+    if (_startSample != originalStart || _endSample != originalEnd)
     {
         _isReady = false;
+        _voice->manager_ready_did_change(false);
         _didReadFileStart = false;
         _waitingForFileStart = true;
         _snapToZeroStart = (_startSample != 0);

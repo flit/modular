@@ -77,6 +77,16 @@ struct SampleBuffer
     uint32_t zeroSnapOffset;    //!< Offset frame snapped to zero. This is frame from which we should start reading. Only applies to the file start buffer (will be zero for all others).
     uint32_t frameCount;    //!< Number of valid frames within this buffer.
 
+    //! @brief Set the buffer to unused state and clear variant members.
+    void set_unused()
+    {
+        state = SampleBuffer::State::kUnused;
+        startFrame = 0;
+        zeroSnapOffset = 0;
+        frameCount = 0;
+        reread = false;
+    }
+
     //! @brief Fill a buffer with interpolated samples.
     template <InterpolationMode mode>
     float read_into(float * buffer, uint32_t count, float fractionalFrame, float rate, const float * preBufferFrames)
@@ -323,7 +333,7 @@ public:
     void note_off();
     bool is_playing() const { return _isPlaying; }
 
-    void manager_did_become_ready() { _isReady = true; }
+    void manager_ready_did_change(bool isReady) { _isReady = isReady; }
     void playing_did_finish();
 
     void set_gain(float gain) { _params.gain = gain; }
