@@ -32,6 +32,7 @@
 #include "samplbaer.h"
 #include <ctype.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 using namespace slab;
 
@@ -113,9 +114,10 @@ void FileManager::scan_for_files()
             continue;
         }
 
-        uint32_t bankNumber = dirName[0] - '1';
-        if (bankNumber < kMaxBankCount)
+        uint32_t bankNumber = strtoul(dirName, nullptr, 10);
+        if (bankNumber > 0 && bankNumber <= kMaxBankCount)
         {
+            --bankNumber;
             snprintf(_dirPath, sizeof(_dirPath), "/%s", dirName);
             _scan_bank_directory(bankNumber, _dirPath);
         }
@@ -148,9 +150,10 @@ void FileManager::_scan_bank_directory(uint32_t bankNumber, const char * dirPath
             && toupper(fileName[fileNameLength - 1]) == 'V'
             && info.fsize > 0)
         {
-            uint32_t channel = fileName[0] - '1';
-            if (channel >=0 && channel < kVoiceCount)
+            uint32_t channel = strtoul(fileName, nullptr, 10);
+            if (channel > 0 && channel <= kVoiceCount)
             {
+                --channel;
                 snprintf(_filePath, sizeof(_filePath), "%s/%s", dirPath, fileName);
                 SampleBank::FilePath path(_filePath);
 
