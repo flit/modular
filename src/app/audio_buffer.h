@@ -29,7 +29,9 @@
 #if !defined(_AUDIO_BUFFER_H_)
 #define _AUDIO_BUFFER_H_
 
+#include "utility.h"
 #include "arm_math.h"
+#include <limits>
 #include <cassert>
 #include <stddef.h>
 #include <stdint.h>
@@ -105,13 +107,17 @@ public:
     template <typename T>
     void copy_into(T * buffer, uint32_t step, uint32_t count, uint32_t start=0, float scale=1.0f)
     {
+        constexpr float tmin = static_cast<float>(std::numeric_limits<T>::min());
+        constexpr float tmax = static_cast<float>(std::numeric_limits<T>::max());
         uint32_t i;
         float * sample = &m_samples[start];
         if (scale == 1.0f)
         {
             for (i = 0; i < count; ++i)
             {
-                *buffer = static_cast<T>(*sample++);
+                float f = *sample++;
+                constrain(f, tmin, tmax);
+                *buffer = static_cast<T>(f);
                 buffer += step;
             }
         }
@@ -119,7 +125,9 @@ public:
         {
             for (i = 0; i < count; ++i)
             {
-                *buffer = static_cast<T>(*sample++ * scale);
+                float f = *sample++ * scale;
+                constrain(f, tmin, tmax);
+                *buffer = static_cast<T>(f);
                 buffer += step;
             }
         }
