@@ -264,6 +264,7 @@ SampleBuffer * SampleBufferManager::_dequeue_next_buffer()
         DEBUG_PRINTF(ERROR_MASK, "V%lu: *** NO READY BUFFERS ***\r\n", _number);
 //         Ar::_halt();
         _currentBuffer = nullptr;
+        UI::get().indicate_voice_underflowed(_number);
     }
     return _currentBuffer;
 }

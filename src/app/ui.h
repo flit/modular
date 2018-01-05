@@ -88,6 +88,7 @@ public:
 
     void set_voice_playing(uint32_t voice, bool state);
     void indicate_voice_retriggered(uint32_t voice);
+    void indicate_voice_underflowed(uint32_t voice);
 
     void pot_did_change(Pot& pot, float value);
 
@@ -142,6 +143,7 @@ protected:
     float _lastSampleStart;
     float _lastSampleEnd;
     uint32_t _retriggerTimestamp[kVoiceCount];
+    uint32_t _underflowTimestamp[kVoiceCount];
     uint32_t _editChannel;  //!< Voice selected for editing.
     uint32_t _selectedBank; //!< Current bank number for playback.
     int32_t _button1LedDutyCycle;

@@ -126,6 +126,7 @@ UI::UI()
     _lastSampleStart(-1.0f),
     _lastSampleEnd(-1.0f),
     _retriggerTimestamp{0},
+    _underflowTimestamp{0},
     _editChannel(0),
     _selectedBank(0),
     _button1LedDutyCycle(0),
@@ -709,6 +710,28 @@ void UI::indicate_voice_retriggered(uint32_t voice)
     }
 }
 
+void UI::indicate_voice_underflowed(uint32_t voice)
+{
+    assert(voice < kVoiceCount);
+
+    if (_ledMode == LedMode::kVoiceActivity)
+    {
+        // Record the current time.
+        _underflowTimestamp[voice] = ar_get_millisecond_count();
+
+        // Only start the one-shot timer if it hasn't already been started.
+        if (!_retriggerTimer.isActive())
+        {
+            _retriggerTimer.setDelay(kVoiceRetriggerLedBlinkTime_ms);
+            _retriggerTimer.start();
+        }
+
+        // Set channel LED to yellow.
+        _channelLeds[voice]->set_color(LEDBase::kYellow);
+        update_channel_leds();
+    }
+}
+
 void UI::handle_blink_timer(Ar::Timer * timer)
 {
     switch (_ledMode)
@@ -786,6 +809,24 @@ void UI::handle_retrigger_timer(Ar::Timer * timer)
             }
             // Otherwise keep track of the shortest time to the next channel LED we need
             // to turn back on after retrigger blink.
+            else if (delta < nextDelay)
+            {
+                nextDelay = delta;
+            }
+        }
+        if (_underflowTimestamp[i])
+        {
+            delta = now - _underflowTimestamp[i];
+
+            if (delta >= kVoiceRetriggerLedBlinkTime_ms)
+            {
+                if (_ledMode == LedMode::kVoiceActivity)
+                {
+                    _channelLeds[i]->set_color(LEDBase::kRed);
+                    _channelLeds[i]->set(_voiceStates[i]);
+                }
+                _underflowTimestamp[i] = 0;
+            }
             else if (delta < nextDelay)
             {
                 nextDelay = delta;
