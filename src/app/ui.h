@@ -119,6 +119,7 @@ protected:
     Ar::RunLoop _runloop;
     Ar::StaticQueue<UIEvent, kMaxEvents> _eventQueue;
     Ar::TimerWithMemberCallback<UI> _blinkTimer;
+    Ar::TimerWithMemberCallback<UI> _retriggerTimer;
     Ar::TimerWithMemberCallback<UI> _potReleaseTimer;
     Ar::TimerWithMemberCallback<UI> _cardDetectTimer;
     LEDBase ** _channelLeds;
@@ -130,7 +131,6 @@ protected:
     UIMode _uiMode;
     LedMode _ledMode;
     bool _voiceStates[kVoiceCount];
-    bool _voiceRetriggered[kVoiceCount];
     bool _isCardPresent;
     bool _debounceCardDetect;
     bool _firstSwitchToPlayMode;
@@ -141,6 +141,7 @@ protected:
     bool _potReleaseSaveGain;
     float _lastSampleStart;
     float _lastSampleEnd;
+    uint32_t _retriggerTimestamp[kVoiceCount];
     uint32_t _editChannel;  //!< Voice selected for editing.
     uint32_t _selectedBank; //!< Current bank number for playback.
     int32_t _button1LedDutyCycle;
@@ -166,6 +167,7 @@ protected:
     void save_voice_params(uint32_t channel);
 
     void handle_blink_timer(Ar::Timer * timer);
+    void handle_retrigger_timer(Ar::Timer * timer);
     void handle_pot_release_timer(Ar::Timer * timer);
     void handle_card_detect_timer(Ar::Timer * timer);
 

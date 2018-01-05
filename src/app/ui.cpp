@@ -67,6 +67,12 @@ const uint32_t kBankSwitchLedDelayCount = 4;
 //! Number of 100ms ticks per flash on voice mode switch.
 const uint32_t kVoiceModeSwitchLedDelayCount = 1;
 
+//! LED blink timer period in milliseconds.
+const uint32_t kLedUpdateTimerPeriod_ms = 100;
+
+//! Length of time to turn off a channel LED to indicate a voice retrigger.
+const uint32_t kVoiceRetriggerLedBlinkTime_ms = 100;
+
 //! Map of bank channel to voice channel for each voice mode.
 //!
 //! The first index is the voice mode, second index is bank channel number. The value
@@ -109,7 +115,6 @@ UI::UI()
     _uiMode(kNoCardMode),
     _ledMode(LedMode::kCardDetection),
     _voiceStates{0},
-    _voiceRetriggered{0},
     _isCardPresent(false),
     _debounceCardDetect(false),
     _firstSwitchToPlayMode(true),
@@ -120,6 +125,7 @@ UI::UI()
     _potReleaseSaveGain(false),
     _lastSampleStart(-1.0f),
     _lastSampleEnd(-1.0f),
+    _retriggerTimestamp{0},
     _editChannel(0),
     _selectedBank(0),
     _button1LedDutyCycle(0),
@@ -142,9 +148,13 @@ void UI::init()
     _runloop.addQueue(&_eventQueue, NULL, NULL);
 
     // Create LED blink timer.
-    _blinkTimer.init("blink", this, &UI::handle_blink_timer, kArPeriodicTimer, 100);
+    _blinkTimer.init("blink", this, &UI::handle_blink_timer, kArPeriodicTimer, kLedUpdateTimerPeriod_ms);
     _runloop.addTimer(&_blinkTimer);
     _blinkTimer.start();
+
+    // Create channel LED retrigger timer.
+    _retriggerTimer.init("retrig", this, &UI::handle_retrigger_timer, kArOneShotTimer, kVoiceRetriggerLedBlinkTime_ms);
+    _runloop.addTimer(&_retriggerTimer);
 
     // Create pot edit release timer.
     _potReleaseTimer.init("pot-release", this, &UI::handle_pot_release_timer, kArOneShotTimer, kPotReleaseDelay_ms);
@@ -663,23 +673,37 @@ void UI::set_voice_playing(uint32_t voice, bool state)
 {
     assert(voice < kVoiceCount);
 
+    bool prevState = _voiceStates[voice];
     _voiceStates[voice] = state;
 
-    if (_ledMode == LedMode::kVoiceActivity)
+    if (_ledMode == LedMode::kVoiceActivity && prevState != state)
     {
         _channelLeds[voice]->set(state);
         update_channel_leds();
     }
 }
 
+//! Handle turning off the channel LED briefly to indicate a retrigger. A single one-shot
+//! timer is shared between all channels by keeping track of the retrigger timestamp, to
+//! ensure that the LED is turned off for an exact time. This prevents the appearance of
+//! flickering that can occur due to variable timing.
 void UI::indicate_voice_retriggered(uint32_t voice)
 {
     assert(voice < kVoiceCount);
 
-    _voiceRetriggered[voice] = true;
-
     if (_ledMode == LedMode::kVoiceActivity)
     {
+        // Record the current time.
+        _retriggerTimestamp[voice] = ar_get_millisecond_count();
+
+        // Only start the one-shot timer if it hasn't already been started.
+        if (!_retriggerTimer.isActive())
+        {
+            _retriggerTimer.setDelay(kVoiceRetriggerLedBlinkTime_ms);
+            _retriggerTimer.start();
+        }
+
+        // Turn off channel LED.
         _channelLeds[voice]->off();
         update_channel_leds();
     }
@@ -704,26 +728,6 @@ void UI::handle_blink_timer(Ar::Timer * timer)
             }
             _button1Led->set_duty_cycle(_button1LedDutyCycle);
             break;
-
-        case LedMode::kVoiceActivity:
-        {
-            uint32_t i;
-            bool needUpdate = false;
-            for (i = 0; i < kVoiceCount; ++i)
-            {
-                if (_voiceRetriggered[i])
-                {
-                    _channelLeds[i]->set(_voiceStates[i]);
-                    _voiceRetriggered[i] = false;
-                    needUpdate = true;
-                }
-            }
-            if (needUpdate)
-            {
-                update_channel_leds();
-            }
-            break;
-        }
 
         case LedMode::kBankSwitch:
             if (_ledTimeoutCount-- == 0)
@@ -755,6 +759,50 @@ void UI::handle_blink_timer(Ar::Timer * timer)
 
         default:
             break;
+    }
+}
+
+void UI::handle_retrigger_timer(Ar::Timer * timer)
+{
+    uint32_t i;
+    uint32_t nextDelay = ~0UL;
+    uint32_t delta;
+    uint32_t now = ar_get_millisecond_count();
+    for (i = 0; i < kVoiceCount; ++i)
+    {
+        if (_retriggerTimestamp[i])
+        {
+            // How long it's been since the channel LED was turned off due to retrigger.
+            delta = now - _retriggerTimestamp[i];
+
+            // If this channel's LED has been off for the blink time, turn it back on.
+            if (delta >= kVoiceRetriggerLedBlinkTime_ms)
+            {
+                if (_ledMode == LedMode::kVoiceActivity)
+                {
+                    _channelLeds[i]->set(_voiceStates[i]);
+                }
+                _retriggerTimestamp[i] = 0;
+            }
+            // Otherwise keep track of the shortest time to the next channel LED we need
+            // to turn back on after retrigger blink.
+            else if (delta < nextDelay)
+            {
+                nextDelay = delta;
+            }
+        }
+    }
+
+    // If there is another pending retrigger LED update, reschedule the timer.
+    if (nextDelay != ~0UL)
+    {
+        _retriggerTimer.setDelay(nextDelay);
+        _retriggerTimer.start();
+    }
+
+    if (_ledMode == LedMode::kVoiceActivity)
+    {
+        update_channel_leds();
     }
 }
 
@@ -918,7 +966,6 @@ void UI::set_voice_activity_led_mode()
     {
         _channelLeds[i]->set_color(LEDBase::kRed);
         _channelLeds[i]->set(_voiceStates[i]);
-        _voiceRetriggered[i] = false;
     }
 
     update_channel_leds();

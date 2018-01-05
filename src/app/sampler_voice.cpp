@@ -609,7 +609,14 @@ void SamplerVoice::render(int16_t * data, uint32_t frameCount)
                     prime();
                     _isPlaying = savedRetrigger;
 
-                    UI::get().indicate_voice_retriggered(_number);
+                    if (_isPlaying)
+                    {
+                        UI::get().indicate_voice_retriggered(_number);
+                    }
+                    else
+                    {
+                        UI::get().set_voice_playing(_number, false);
+                    }
 
                     updateBuffer = true;
                     readHead = bufferFrameCount;
