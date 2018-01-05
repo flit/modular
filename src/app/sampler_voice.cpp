@@ -44,6 +44,9 @@ using namespace slab;
 //! Set to 1 to cause the voice to automatically and repeatedly trigger.
 #define ENABLE_TEST_LOOP_MODE (0)
 
+//! Number of samples to fade in when we can't find a zero crossing.
+const uint32_t kFadeInSampleCount = 128;
+
 //! Number of samples to fade out.
 const uint32_t kNoteOffSamples = 128;
 
@@ -358,7 +361,14 @@ void SampleBufferManager::_find_zero_crossing(SampleBuffer * buffer)
         }
         previousSample = thisSample;
     }
-    assert(false);
+
+    // Failed to find a zero crossing, so apply a fade in.
+    sample = &buffer->data[0];
+    uint32_t fadeCount = min(buffer->frameCount, kFadeInSampleCount);
+    for (i = 0; i < fadeCount; ++i, ++sample)
+    {
+        *sample = static_cast<int16_t>(static_cast<int32_t>(*sample) * i / fadeCount);
+    }
 }
 
 void SampleBufferManager::set_start_end_sample(int32_t start, int32_t end)
