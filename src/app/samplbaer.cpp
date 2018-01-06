@@ -183,7 +183,7 @@ void flash_leds()
     }
 }
 
-extern "C" void DMA_Error_IRQ_Handler(void)
+extern "C" void DMA_Error_IRQHandler(void)
 {
     uint32_t errorStatus = DMA0->ES;
     uint32_t errorChannel = (errorStatus & DMA_ES_ERRCHN_MASK) >> DMA_ES_ERRCHN_SHIFT;
@@ -226,6 +226,8 @@ void init_dma()
             EDMA_EnableChannelInterrupts(DMA0, channel, kEDMA_ErrorInterruptEnable);
         }
     }
+
+    NVIC_EnableIRQ(DMA_Error_IRQn);
 }
 
 void init_irq_priorities()
