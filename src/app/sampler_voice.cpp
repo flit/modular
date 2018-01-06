@@ -50,6 +50,8 @@ const uint32_t kFadeInSampleCount = 128;
 //! Number of samples to fade out.
 const uint32_t kNoteOffSamples = 128;
 
+static_assert(kNoteOffSamples % kAudioBufferSize == 0, "note off samples must evenly divide buffer size");
+
 //------------------------------------------------------------------------------
 // Variables
 //------------------------------------------------------------------------------
@@ -539,6 +541,11 @@ void SamplerVoice::playing_did_finish()
 
 void SamplerVoice::render(int16_t * data, uint32_t frameCount)
 {
+    DECLARE_ELAPSED_TIME(total);
+    DECLARE_ELAPSED_TIME(render);
+    DECLARE_ELAPSED_TIME(retire);
+    DECLARE_ELAPSED_TIME(noteOff);
+
     uint32_t i;
 
     // Get the current buffer if playing.
@@ -566,182 +573,125 @@ void SamplerVoice::render(int16_t * data, uint32_t frameCount)
     uint32_t remainingFrames = frameCount;
     float s;
 
+    START_ELAPSED_TIME(total);
+
     // Skip ahead to the buffer's zero snap offset. This will only apply to the file start.
     if (readHead == 0.0f)
     {
         readHead = voiceBuffer->zeroSnapOffset;
     }
 
-    // Special case for unmodified pitch.
-    if (rate == 1.0f && !_doNoteOff)
+    // Render into output buffer.
+    assert(readHead < bufferFrameCount);
+    while (remainingFrames)
     {
+        assert(remainingFrames <= frameCount);
+        uint32_t framesAtRate = std::ceil(remainingFrames * rate);
         uint32_t integerReadHead = readHead;
         uint32_t framesRemainingInBuffer = bufferFrameCount - integerReadHead;
-        uint32_t framesFromBuffer = min(framesRemainingInBuffer, frameCount);
+        uint32_t outputFrames;
 
-        // Render sample data into the output buffer.
-        for (i = 0; i < framesFromBuffer; ++i)
+        // Handle case where there are fewer remaining frames in the buffer than
+        // the playback rate, in which case we need to just move to the next buffer.
+        if (framesRemainingInBuffer < rate)
         {
-            // Apply the gain.
-            s = float(bufferData[integerReadHead++]);
-            s *= _params.gain;
-            *data = int16_t(s);
-            data += 2;
-        }
-
-        readHead = integerReadHead;
-        remainingFrames -= framesFromBuffer;
-    }
-    else if (_doNoteOff)
-    {
-        bool updateBuffer = false;
-
-        // Render sample data into the output buffer at the specified playback rate.
-        for (i = 0; i < frameCount; ++i)
-        {
-            // Check if we reached the end of this sample buffer.
-            if (readHead >= bufferFrameCount)
-            {
-                std::copy_n(&bufferData[bufferFrameCount - kInterpolationBufferLength], kInterpolationBufferLength, _interpolationBuffer);
-
-                _manager.retire_buffer(voiceBuffer);
-
-                updateBuffer = true;
-            }
-
-            float gain = _params.gain;
-            if (_doNoteOff)
-            {
-                if (_noteOffSamplesRemaining-- == 0)
-                {
-                    // Prime will clear all flags for us, so save retrigger locally to set
-                    // isPlaying after priming.
-                    bool savedRetrigger = _doRetrigger;
-                    prime();
-                    _isPlaying = savedRetrigger;
-
-                    if (_isPlaying)
-                    {
-                        UI::get().indicate_voice_retriggered(_number);
-                    }
-                    else
-                    {
-                        UI::get().set_voice_playing(_number, false);
-                    }
-
-                    updateBuffer = true;
-                    readHead = bufferFrameCount;
-                }
-                else
-                {
-                    gain *= float(_noteOffSamplesRemaining) / float(kNoteOffSamples);
-                }
-            }
-
-            if (updateBuffer)
-            {
-                updateBuffer = false;
-                readHead -= bufferFrameCount;
-
-                // If we're no longer playing, exit this loop.
-                if (!_isPlaying)
-                {
-                    // Set some variables used outside the loop below.
-                    readHead = 0.0f;
-                    break;
-                }
-
-                // Get the next buffer and update locals.
-                voiceBuffer = _manager.get_current_buffer();
-                if (!voiceBuffer)
-                {
-                    break;
-                }
-                bufferData = voiceBuffer->data;
-                bufferFrameCount = voiceBuffer->frameCount;
-            }
-
-            // Read interpolated sample from buffer.
-            s = voiceBuffer->read<SampleBuffer::InterpolationMode::kHermite>(readHead, _interpolationBuffer);
-
-            // Apply the gain and write into output buffer.
-            s *= gain;
-            *data = int16_t(s);
-            data += 2;
-
             readHead += rate;
         }
-
-        remainingFrames -= i;
-    }
-    else
-    {
-        assert(readHead < bufferFrameCount);
-        while (remainingFrames)
+        else
         {
-            assert(remainingFrames <= frameCount);
-            uint32_t framesAtRate = std::ceil(remainingFrames * rate);
-            uint32_t integerReadHead = readHead;
-            uint32_t framesRemainingInBuffer = bufferFrameCount - integerReadHead;
-            uint32_t outputFrames;
-
-            // Handle case where there are fewer remaining frames in the buffer than
-            // the playback rate, in which case we need to just move to the next buffer.
-            if (framesRemainingInBuffer < rate)
+            if (framesAtRate > framesRemainingInBuffer)
             {
-                readHead += rate;
+                outputFrames = min(uint32_t(std::floor(framesRemainingInBuffer / rate)), remainingFrames);
             }
             else
             {
-                if (framesAtRate > framesRemainingInBuffer)
-                {
-                    outputFrames = min(uint32_t(std::floor(framesRemainingInBuffer / rate)), remainingFrames);
-                }
-                else
-                {
-                    outputFrames = remainingFrames;
-                }
-
-                // Render sample data into the output buffer at the specified playback rate.
-                readHead = voiceBuffer->read_into<SampleBuffer::InterpolationMode::kHermite>(
-                            s_workBuffer, outputFrames, readHead, rate, _interpolationBuffer);
-                s_workBuffer.multiply_scalar(_params.gain, outputFrames);
-                s_workBuffer.copy_into(data, 2, outputFrames);
-
-                remainingFrames -= outputFrames;
-                data += outputFrames * 2;
+                outputFrames = remainingFrames;
             }
 
-            if (readHead > (bufferFrameCount - 1))
-            {
-                readHead -= bufferFrameCount;
-                std::copy_n(&bufferData[bufferFrameCount - kInterpolationBufferLength], kInterpolationBufferLength, _interpolationBuffer);
+            START_ELAPSED_TIME(render);
 
-                _manager.retire_buffer(voiceBuffer);
+            // Render sample data into the output buffer at the specified playback rate.
+            readHead = voiceBuffer->read_into<SampleBuffer::InterpolationMode::kHermite>(
+                        s_workBuffer, outputFrames, readHead, rate, _interpolationBuffer);
+            s_workBuffer.multiply_scalar(_params.gain, outputFrames);
+            s_workBuffer.copy_into(data, 2, outputFrames);
 
-                // If we're no longer playing, exit this loop.
-                if (!_isPlaying)
-                {
-                    // Set some variables used outside the loop below.
-                    readHead = 0.0f;
-                    break;
-                }
+            END_ELAPSED_TIME(render);
 
-                // Get the next buffer and update locals.
-                voiceBuffer = _manager.get_current_buffer();
-                if (!voiceBuffer)
-                {
-                    break;
-                }
-                bufferData = voiceBuffer->data;
-                bufferFrameCount = voiceBuffer->frameCount;
-            }
-            assert(readHead < bufferFrameCount);
+            remainingFrames -= outputFrames;
+            data += outputFrames * 2;
         }
+
+        if (readHead > (bufferFrameCount - 1))
+        {
+            START_ELAPSED_TIME(retire);
+
+            readHead -= bufferFrameCount;
+            std::copy_n(&bufferData[bufferFrameCount - kInterpolationBufferLength], kInterpolationBufferLength, _interpolationBuffer);
+
+            _manager.retire_buffer(voiceBuffer);
+
+            // If we're no longer playing, exit this loop.
+            if (!_isPlaying)
+            {
+                // Set some variables used outside the loop below.
+                readHead = 0.0f;
+                break;
+            }
+
+            // Get the next buffer and update locals.
+            voiceBuffer = _manager.get_current_buffer();
+            if (!voiceBuffer)
+            {
+                break;
+            }
+            bufferData = voiceBuffer->data;
+            bufferFrameCount = voiceBuffer->frameCount;
+
+            END_ELAPSED_TIME(retire);
+        }
+        assert(readHead < bufferFrameCount);
     }
 
     // Save local read head.
     _readHead = readHead;
+
+    // Handle end of note off and retriggering.
+    if (_doNoteOff)
+    {
+        START_ELAPSED_TIME(noteOff);
+
+        // Apply fade out.
+        for (i = 0; i < min(_noteOffSamplesRemaining, frameCount); ++i)
+        {
+            int32_t sample = static_cast<int32_t>(data[i]);
+            sample = sample * (_noteOffSamplesRemaining - i) / kNoteOffSamples;
+            data[i] = static_cast<int16_t>(sample);
+        }
+        _noteOffSamplesRemaining -= i;
+
+        if (_noteOffSamplesRemaining == 0)
+        {
+            // Prime will clear all flags for us, so save retrigger locally to set
+            // isPlaying after priming.
+            bool savedRetrigger = _doRetrigger;
+            prime();
+            _isPlaying = savedRetrigger;
+
+            if (_isPlaying)
+            {
+                UI::get().indicate_voice_retriggered(_number);
+            }
+            else
+            {
+                UI::get().set_voice_playing(_number, false);
+            }
+        }
+
+        END_ELAPSED_TIME(noteOff);
+    }
+
+    END_ELAPSED_TIME(total);
 
     // Fill any leftover frames with silence.
     while (remainingFrames--)
