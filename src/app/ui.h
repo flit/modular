@@ -60,15 +60,6 @@ enum UIMode : uint32_t
     kCalibrationMode,
 };
 
-//!
-enum EditPotNames : uint32_t
-{
-    kCoarsePitchPot = 0,
-    kFinePitchPot = 1,
-    kSampleStartPot = 2,
-    kSampleEndPot = 3,
-};
-
 /*!
  * @brief
  */
@@ -144,6 +135,7 @@ protected:
     float _lastSampleEnd;
     uint32_t _retriggerTimestamp[kVoiceCount];
     uint32_t _underflowTimestamp[kVoiceCount];
+    uint32_t _editPage; //!< Currently selected edit page.
     uint32_t _editChannel;  //!< Voice selected for editing.
     uint32_t _selectedBank; //!< Current bank number for playback.
     int32_t _button1LedDutyCycle;
@@ -151,6 +143,7 @@ protected:
     uint32_t _button1LedFlashes;
     uint32_t _ledTimeoutCount;
     uint32_t _potReleaseSaveGainChannel;
+    uint32_t _editPageBlinkCounter;
 
     struct Options
     {
@@ -165,6 +158,7 @@ protected:
 
     void select_next_bank();
     void select_next_edit_channel();
+    void select_next_edit_page();
 
     void save_voice_params(uint32_t channel);
 
@@ -172,6 +166,9 @@ protected:
     void handle_retrigger_timer(Ar::Timer * timer);
     void handle_pot_release_timer(Ar::Timer * timer);
     void handle_card_detect_timer(Ar::Timer * timer);
+
+    void handle_gain_pot(uint32_t potNumber, float value);
+    void handle_edit_pot(uint32_t potNumber, float value);
 
     void set_all_pot_hysteresis(uint32_t percent);
     void set_voice_activity_led_mode();

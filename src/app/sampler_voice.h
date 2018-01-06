@@ -248,6 +248,21 @@ protected:
  */
 struct VoiceParameters
 {
+    //! @brief Voice parameter identifiers.
+    enum ParameterName
+    {
+        kUnused,    //!< Special value for indicating an unused pot.
+        kBaseOctave,
+        kBaseCents,
+        kSampleStart,
+        kSampleEnd,
+        kVolumeEnvAttack,
+        kVolumeEnvRelease,
+        kPitchEnvAttack,
+        kPitchEnvRelease,
+        kPitchEnvDepth,
+    };
+
     float gain;
     float baseOctaveOffset;
     float baseCentsOffset;

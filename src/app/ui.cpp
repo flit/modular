@@ -47,7 +47,17 @@ using namespace slab;
 const float kAdcMax = 65535.0f;
 const float kAdcLsbFloat = 1.0f / 4096.0f;
 
-const uint32_t kPotEditHysteresisPercent = 5;
+//! ADC counts within either end of the ADC range that will cause a snap to 0.0/1.0.
+const float kPotExtremaSnapValue = 100.0f;
+
+//! ADC count below which will cause a snap to 0.0.
+const float kPotMinSnapValue = kPotExtremaSnapValue;
+
+//! ADC count above which will cause a snap to 1.0.
+const float kPotMaxSnapValue = kAdcMax - kPotExtremaSnapValue;
+
+//! Hysteresis to use when switching between edit and play mode and edit pages.
+const float kPotEditHysteresisPercent = 3.0f;
 
 //! Interval for checking SD card presence.
 const uint32_t kCardDetectInterval_ms = 250;
@@ -109,6 +119,41 @@ static const int8_t kVoiceToBankChannelMap[kVoiceModeCount][kVoiceCount] = {
         { 0, -1, -2, -3, },
     };
 
+//! Number of edit pages.
+static const uint32_t kEditPageCount = 3;
+
+//! Map from pot number within an edit page to voice parameter.
+static const VoiceParameters::ParameterName kPotToParameterMap[kEditPageCount][kVoiceCount] = {
+        [0] = {
+                [0] = VoiceParameters::kBaseOctave,
+                [1] = VoiceParameters::kBaseCents,
+                [2] = VoiceParameters::kSampleStart,
+                [3] = VoiceParameters::kSampleEnd,
+            },
+        [1] = {
+                [0] = VoiceParameters::kPitchEnvAttack,
+                [1] = VoiceParameters::kPitchEnvRelease,
+                [2] = VoiceParameters::kPitchEnvDepth,
+                [3] = VoiceParameters::kUnused,
+            },
+        [2] = {
+                [0] = VoiceParameters::kVolumeEnvAttack,
+                [1] = VoiceParameters::kVolumeEnvRelease,
+                [2] = VoiceParameters::kUnused,
+                [3] = VoiceParameters::kUnused,
+            },
+    };
+
+//! Number of 100 ms ticks over which the edit page blink patterns are played.
+static const uint32_t kEditPageBlinkPatternLength = 15;
+
+//! Button1 blink pattern for edit pages.
+static const uint8_t kEditPageBlinkStates[kEditPageCount][kEditPageBlinkPatternLength] = {
+        [0] = { 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, },
+        [1] = { 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 0, 0, },
+        [2] = { 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, },
+    };
+
 //------------------------------------------------------------------------------
 // Code
 //------------------------------------------------------------------------------
@@ -132,6 +177,7 @@ UI::UI()
     _lastSampleEnd(-1.0f),
     _retriggerTimestamp{0},
     _underflowTimestamp{0},
+    _editPage(0),
     _editChannel(0),
     _selectedBank(0),
     _button1LedDutyCycle(0),
@@ -139,6 +185,7 @@ UI::UI()
     _button1LedFlashes(0),
     _ledTimeoutCount(0),
     _potReleaseSaveGainChannel(0),
+    _editPageBlinkCounter(0),
     _options{true}
 {
 }
@@ -205,6 +252,7 @@ void UI::set_ui_mode(UIMode mode)
     {
         // Switch to edit mode.
         case kEditMode:
+            _editPage = 0;
             _ledMode = LedMode::kVoiceEdit;
 
             _button1Led->on();
@@ -383,9 +431,9 @@ void UI::handle_button_event(const UIEvent & event)
                             set_ui_mode(kEditMode);
                             break;
 
-                        // Switch to play mode.
+                        // Move to next edit page or switch to play mode.
                         case kEditMode:
-                            set_ui_mode(kPlayMode);
+                            select_next_edit_page();
                             break;
 
                         // Do nothing.
@@ -634,6 +682,26 @@ void UI::select_next_edit_channel()
     } while (!g_voice[_editChannel].is_valid());
 }
 
+void UI::select_next_edit_page()
+{
+    ++_editPage;
+
+    // If we're on the last edit page, switch back to play mode.
+    if (_editPage >= kEditPageCount)
+    {
+        set_ui_mode(kPlayMode);
+        return;
+    }
+
+    set_all_pot_hysteresis(kPotEditHysteresisPercent);
+
+    _potReleaseTimer.stop();
+    _potReleaseEditSampleStart = false;
+    _potReleaseEditSampleEnd = false;
+
+    _editPageBlinkCounter = 0;
+}
+
 void UI::save_voice_params(uint32_t channel)
 {
     // Map voice selected for editing to the bank channel.
@@ -757,6 +825,15 @@ void UI::handle_blink_timer(Ar::Timer * timer)
             _button1Led->set_duty_cycle(_button1LedDutyCycle);
             break;
 
+        case LedMode::kVoiceEdit:
+            if (++_editPageBlinkCounter == kEditPageBlinkPatternLength)
+            {
+                _editPageBlinkCounter = 0;
+            }
+
+            _button1Led->set(!kEditPageBlinkStates[_editPage][_editPageBlinkCounter]);
+            break;
+
         case LedMode::kBankSwitch:
             if (_ledTimeoutCount-- == 0)
             {
@@ -856,14 +933,14 @@ void UI::handle_pot_release_timer(Ar::Timer * timer)
 {
     if (_potReleaseEditSampleStart)
     {
-        _channelPots[kSampleStartPot].set_hysteresis(1);
+        _channelPots[2 /*kSampleStartPot*/].set_hysteresis(1);
         g_voice[_editChannel].set_sample_start(_lastSampleStart);
         _lastSampleStart = -1.0f;
         _potReleaseEditSampleStart = false;
     }
     if (_potReleaseEditSampleEnd)
     {
-        _channelPots[kSampleEndPot].set_hysteresis(1);
+        _channelPots[3 /*kSampleEndPot*/].set_hysteresis(1);
         g_voice[_editChannel].set_sample_end(_lastSampleEnd);
         _lastSampleEnd = -1.0f;
         _potReleaseEditSampleEnd = false;
@@ -908,86 +985,122 @@ void UI::pot_did_change(Pot& pot, float value)
 {
     uint32_t potNumber = pot.get_number();
     float fvalue = value / kAdcMax;
-    float delta;
 
     switch (_uiMode)
     {
         // In play mode, the pots control the gain of their corresponding channel.
         case kPlayMode:
-            // In 2 voice mode, second pot for each channel is ignored.
-            if ((_voiceMode == k2VoiceMode && (potNumber == 1 || potNumber == 3)))
-            {
-                // ignore pot
-            }
-            else
-            {
-                // Detect lower and upper ends of range and snap to 0/1.
-                if (value < 100.0f)
-                {
-                    fvalue = 0.0f;
-                }
-                else if (value > kAdcMax - 100.0f)
-                {
-                    fvalue = 1.0f;
-                }
-                else
-                {
-                    // Apply curve.
-                    fvalue = powf(fvalue, 2.0f);
-                }
-
-                // Update gain in the voice.
-                g_voice[potNumber].set_gain(fvalue);
-
-                if (_options.saveGainInBank)
-                {
-                    // Set flag and start timer to save the voice after gain is edited.
-                    _potReleaseSaveGain = true;
-                    _potReleaseSaveGainChannel = potNumber;
-                    _potReleaseTimer.start();
-                }
-            }
+            handle_gain_pot(potNumber, value);
             break;
 
         // In edit mode, each pot controls a different voice parameter of the selected channel.
         case kEditMode:
-            switch (potNumber)
+            handle_edit_pot(potNumber, value);
+            break;
+
+        // Ignore pots in other UI modes.
+        default:
+            break;
+    }
+}
+
+void UI::handle_gain_pot(uint32_t potNumber, float value)
+{
+    // In 2 voice mode, second pot for each channel is ignored.
+    // In 3 voice mode, second pot for the first channel is ignored.
+    if ((_voiceMode == k2VoiceMode && (potNumber == 1 || potNumber == 3))
+        || (_voiceMode == k3VoiceMode && (potNumber == 1)))
+    {
+        // ignore pot
+        return;
+    }
+
+    // Detect lower and upper ends of range and snap to 0/1.
+    float fvalue;
+    if (value < kPotMinSnapValue)
+    {
+        fvalue = 0.0f;
+    }
+    else if (value > kPotMaxSnapValue)
+    {
+        fvalue = 1.0f;
+    }
+    else
+    {
+        // Apply curve.
+        fvalue = powf(static_cast<float>(value) / kAdcMax, 2.0f);
+    }
+
+    // Update gain in the voice.
+    g_voice[potNumber].set_gain(fvalue);
+
+    if (_options.saveGainInBank)
+    {
+        // Set flag and start timer to save the voice after gain is edited.
+        _potReleaseSaveGain = true;
+        _potReleaseSaveGainChannel = potNumber;
+        _potReleaseTimer.start();
+    }
+}
+
+void UI::handle_edit_pot(uint32_t potNumber, float value)
+{
+    float fvalue = value / kAdcMax;
+    float delta;
+    VoiceParameters::ParameterName editParam = kPotToParameterMap[_editPage][potNumber];
+    switch (editParam)
+    {
+        case VoiceParameters::kBaseOctave:
+            // Shift value from 0..1 to -3..+3 octaves
+            fvalue = (fvalue * 6.0f) - 3.0f;
+            g_voice[_editChannel].set_base_octave_offset(fvalue);
+            break;
+
+        case VoiceParameters::kBaseCents:
+            // Shift value from 0..1 to -100..+100 cents
+            fvalue = (fvalue * 200.0f) - 100.0f;
+            g_voice[_editChannel].set_base_cents_offset(fvalue);
+            break;
+
+        case VoiceParameters::kSampleStart:
+            // 0..1
+            delta = fabsf(fvalue - _lastSampleStart);
+            _lastSampleStart = fvalue;
+            if (delta > (kAdcLsbFloat * 16))
             {
-                case kCoarsePitchPot:
-                    // Shift value from 0..1 to -3..+3 octaves
-                    fvalue = (fvalue * 6.0f) - 3.0f;
-                    g_voice[_editChannel].set_base_octave_offset(fvalue);
-                    break;
-                case kFinePitchPot:
-                    // Shift value from 0..1 to -100..+100 cents
-                    fvalue = (fvalue * 200.0f) - 100.0f;
-                    g_voice[_editChannel].set_base_cents_offset(fvalue);
-                    break;
-                case kSampleStartPot:
-                    // 0..1
-                    delta = fabsf(fvalue - _lastSampleStart);
-                    _lastSampleStart = fvalue;
-                    if (delta > (kAdcLsbFloat * 16))
-                    {
-                        _potReleaseEditSampleStart = true;
-                        _potReleaseTimer.start();
-                    }
-                    break;
-                case kSampleEndPot:
-                    // 0..1
-                    delta = fabsf(fvalue - _lastSampleEnd);
-                    _lastSampleEnd = fvalue;
-                    if (delta > (kAdcLsbFloat * 16))
-                    {
-                        _potReleaseEditSampleEnd = true;
-                        _potReleaseTimer.start();
-                    }
-                    break;
+                _potReleaseEditSampleStart = true;
+                _potReleaseTimer.start();
             }
             break;
 
-        // Ignore pots when there is no card.
-        default:
+        case VoiceParameters::kSampleEnd:
+            // 0..1
+            delta = fabsf(fvalue - _lastSampleEnd);
+            _lastSampleEnd = fvalue;
+            if (delta > (kAdcLsbFloat * 16))
+            {
+                _potReleaseEditSampleEnd = true;
+                _potReleaseTimer.start();
+            }
+            break;
+
+        case VoiceParameters::kVolumeEnvAttack:
+            break;
+
+        case VoiceParameters::kVolumeEnvRelease:
+            break;
+
+        case VoiceParameters::kPitchEnvAttack:
+            break;
+
+        case VoiceParameters::kPitchEnvRelease:
+            break;
+
+        case VoiceParameters::kPitchEnvDepth:
+            break;
+
+        // Pot is unused in this edit page.
+        case VoiceParameters::kUnused:
             break;
     }
 }
