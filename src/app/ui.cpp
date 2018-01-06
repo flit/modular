@@ -73,6 +73,11 @@ const uint32_t kLedUpdateTimerPeriod_ms = 100;
 //! Length of time to turn off a channel LED to indicate a voice retrigger.
 const uint32_t kVoiceRetriggerLedBlinkTime_ms = 100;
 
+//! Time window within which we go ahead and handle a retrigger LED.
+//!
+//! This window is used to reduce the frequency of firing the retrigger timer.
+const uint32_t kVoiceRetriggerLedWindowTime_ms = 10;
+
 //! Map of bank channel to voice channel for each voice mode.
 //!
 //! The first index is the voice mode, second index is bank channel number. The value
@@ -799,7 +804,7 @@ void UI::handle_retrigger_timer(Ar::Timer * timer)
             delta = now - _retriggerTimestamp[i];
 
             // If this channel's LED has been off for the blink time, turn it back on.
-            if (delta >= kVoiceRetriggerLedBlinkTime_ms)
+            if (delta >= kVoiceRetriggerLedBlinkTime_ms - kVoiceRetriggerLedWindowTime_ms)
             {
                 if (_ledMode == LedMode::kVoiceActivity)
                 {
@@ -818,7 +823,7 @@ void UI::handle_retrigger_timer(Ar::Timer * timer)
         {
             delta = now - _underflowTimestamp[i];
 
-            if (delta >= kVoiceRetriggerLedBlinkTime_ms)
+            if (delta >= kVoiceRetriggerLedBlinkTime_ms - kVoiceRetriggerLedWindowTime_ms)
             {
                 if (_ledMode == LedMode::kVoiceActivity)
                 {
