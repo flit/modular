@@ -60,7 +60,7 @@ const float kPotMaxSnapValue = kAdcMax - kPotExtremaSnapValue;
 const float kPotEditHysteresisPercent = 3.0f;
 
 //! Interval for checking SD card presence.
-const uint32_t kCardDetectInterval_ms = 250;
+const uint32_t kCardDetectInterval_ms = 500;
 
 //! Delay for applying a change to the sample start parameter.
 const uint32_t kPotReleaseDelay_ms = 100;
@@ -545,23 +545,26 @@ void UI::handle_button_event(const UIEvent & event)
                 case kButton1:
                     if (event.value == kVoiceModeLongPressTime)
                     {
-                        // We don't want to process the button up event.
-                        _ignoreButton1Release = true;
-
-                        // Select new voice mode.
-                        switch (_voiceMode)
+                        if (_uiMode == kPlayMode)
                         {
-                            case k4VoiceMode:
-                                set_voice_mode(k3VoiceMode);
-                                break;
-                            case k3VoiceMode:
-                                set_voice_mode(k2VoiceMode);
-                                break;
-                            case k2VoiceMode:
-                                set_voice_mode(k4VoiceMode);
-                                break;
-                            default:
-                                break;
+                            // We don't want to process the button up event.
+                            _ignoreButton1Release = true;
+
+                            // Select new voice mode.
+                            switch (_voiceMode)
+                            {
+                                case k4VoiceMode:
+                                    set_voice_mode(k3VoiceMode);
+                                    break;
+                                case k3VoiceMode:
+                                    set_voice_mode(k2VoiceMode);
+                                    break;
+                                case k2VoiceMode:
+                                    set_voice_mode(k4VoiceMode);
+                                    break;
+                                default:
+                                    break;
+                            }
                         }
                     }
                     break;
@@ -698,6 +701,7 @@ void UI::select_next_edit_page()
     _potReleaseTimer.stop();
     _potReleaseEditSampleStart = false;
     _potReleaseEditSampleEnd = false;
+    _potReleaseSaveGain = false;
 
     _editPageBlinkCounter = 0;
 }
