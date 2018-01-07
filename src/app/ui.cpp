@@ -1085,18 +1085,37 @@ void UI::handle_edit_pot(uint32_t potNumber, float value)
             break;
 
         case VoiceParameters::kVolumeEnvAttack:
+            // Apply curve and shift from 0..1 to 0..(sample length)
+            fvalue = powf(fvalue, 1.5f);
+            fvalue *= g_voice[_editChannel].get_sample_length_in_seconds();
+            g_voice[_editChannel].set_volume_env_attack(fvalue);
             break;
 
         case VoiceParameters::kVolumeEnvRelease:
+            // Apply curve and shift from 0..1 to 0..(sample length)
+            fvalue = powf(fvalue, 1.5f);
+            fvalue *= g_voice[_editChannel].get_sample_length_in_seconds();
+            g_voice[_editChannel].set_volume_env_release(fvalue);
             break;
 
         case VoiceParameters::kPitchEnvAttack:
+            // Apply curve and shift from 0..1 to 0..(sample length)
+            fvalue = powf(fvalue, 1.5f);
+            fvalue *= g_voice[_editChannel].get_sample_length_in_seconds();
+            g_voice[_editChannel].set_pitch_env_attack(fvalue);
             break;
 
         case VoiceParameters::kPitchEnvRelease:
+            // Apply curve and shift from 0..1 to 0..(sample length)
+            fvalue = powf(fvalue, 1.5f);
+            fvalue *= g_voice[_editChannel].get_sample_length_in_seconds();
+            g_voice[_editChannel].set_pitch_env_release(fvalue);
             break;
 
         case VoiceParameters::kPitchEnvDepth:
+            // Shift from 0..1 to -2..+2 octaves
+            fvalue = (fvalue * 4.0f) - 2.0f;
+            g_voice[_editChannel].set_pitch_env_depth(fvalue);
             break;
 
         // Pot is unused in this edit page.

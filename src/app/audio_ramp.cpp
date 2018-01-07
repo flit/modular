@@ -29,6 +29,7 @@
 
 #include "audio_ramp.h"
 #include "arm_math.h"
+#include <assert.h>
 
 using namespace slab;
 
@@ -54,6 +55,10 @@ void AudioRamp::set_length_in_seconds(float seconds)
 {
     m_lengthInSeconds = seconds;
     m_lengthInSamples = unsigned(get_sample_rate() * seconds);
+    if (m_currentSample > m_lengthInSamples)
+    {
+        m_currentSample = m_lengthInSamples;
+    }
     recalculate_slope();
 }
 
@@ -61,6 +66,10 @@ void AudioRamp::set_length_in_samples(uint32_t samples)
 {
     m_lengthInSamples = samples;
     m_lengthInSeconds = samples / get_sample_rate();
+    if (m_currentSample > m_lengthInSamples)
+    {
+        m_currentSample = m_lengthInSamples;
+    }
     recalculate_slope();
 }
 
@@ -87,8 +96,8 @@ void AudioRamp::recalculate_slope()
             break;
 
         case kCubic:
-            m_y1 = pow(m_beginValue, 1.0f / 3.0f);
-            m_y2 = pow(m_endValue, 1.0f / 3.0f);
+            m_y1 = powf(m_beginValue, 1.0f / 3.0f);
+            m_y2 = powf(m_endValue, 1.0f / 3.0f);
             m_slope = (m_y2 - m_y1) / float(m_lengthInSamples);
             break;
     }
@@ -109,6 +118,7 @@ float AudioRamp::next()
 
 void AudioRamp::process(float * samples, uint32_t count)
 {
+    assert(m_currentSample <= m_lengthInSamples);
     float * value = samples;
     uint32_t realCount = count;
     if (m_currentSample + count > m_lengthInSamples)

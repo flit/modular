@@ -81,6 +81,16 @@
 			<locationURI>PARENT-2-PROJECT_LOC/src/app/ar_config.h</locationURI>
 		</link>
 		<link>
+			<name>app/asr_envelope.cpp</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/src/app/asr_envelope.cpp</locationURI>
+		</link>
+		<link>
+			<name>app/asr_envelope.h</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/src/app/asr_envelope.h</locationURI>
+		</link>
+		<link>
 			<name>app/audio_buffer.h</name>
 			<type>1</type>
 			<locationURI>PARENT-2-PROJECT_LOC/src/app/audio_buffer.h</locationURI>
@@ -91,6 +101,16 @@
 			<locationURI>PARENT-2-PROJECT_LOC/src/app/audio_defs.h</locationURI>
 		</link>
 		<link>
+			<name>app/audio_filter.cpp</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/src/app/audio_filter.cpp</locationURI>
+		</link>
+		<link>
+			<name>app/audio_filter.h</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/src/app/audio_filter.h</locationURI>
+		</link>
+		<link>
 			<name>app/audio_output.cpp</name>
 			<type>1</type>
 			<locationURI>PARENT-2-PROJECT_LOC/src/app/audio_output.cpp</locationURI>
@@ -99,6 +119,16 @@
 			<name>app/audio_output.h</name>
 			<type>1</type>
 			<locationURI>PARENT-2-PROJECT_LOC/src/app/audio_output.h</locationURI>
+		</link>
+		<link>
+			<name>app/audio_ramp.cpp</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/src/app/audio_ramp.cpp</locationURI>
+		</link>
+		<link>
+			<name>app/audio_ramp.h</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/src/app/audio_ramp.h</locationURI>
 		</link>
 		<link>
 			<name>app/board_k22fa12</name>

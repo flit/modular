@@ -35,6 +35,7 @@
 #include "audio_defs.h"
 #include "audio_buffer.h"
 #include "serializer.h"
+#include "asr_envelope.h"
 #include <assert.h>
 
 //------------------------------------------------------------------------------
@@ -263,18 +264,28 @@ struct VoiceParameters
         kPitchEnvDepth,
     };
 
-    float gain;
-    float baseOctaveOffset;
-    float baseCentsOffset;
-    float startSample;
-    float endSample;
+    float gain;             //!< Range 0..1.
+    float baseOctaveOffset; //!< Base +/- octave offset, nominal range -2..+3 octaves.
+    float baseCentsOffset;  //!< Base +/- cents offset, nominal range -100..+100 cents.
+    float startSample;      //!< Range 0..1.
+    float endSample;        //!< Range 0..1.
+    float volumeEnvAttack;  //!< Attack time in seconds, nominal range 0..(sample length in seconds).
+    float volumeEnvRelease; //!< Release time in seconds, nominal range 0..(sample length in seconds).
+    float pitchEnvAttack;   //!< Attack time in seconds, nominal range 0..(sample length in seconds).
+    float pitchEnvRelease;  //!< Release time in seconds, nominal range 0..(sample length in seconds).
+    float pitchEnvDepth;    //!< +/- octave env depth, nominal range -2..+2 octaves.
 
-    VoiceParameters()
+    constexpr VoiceParameters()
     :   gain(1.0f),
         baseOctaveOffset(0.0f),
         baseCentsOffset(0.0f),
         startSample(0.0f),
-        endSample(1.0f)
+        endSample(1.0f),
+        volumeEnvAttack(0.0f),
+        volumeEnvRelease(0.0f),
+        pitchEnvAttack(0.0f),
+        pitchEnvRelease(0.0f),
+        pitchEnvDepth(0.0f)
     {
     }
     ~VoiceParameters()=default;
@@ -289,6 +300,11 @@ struct VoiceParameters
         baseCentsOffset = other.baseCentsOffset;
         startSample = other.startSample;
         endSample = other.endSample;
+        volumeEnvAttack = other.volumeEnvAttack;
+        volumeEnvRelease = other.volumeEnvRelease;
+        pitchEnvAttack = other.pitchEnvAttack;
+        pitchEnvRelease = other.pitchEnvRelease;
+        pitchEnvDepth = other.pitchEnvDepth;
         return *this;
     }
 
@@ -299,24 +315,37 @@ struct VoiceParameters
         baseCentsOffset = 0.0f;
         startSample = 0.0f;
         endSample = 1.0f;
+        volumeEnvAttack = 0.0f;
+        volumeEnvRelease = 0.0f;
+        pitchEnvAttack = 0.0f;
+        pitchEnvRelease = 0.0f;
+        pitchEnvDepth = 0.0f;
     }
 
     bool load(Archive & settings)
     {
-        settings.read("base_octave_offset", &baseOctaveOffset);
-        settings.read("base_cents_offset", &baseCentsOffset);
-        settings.read("start_sample", &startSample);
-        settings.read("end_sample", &endSample);
-        return true;
+        return settings.read("base_octave_offset", &baseOctaveOffset)
+            && settings.read("base_cents_offset", &baseCentsOffset)
+            && settings.read("start_sample", &startSample)
+            && settings.read("end_sample", &endSample)
+            && settings.read("volume_env_attack", &volumeEnvAttack)
+            && settings.read("volume_env_release", &volumeEnvRelease)
+            && settings.read("pitch_env_attack", &pitchEnvAttack)
+            && settings.read("pitch_env_release", &pitchEnvRelease)
+            && settings.read("pitch_env_depth", &pitchEnvDepth);
     }
 
     bool save(Archive & settings)
     {
-        settings.write("base_octave_offset", baseOctaveOffset);
-        settings.write("base_cents_offset", baseCentsOffset);
-        settings.write("start_sample", startSample);
-        settings.write("end_sample", endSample);
-        return true;
+        return settings.write("base_octave_offset", baseOctaveOffset)
+            && settings.write("base_cents_offset", baseCentsOffset)
+            && settings.write("start_sample", startSample)
+            && settings.write("end_sample", endSample)
+            && settings.write("volume_env_attack", volumeEnvAttack)
+            && settings.write("volume_env_release", volumeEnvRelease)
+            && settings.write("pitch_env_attack", pitchEnvAttack)
+            && settings.write("pitch_env_release", pitchEnvRelease)
+            && settings.write("pitch_env_depth", pitchEnvDepth);
     }
 };
 
@@ -357,11 +386,17 @@ public:
     void set_pitch_octave(float pitch) { _pitchOctave = pitch; }
     void set_sample_start(float start);
     void set_sample_end(float end);
+    void set_volume_env_attack(float seconds);
+    void set_volume_env_release(float seconds);
+    void set_pitch_env_attack(float seconds);
+    void set_pitch_env_release(float seconds);
+    void set_pitch_env_depth(float depth) { _params.pitchEnvDepth = depth; }
 
     void render(int16_t * data, uint32_t frameCount);
 
     WaveFile& get_wave_file() { return _wav; }
     WaveFile::AudioDataStream& get_audio_stream() { return _data; }
+    float get_sample_length_in_seconds() const;
 
     SampleBufferManager& get_buffer_manager() { return _manager; }
 
@@ -382,9 +417,12 @@ protected:
     float _readHead;    //!< Fractional read head within current buffer.
     float _pitchOctave;
     VoiceParameters _params;
+    ASREnvelope _volumeEnv;
+    ASREnvelope _pitchEnv;
 
-    static float s_workBufferData[kAudioBufferSize];
+    static float s_workBufferData[2][kAudioBufferSize];
     static AudioBuffer s_workBuffer;
+    static AudioBuffer s_workBuffer2;
 
     static const uint32_t kInterpolationBufferLength = 3;
     float _interpolationBuffer[kInterpolationBufferLength]; //!< Last few samples from previous buffer.

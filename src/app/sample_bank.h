@@ -97,7 +97,7 @@ protected:
     FilePath _dirPath;
     Sample _samples[kVoiceCount];
 
-    static const uint32_t kSettingsFileDataVersion = 2;
+    static const uint32_t kSettingsFileDataVersion = 3;
 };
 
 } // namespace slab

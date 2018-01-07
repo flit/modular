@@ -56,8 +56,9 @@ static_assert(kNoteOffSamples % kAudioBufferSize == 0, "note off samples must ev
 // Variables
 //------------------------------------------------------------------------------
 
-float SamplerVoice::s_workBufferData[kAudioBufferSize];
-AudioBuffer SamplerVoice::s_workBuffer(s_workBufferData, kAudioBufferSize);
+float SamplerVoice::s_workBufferData[2][kAudioBufferSize];
+AudioBuffer SamplerVoice::s_workBuffer(s_workBufferData[0], kAudioBufferSize);
+AudioBuffer SamplerVoice::s_workBuffer2(s_workBufferData[1], kAudioBufferSize);
 
 //------------------------------------------------------------------------------
 // Code
@@ -428,13 +429,24 @@ SamplerVoice::SamplerVoice()
     _noteOffSamplesRemaining(0),
     _readHead(0.0f),
     _pitchOctave(0.0f),
-    _params()
+    _params(),
+    _volumeEnv(),
+    _pitchEnv()
 {
 }
 
 void SamplerVoice::init(uint32_t n, int16_t * buffer)
 {
     _number = n;
+
+    _volumeEnv.set_sample_rate(kSampleRate);
+    _volumeEnv.set_peak(1.0f);
+    _volumeEnv.enable_sustain(true);
+
+    _pitchEnv.set_sample_rate(kSampleRate);
+    _pitchEnv.set_peak(1.0f);
+    _pitchEnv.enable_sustain(false);
+
     _manager.init(this, buffer);
     clear_file();
 }
@@ -477,6 +489,8 @@ void SamplerVoice::_reset_voice()
     _doRetrigger = false;
     _noteOffSamplesRemaining = 0;
     _readHead = 0.0f;
+    _volumeEnv.trigger();
+    _pitchEnv.trigger();
     std::fill_n(&_interpolationBuffer[0], kInterpolationBufferLength, 0);
 }
 
@@ -566,7 +580,14 @@ void SamplerVoice::render(int16_t * data, uint32_t frameCount)
         return;
     }
 
-    float rate = powf(2.0f, _params.baseOctaveOffset + _pitchOctave + (_params.baseCentsOffset / 1200.0f));
+    float pitchModifier = _pitchEnv.next() * _params.pitchEnvDepth;
+    float octave = _params.baseOctaveOffset
+                            + _pitchOctave
+                            + (_params.baseCentsOffset / 1200.0f)
+                            + pitchModifier;
+    constrain(octave, -4.0f, 4.0f);
+    float rate = powf(2.0f, octave);
+
     int16_t * bufferData = voiceBuffer->data;
     float readHead = _readHead;
     uint32_t bufferFrameCount = voiceBuffer->frameCount;
@@ -735,6 +756,30 @@ void SamplerVoice::set_sample_end(float end)
     _manager.set_start_end_sample(-1, sample);
 }
 
+void SamplerVoice::set_volume_env_attack(float seconds)
+{
+    _params.volumeEnvAttack = seconds;
+    _volumeEnv.set_attack(seconds / float(kAudioBufferSize));
+}
+
+void SamplerVoice::set_volume_env_release(float seconds)
+{
+    _params.volumeEnvRelease = seconds;
+    _volumeEnv.set_release(seconds / float(kAudioBufferSize));
+}
+
+void SamplerVoice::set_pitch_env_attack(float seconds)
+{
+    _params.pitchEnvAttack = seconds;
+    _pitchEnv.set_attack(seconds / float(kAudioBufferSize));
+}
+
+void SamplerVoice::set_pitch_env_release(float seconds)
+{
+    _params.pitchEnvRelease = seconds;
+    _pitchEnv.set_release(seconds / float(kAudioBufferSize));
+}
+
 void SamplerVoice::set_params(const VoiceParameters & params)
 {
     // Stop playing and turn off LED.
@@ -744,11 +789,21 @@ void SamplerVoice::set_params(const VoiceParameters & params)
     // Update params.
     _params = params;
 
+    set_volume_env_attack(_params.volumeEnvAttack);
+    set_volume_env_release(_params.volumeEnvRelease);
+    set_pitch_env_attack(_params.pitchEnvAttack);
+    set_pitch_env_release(_params.pitchEnvRelease);
+
     // Update playback range in SBM.
     float totalSamples = _manager.get_total_samples();
     uint32_t start = totalSamples * _params.startSample;
     uint32_t end = totalSamples * _params.endSample;
     _manager.set_start_end_sample(start, end);
+}
+
+float SamplerVoice::get_sample_length_in_seconds() const
+{
+    return float(_data.get_frames()) / kSampleRate;
 }
 
 //------------------------------------------------------------------------------
