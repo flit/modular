@@ -84,7 +84,7 @@ protected:
         kChannelCount = 4,
         kChannelsPerBuffer = 2,
         kDmaChannelCount = kChannelCount / kChannelsPerBuffer,
-        kMaxBufferCount = 6,
+        kMaxBufferCount = 8,
         kDmaQueueSize = 4,
         kFirstDmaChannel = 0,
     };

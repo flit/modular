@@ -39,9 +39,9 @@ namespace slab {
 
 enum : uint32_t {
     kOversampleRatio = 256,
-    kAudioBufferSize = 64,
+    kAudioBufferSize = 128,
     kAudioChannelCount = 2,
-    kAudioBufferCount = 6,
+    kAudioBufferCount = 8,
     kBitsPerSample = 16,
     kVoiceCount = 4,
 };
