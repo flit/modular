@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017 Immo Software
+ * Copyright (c) 2017-2018 Immo Software
  *
  * Redistribution and use in source and binary forms, with or without modification,
  * are permitted provided that the following conditions are met:
@@ -31,6 +31,7 @@
 
 #include "argon/argon.h"
 #include "adc_sequencer.h"
+#include "singleton.h"
 
 //------------------------------------------------------------------------------
 // Definitions
@@ -41,7 +42,7 @@ namespace slab {
 /*!
  * @brief Manage reading ADC and processing results.
  */
-class ChannelAdcProcessor
+class ChannelAdcProcessor : public Singleton<ChannelAdcProcessor>
 {
 public:
 
@@ -49,6 +50,8 @@ public:
     ~ChannelAdcProcessor()=default;
 
     void init();
+
+    void suspend(bool doSuspend) { _suspend = doSuspend; }
 
 protected:
 
@@ -63,6 +66,7 @@ protected:
 
     AdcData _adc0Data;
     AdcData _adc1Data;
+    volatile bool _suspend;
 
     void cv_thread();
 

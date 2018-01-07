@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017 Immo Software
+ * Copyright (c) 2017-2018 Immo Software
  *
  * Redistribution and use in source and binary forms, with or without modification,
  * are permitted provided that the following conditions are met:
@@ -34,6 +34,7 @@
 #include "board.h"
 #include "utility.h"
 #include "calibrator.h"
+#include "channel_adc_processor.h"
 #include "fsl_sd_disk.h"
 #include <assert.h>
 #include <cmath>
@@ -313,6 +314,9 @@ void UI::set_voice_mode(VoiceMode mode)
         return;
     }
 
+    // Hold off ADC processing until we finish switching the voice mode.
+    ChannelAdcProcessor::get().suspend(true);
+
     _voiceMode = mode;
     persistent_data::g_lastVoiceMode.write(_voiceMode);
 
@@ -372,6 +376,9 @@ void UI::set_voice_mode(VoiceMode mode)
 
     _ledMode = LedMode::kVoiceModeSwitch;
     _ledTimeoutCount = kVoiceModeSwitchLedDelayCount;
+
+    // Restore ADC processing.
+    ChannelAdcProcessor::get().suspend(false);
 }
 
 void UI::ui_thread()

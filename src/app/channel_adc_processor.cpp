@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017 Immo Software
+ * Copyright (c) 2017-2018 Immo Software
  *
  * Redistribution and use in source and binary forms, with or without modification,
  * are permitted provided that the following conditions are met:
@@ -55,7 +55,8 @@ const uint32_t kAdc1ChannelMask =   CH1_CV_CHANNEL_MASK |
 //------------------------------------------------------------------------------
 
 ChannelAdcProcessor::ChannelAdcProcessor()
-:   _thread("cv", this, &ChannelAdcProcessor::cv_thread, kCVThreadPriority, kArSuspendThread)
+:   _thread("cv", this, &ChannelAdcProcessor::cv_thread, kCVThreadPriority, kArSuspendThread),
+    _suspend(false)
 {
 }
 
@@ -95,6 +96,12 @@ void ChannelAdcProcessor::cv_thread()
         // Wait until all new ADC samples are available.
         data0.waitSem.get();
         data1.waitSem.get();
+
+        // Skip processing if we're suspended.
+        if (_suspend)
+        {
+            continue;
+        }
 
         VoiceMode mode = ui.get_voice_mode();
         ChannelGate::Event event;
