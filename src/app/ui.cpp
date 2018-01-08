@@ -331,6 +331,12 @@ void UI::set_voice_mode(VoiceMode mode)
             g_voice[2].set_pitch_octave(0.0f);
             g_voice[3].set_pitch_octave(0.0f);
 
+            // Set all voices to trigger mode.
+            g_voice[0].set_volume_env_mode(SamplerVoice::VolumeEnvMode::kTrigger);
+            g_voice[1].set_volume_env_mode(SamplerVoice::VolumeEnvMode::kTrigger);
+            g_voice[2].set_volume_env_mode(SamplerVoice::VolumeEnvMode::kTrigger);
+            g_voice[3].set_volume_env_mode(SamplerVoice::VolumeEnvMode::kTrigger);
+
             // Reset inputs.
             g_gates[0].reset();
             g_gates[1].reset();
@@ -346,6 +352,11 @@ void UI::set_voice_mode(VoiceMode mode)
             g_voice[2].set_pitch_octave(0.0f);
             g_voice[3].set_pitch_octave(0.0f);
 
+            // Set volume env mode.
+            g_voice[0].set_volume_env_mode(SamplerVoice::VolumeEnvMode::kGate);
+            g_voice[2].set_volume_env_mode(SamplerVoice::VolumeEnvMode::kTrigger);
+            g_voice[3].set_volume_env_mode(SamplerVoice::VolumeEnvMode::kTrigger);
+
             // Reset inputs.
             g_gates[0].reset();
             g_cvs[1].reset();
@@ -357,6 +368,10 @@ void UI::set_voice_mode(VoiceMode mode)
             break;
 
         case k2VoiceMode:
+            // Set volume env mode.
+            g_voice[0].set_volume_env_mode(SamplerVoice::VolumeEnvMode::kGate);
+            g_voice[2].set_volume_env_mode(SamplerVoice::VolumeEnvMode::kGate);
+
             // Reset inputs.
             g_gates[0].reset();
             g_cvs[1].reset();

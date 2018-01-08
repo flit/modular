@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017 Immo Software
+ * Copyright (c) 2017-2018 Immo Software
  *
  * Redistribution and use in source and binary forms, with or without modification,
  * are permitted provided that the following conditions are met:
@@ -355,6 +355,12 @@ struct VoiceParameters
 class SamplerVoice
 {
 public:
+    enum class VolumeEnvMode
+    {
+        kTrigger,   //!< Once triggered, voice plays until end of sample.
+        kGate,      //!< Voice plays starting with trigger until note off.
+    };
+
     SamplerVoice();
     ~SamplerVoice()=default;
 
@@ -388,6 +394,7 @@ public:
     void set_sample_end(float end);
     void set_volume_env_attack(float seconds);
     void set_volume_env_release(float seconds);
+    void set_volume_env_mode(VolumeEnvMode mode);
     void set_pitch_env_attack(float seconds);
     void set_pitch_env_release(float seconds);
     void set_pitch_env_depth(float depth) { _params.pitchEnvDepth = depth; }
@@ -411,14 +418,17 @@ protected:
     bool _isValid;
     bool _isReady;
     bool _isPlaying;
+    bool _noteOffPending;
     bool _doNoteOff;
     bool _doRetrigger;
     uint32_t _noteOffSamplesRemaining;
     float _readHead;    //!< Fractional read head within current buffer.
     float _pitchOctave;
     VoiceParameters _params;
+    VolumeEnvMode _volumeEnvMode;
     ASREnvelope _volumeEnv;
     ASREnvelope _pitchEnv;
+    uint32_t _triggerNoteOffSample;
 
     static float s_workBufferData[2][kAudioBufferSize];
     static AudioBuffer s_workBuffer;

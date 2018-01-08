@@ -424,12 +424,14 @@ SamplerVoice::SamplerVoice()
     _isValid(false),
     _isReady(false),
     _isPlaying(false),
+    _noteOffPending(false),
     _doNoteOff(false),
     _doRetrigger(false),
     _noteOffSamplesRemaining(0),
     _readHead(0.0f),
     _pitchOctave(0.0f),
     _params(),
+    _volumeEnvMode(VolumeEnvMode::kTrigger),
     _volumeEnv(),
     _pitchEnv()
 {
@@ -485,6 +487,7 @@ void SamplerVoice::clear_file()
 void SamplerVoice::_reset_voice()
 {
     _isPlaying = false;
+    _noteOffPending = false;
     _doNoteOff = false;
     _doRetrigger = false;
     _noteOffSamplesRemaining = 0;
@@ -527,6 +530,9 @@ void SamplerVoice::trigger()
 
 void SamplerVoice::note_off()
 {
+    // Shouldn't be getting note offs unless we're in gate mode.
+    assert(_volumeEnvMode == VolumeEnvMode::kGate);
+
     // Ignore the note off event if the manager isn't ready to play.
     if (!is_ready())
     {
@@ -538,7 +544,8 @@ void SamplerVoice::note_off()
     if (_isPlaying)
     {
         // Start note off process.
-        _doNoteOff = true;
+        _volumeEnv.set_release_offset(0);
+        _noteOffPending = true;
         _noteOffSamplesRemaining = kNoteOffSamples;
     }
 }
@@ -580,6 +587,7 @@ void SamplerVoice::render(int16_t * data, uint32_t frameCount)
         return;
     }
 
+    // Compute the playback rate for this output buffer.
     float pitchModifier = _pitchEnv.next() * _params.pitchEnvDepth;
     float octave = _params.baseOctaveOffset
                             + _pitchOctave
@@ -629,12 +637,29 @@ void SamplerVoice::render(int16_t * data, uint32_t frameCount)
                 outputFrames = remainingFrames;
             }
 
+            // Start volume env release phase for trigger mode.
+            if (_volumeEnvMode == VolumeEnvMode::kTrigger)
+            {
+                // Will unsigned underflow when we're past the trigger note off sample, preventing
+                // us from restarting the volume env release phase.
+                uint32_t triggerNoteOffRemainingSamples = _triggerNoteOffSample - _manager.get_samples_played();
+
+                if (triggerNoteOffRemainingSamples < outputFrames)
+                {
+                    outputFrames = triggerNoteOffRemainingSamples;
+                    triggerNoteOffRemainingSamples = ~0UL;
+                    _volumeEnv.set_release_offset(0);
+                }
+            }
+
             START_ELAPSED_TIME(render);
 
             // Render sample data into the output buffer at the specified playback rate.
             readHead = voiceBuffer->read_into<SampleBuffer::InterpolationMode::kHermite>(
                         s_workBuffer, outputFrames, readHead, rate, _interpolationBuffer);
             s_workBuffer.multiply_scalar(_params.gain, outputFrames);
+            _volumeEnv.process(s_workBuffer2, outputFrames);
+            s_workBuffer.multiply_vector(s_workBuffer2, outputFrames);
             s_workBuffer.copy_into(data, 2, outputFrames);
 
             END_ELAPSED_TIME(render);
@@ -677,36 +702,36 @@ void SamplerVoice::render(int16_t * data, uint32_t frameCount)
     // Save local read head.
     _readHead = readHead;
 
+    // If the volume env has run out, we're done playing.
+    if (_volumeEnv.is_finished())
+    {
+        _isPlaying = false;
+
+        if (_noteOffPending)
+        {
+            _doNoteOff = true;
+            _noteOffPending = false;
+        }
+    }
+
     // Handle end of note off and retriggering.
     if (_doNoteOff)
     {
         START_ELAPSED_TIME(noteOff);
 
-        // Apply fade out.
-        for (i = 0; i < min(_noteOffSamplesRemaining, frameCount); ++i)
+        // Prime will clear all flags for us, so save retrigger locally to set
+        // isPlaying after priming.
+        bool savedRetrigger = _doRetrigger;
+        prime();
+        _isPlaying = savedRetrigger;
+
+        if (_isPlaying)
         {
-            int32_t sample = static_cast<int32_t>(data[i]);
-            sample = sample * (_noteOffSamplesRemaining - i) / kNoteOffSamples;
-            data[i] = static_cast<int16_t>(sample);
+            UI::get().indicate_voice_retriggered(_number);
         }
-        _noteOffSamplesRemaining -= i;
-
-        if (_noteOffSamplesRemaining == 0)
+        else
         {
-            // Prime will clear all flags for us, so save retrigger locally to set
-            // isPlaying after priming.
-            bool savedRetrigger = _doRetrigger;
-            prime();
-            _isPlaying = savedRetrigger;
-
-            if (_isPlaying)
-            {
-                UI::get().indicate_voice_retriggered(_number);
-            }
-            else
-            {
-                UI::get().set_voice_playing(_number, false);
-            }
+            UI::get().set_voice_playing(_number, false);
         }
 
         END_ELAPSED_TIME(noteOff);
@@ -756,16 +781,32 @@ void SamplerVoice::set_sample_end(float end)
     _manager.set_start_end_sample(-1, sample);
 }
 
+void SamplerVoice::set_volume_env_mode(VolumeEnvMode mode)
+{
+    _volumeEnvMode = mode;
+
+    if (mode == VolumeEnvMode::kTrigger)
+    {
+        _volumeEnv.set_release(_params.volumeEnvRelease);
+    }
+    else
+    {
+        _volumeEnv.set_release(max(_params.volumeEnvRelease, 128.0f / kSampleRate));
+    }
+}
+
 void SamplerVoice::set_volume_env_attack(float seconds)
 {
     _params.volumeEnvAttack = seconds;
-    _volumeEnv.set_attack(seconds / float(kAudioBufferSize));
+    _volumeEnv.set_attack(seconds);
 }
 
 void SamplerVoice::set_volume_env_release(float seconds)
 {
     _params.volumeEnvRelease = seconds;
-    _volumeEnv.set_release(seconds / float(kAudioBufferSize));
+    set_volume_env_mode(_volumeEnvMode);
+
+    _triggerNoteOffSample = _data.get_frames() - static_cast<uint32_t>(seconds * kSampleRate);
 }
 
 void SamplerVoice::set_pitch_env_attack(float seconds)
