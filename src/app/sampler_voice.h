@@ -418,7 +418,6 @@ protected:
     bool _isValid;
     bool _isReady;
     bool _isPlaying;
-    bool _noteOffPending;
     bool _doNoteOff;
     bool _doRetrigger;
     uint32_t _noteOffSamplesRemaining;

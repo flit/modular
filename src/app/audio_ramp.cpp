@@ -89,6 +89,13 @@ void AudioRamp::set_end_value(float endValue)
 //! intermediate ramp values.
 void AudioRamp::recalculate_slope()
 {
+    if (m_lengthInSamples == 0)
+    {
+        m_y1 = 0.0f;
+        m_y2 = 0.0f;
+        m_slope = 0.0f;
+        return;
+    }
     switch (m_curveType)
     {
         case kLinear:

@@ -424,7 +424,6 @@ SamplerVoice::SamplerVoice()
     _isValid(false),
     _isReady(false),
     _isPlaying(false),
-    _noteOffPending(false),
     _doNoteOff(false),
     _doRetrigger(false),
     _noteOffSamplesRemaining(0),
@@ -487,7 +486,6 @@ void SamplerVoice::clear_file()
 void SamplerVoice::_reset_voice()
 {
     _isPlaying = false;
-    _noteOffPending = false;
     _doNoteOff = false;
     _doRetrigger = false;
     _noteOffSamplesRemaining = 0;
@@ -545,8 +543,6 @@ void SamplerVoice::note_off()
     {
         // Start note off process.
         _volumeEnv.set_release_offset(0);
-        _noteOffPending = true;
-        _noteOffSamplesRemaining = kNoteOffSamples;
     }
 }
 
@@ -600,18 +596,17 @@ void SamplerVoice::render(int16_t * data, uint32_t frameCount)
     float readHead = _readHead;
     uint32_t bufferFrameCount = voiceBuffer->frameCount;
     uint32_t remainingFrames = frameCount;
-    float s;
+    assert(readHead < bufferFrameCount);
 
     START_ELAPSED_TIME(total);
 
-    // Skip ahead to the buffer's zero snap offset. This will only apply to the file start.
+    // Skip ahead to the buffer's zero snap offset. This will only have an effect the file start.
     if (readHead == 0.0f)
     {
         readHead = voiceBuffer->zeroSnapOffset;
     }
 
     // Render into output buffer.
-    assert(readHead < bufferFrameCount);
     while (remainingFrames)
     {
         assert(remainingFrames <= frameCount);
@@ -705,13 +700,8 @@ void SamplerVoice::render(int16_t * data, uint32_t frameCount)
     // If the volume env has run out, we're done playing.
     if (_volumeEnv.is_finished())
     {
-        _isPlaying = false;
-
-        if (_noteOffPending)
-        {
-            _doNoteOff = true;
-            _noteOffPending = false;
-        }
+        _doNoteOff = true;
+        _noteOffSamplesRemaining = 0;
     }
 
     // Handle end of note off and retriggering.
@@ -719,19 +709,27 @@ void SamplerVoice::render(int16_t * data, uint32_t frameCount)
     {
         START_ELAPSED_TIME(noteOff);
 
-        // Prime will clear all flags for us, so save retrigger locally to set
-        // isPlaying after priming.
-        bool savedRetrigger = _doRetrigger;
-        prime();
-        _isPlaying = savedRetrigger;
-
-        if (_isPlaying)
+        // Apply fade out.
+        for (i = 0; i < min(_noteOffSamplesRemaining, frameCount); ++i)
         {
-            UI::get().indicate_voice_retriggered(_number);
+            int32_t sample = static_cast<int32_t>(data[i]);
+            sample = sample * (_noteOffSamplesRemaining - i) / kNoteOffSamples;
+            data[i] = static_cast<int16_t>(sample);
         }
-        else
+        _noteOffSamplesRemaining -= i;
+
+        if (_noteOffSamplesRemaining == 0)
         {
-            UI::get().set_voice_playing(_number, false);
+            // Prime will clear all flags for us, including _doNoteOff and _doRetrigger,
+            // so save retrigger locally to set isPlaying after priming.
+            bool savedRetrigger = _doRetrigger;
+            prime();
+
+            if (savedRetrigger)
+            {
+                _isPlaying = true;
+                UI::get().indicate_voice_retriggered(_number);
+            }
         }
 
         END_ELAPSED_TIME(noteOff);
@@ -754,6 +752,12 @@ void SamplerVoice::render(int16_t * data, uint32_t frameCount)
         _readHead -= bufferFrameCount;
     }
     assert(_readHead < bufferFrameCount);
+
+    // If we're no longer playing, tell the UI.
+    if (!_isPlaying)
+    {
+        UI::get().set_voice_playing(_number, false);
+    }
 }
 
 void SamplerVoice::set_sample_start(float start)
@@ -812,12 +816,18 @@ void SamplerVoice::set_volume_env_release(float seconds)
 void SamplerVoice::set_pitch_env_attack(float seconds)
 {
     _params.pitchEnvAttack = seconds;
+
+    // The pitch envelope update rate is once per audio buffer, so modify the attack time
+    // to take this into account.
     _pitchEnv.set_attack(seconds / float(kAudioBufferSize));
 }
 
 void SamplerVoice::set_pitch_env_release(float seconds)
 {
     _params.pitchEnvRelease = seconds;
+
+    // The pitch envelope update rate is once per audio buffer, so modify the release time
+    // to take this into account.
     _pitchEnv.set_release(seconds / float(kAudioBufferSize));
 }
 
