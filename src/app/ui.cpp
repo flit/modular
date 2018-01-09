@@ -91,33 +91,82 @@ const uint32_t kVoiceRetriggerLedWindowTime_ms = 10;
 
 //! Map of bank channel to voice channel for each voice mode.
 //!
+//! - *First index*: voice mode
+//! - *Second index*: bank channel number
+//! - *Value*: voice channel number
+//!
 //! The first index is the voice mode, second index is bank channel number. The value
 //! is the voice channel number that the bank channel is installed in. If the value
-//! is negative, then the voice channel equal to the absolute value is unused.
+//! is negative, then the bank channel equal to the second index and the voice channel
+//! equal to the absolute value are both unused.
 static const int8_t kBankToVoiceChannelMap[kVoiceModeCount][kVoiceCount] = {
         // k4VoiceMode
-        { 0, 1, 2, 3, },
+        {
+            [0] = 0,    // Bank ch 0 -> voice 0
+            [1] = 1,    // Bank ch 1 -> voice 1
+            [2] = 2,    // Bank ch 2 -> voice 2
+            [3] = 3,    // Bank ch 3 -> voice 3
+        },
         // k3VoiceMode
-        { 0, 2, 3, -1, },
+        {
+            [0] = 0,    // Bank ch 0 -> voice 0
+            [1] = 2,    // Bank ch 1 -> voice 2
+            [2] = 3,    // Bank ch 2 -> voice 3
+            [3] = -1,   // Bank ch 3, voice 1 both unused
+        },
         // k2VoiceMode
-        { 0, 2, -1, -3, },
+        {
+            [0] = 0,    // Bank ch 0 -> voice 0
+            [1] = 2,    // Bank ch 1 -> voice 2
+            [2] = -1,   // Bank ch 2, voice 1 both unused
+            [3] = -3,   // Bank ch 3, voice 3 both unused
+        },
         // k1VoiceMode
-        { 0, -1, -2, -3, },
+        {
+            [0] = 0,    // Bank ch 0 -> voice 0
+            [1] = -1,   // Bank ch 1, voice 1 both unused
+            [2] = -2,   // Bank ch 2, voice 2 both unused
+            [3] = -3,   // Bank ch 3, voice 3 both unused
+        },
     };
 
 //! Map of voice channel to bank channel for each voice mode.
 //!
-//! First index: voice mode
-//! Second index: voice channel number
+//! - *First index*: voice mode
+//! - *Second index*: voice channel number
+//! - *Value*: bank channel number
+//!
+//! If the value is negative, then the voice channel equal to the second index and
+//! the bank channel equal to the absolute value are both unused.
 static const int8_t kVoiceToBankChannelMap[kVoiceModeCount][kVoiceCount] = {
         // k4VoiceMode
-        { 0, 1, 2, 3, },
+        {
+            [0] = 0,    // Bank ch 0 <- voice 0
+            [1] = 1,    // Bank ch 1 <- voice 1
+            [2] = 2,    // Bank ch 2 <- voice 2
+            [3] = 3,    // Bank ch 3 <- voice 3
+        },
         // k3VoiceMode
-        { 0, 1, 2, -3, },
+        {
+            [0] = 0,    // Bank ch 0 <- voice 0
+            [1] = -3,   // Bank ch 3, voice 1 both unused
+            [2] = 1,    // Bank ch 2 <- voice 3
+            [3] = 2,    // Bank ch 1 <- voice 2
+        },
         // k2VoiceMode
-        { 0, -2, 1, -3, },
+        {
+            [0] = 0,    // Bank ch 0 <- voice 0
+            [1] = -2,   // Bank ch 2, voice 1 both unused
+            [2] = 1,    // Bank ch 1 <- voice 2
+            [3] = -3,   // Bank ch 3, voice 3 both unused
+        },
         // k1VoiceMode
-        { 0, -1, -2, -3, },
+        {
+            [0] = 0,    // Bank ch 0 <- voice 0
+            [1] = -1,   // Bank ch 1, voice 1 both unused
+            [2] = -2,   // Bank ch 2, voice 2 both unused
+            [3] = -3,   // Bank ch 3, voice 3 both unused
+        },
     };
 
 //! Number of edit pages.
