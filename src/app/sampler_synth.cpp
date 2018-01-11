@@ -77,10 +77,11 @@ void SamplerSynth::render(uint32_t firstChannel, AudioOutput::Buffer & buffer)
         }
     }
 #else // SQUARE_OUT
-    uint32_t a = Microseconds::get();
+    DECLARE_ELAPSED_TIME(synth);
+    START_ELAPSED_TIME(synth);
     g_voice[firstChannel].render(data, frameCount);
     g_voice[firstChannel + 1].render(data + 1, frameCount);
-    uint32_t d __attribute__((unused)) = Microseconds::get() - a;
+    END_ELAPSED_TIME(synth);
 #endif // SQUARE_OUT
 }
 

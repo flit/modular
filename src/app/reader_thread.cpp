@@ -373,8 +373,11 @@ void ReaderThread::reader_thread()
 
 void ReaderThread::fill_buffer(SamplerVoice * voice)
 {
+    DECLARE_ELAPSED_TIME(fillBuffer);
+    DECLARE_ELAPSED_TIME(fileAccess);
+
     assert(voice->is_valid());
-    uint32_t start1 = Microseconds::get();
+    START_ELAPSED_TIME(fillBuffer);
 
     // Ask the voice for the next buffer to fill. This may return null, which is valid.
     SampleBufferManager& manager = voice->get_buffer_manager();
@@ -402,9 +405,7 @@ void ReaderThread::fill_buffer(SamplerVoice * voice)
     }
 
     // Read from sample file.
-#if DEBUG
-    uint32_t start = Microseconds::get();
-#endif
+    START_ELAPSED_TIME(fileAccess);
 
     fs::error_t status;
     status = stream.seek(request->startFrame * frameSize);
@@ -422,14 +423,13 @@ void ReaderThread::fill_buffer(SamplerVoice * voice)
         UI::get().send_event(UIEvent(kCardRemoved));
         return;
     }
-    uint32_t stop = Microseconds::get();
+    END_ELAPSED_TIME(fileAccess);
     uint32_t framesRead = bytesRead / frameSize;
 
 #if DEBUG
-    uint32_t delta = stop - start;
-    DEBUG_PRINTF(TIME_MASK, "R: read %lu bytes in %lu µs\r\n", bytesRead, delta);
-    _statistics.add(voice->get_number(), request->number, delta, bytesRead, manager.get_samples_read());
-    _voiceStatistics[voice->get_number()].add(voice->get_number(), request->number, delta, bytesRead, manager.get_samples_read());
+    DEBUG_PRINTF(TIME_MASK, "R: read %lu bytes in %lu µs\r\n", bytesRead, elapsed_fileAccess_time);
+    _statistics.add(voice->get_number(), request->number, elapsed_fileAccess_time, bytesRead, manager.get_samples_read());
+    _voiceStatistics[voice->get_number()].add(voice->get_number(), request->number, elapsed_fileAccess_time, bytesRead, manager.get_samples_read());
 #endif
 
     // For stereo data copy just the left channel into the voice buffer.
@@ -445,9 +445,8 @@ void ReaderThread::fill_buffer(SamplerVoice * voice)
     // Push the filled buffer back to the voice's SBM.
     manager.enqueue_full_buffer(request);
 
-    uint32_t stop1 = Microseconds::get();
-    uint32_t delta1 = stop1 - start1;
-    DEBUG_PRINTF(TIME_MASK, "R: %lu µs to fill b%i v%lu\r\n", delta1, request->number, voice->get_number());
+    END_ELAPSED_TIME(fillBuffer);
+    DEBUG_PRINTF(TIME_MASK, "R: %lu µs to fill b%i v%lu\r\n", elapsed_fillBuffer_time, request->number, voice->get_number());
 }
 
 void ReaderThread::fill_from_stereo(int16_t * data, uint32_t framesRead)
