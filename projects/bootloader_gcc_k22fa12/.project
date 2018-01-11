@@ -163,17 +163,17 @@
 		<link>
 			<name>argon/ar_classes.h</name>
 			<type>1</type>
-			<locationURI>PARENT-2-PROJECT_LOC/src/argon/ar_classes.h</locationURI>
+			<locationURI>PARENT-2-PROJECT_LOC/src/argon/include/argon/ar_classes.h</locationURI>
 		</link>
 		<link>
 			<name>argon/ar_kernel.h</name>
 			<type>1</type>
-			<locationURI>PARENT-2-PROJECT_LOC/src/argon/ar_kernel.h</locationURI>
+			<locationURI>PARENT-2-PROJECT_LOC/src/argon/include/argon/ar_kernel.h</locationURI>
 		</link>
 		<link>
 			<name>argon/argon.h</name>
 			<type>1</type>
-			<locationURI>PARENT-2-PROJECT_LOC/src/argon/argon.h</locationURI>
+			<locationURI>PARENT-2-PROJECT_LOC/src/argon/include/argon/argon.h</locationURI>
 		</link>
 		<link>
 			<name>argon/src</name>
@@ -363,7 +363,7 @@
 		<link>
 			<name>argon/src/ar_config.h</name>
 			<type>1</type>
-			<locationURI>PARENT-2-PROJECT_LOC/src/argon/src/ar_config.h</locationURI>
+			<locationURI>PARENT-2-PROJECT_LOC/src/argon/include/argon/ar_config.h</locationURI>
 		</link>
 		<link>
 			<name>argon/src/ar_internal.h</name>
