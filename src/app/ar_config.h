@@ -88,8 +88,8 @@
 #endif
 
 #if !defined(AR_IDLE_THREAD_STACK_SIZE)
-    //! @brief Size in bytes of the idle and timer thread's stack.
-    #define AR_IDLE_THREAD_STACK_SIZE (2048)
+    //! @brief Size in bytes of the idle thread's stack.
+    #define AR_IDLE_THREAD_STACK_SIZE (512)
 #endif // AR_IDLE_THREAD_STACK_SIZE
 
 //@}
@@ -152,6 +152,11 @@
     //!
     //! Normally not required.
     #define AR_ENABLE_LIST_CHECKS (0)
+#endif
+
+#if !defined(AR_ENABLE_TRACE)
+    //! @brief Enable kernel event tracing.
+    #define AR_ENABLE_TRACE (DEBUG)
 #endif
 
 //! @}
