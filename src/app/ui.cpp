@@ -558,50 +558,8 @@ void UI::handle_button_event(const UIEvent & event)
                             break;
 
                         case kCalibrationMode:
-                        {
-                            // Tell the calibrator that a button was pressed.
-                            Calibrator & calibrator = Calibrator::get();
-                            calibrator.button_was_pressed();
-
-                            // When calibration is finished, reboot the system.
-                            if (calibrator.is_done())
-                            {
-                                // Turn off all LEDs and wait until they are updated before rebooting.
-                                set_all_channel_leds(false);
-                                update_channel_leds();
-                                _runloop.run(kArNoTimeout, nullptr); // Run runloop to flush leds.
-                                while (ChannelLEDManager::get().is_transferring())
-                                {
-                                }
-
-#if DEBUG
-                                __BKPT(0);
-#endif
-
-                                NVIC_SystemReset();
-                            }
-                            else if (calibrator.is_calibrating_pots())
-                            {
-                                set_all_channel_leds(true, true,
-                                    calibrator.is_calibrating_low_point()
-                                        ? LEDBase::kRed
-                                        : LEDBase::kYellow);
-                                update_channel_leds();
-                            }
-                            else
-                            {
-                                // Light CV channel being calibrated in the correct color.
-                                // Low point is red, high point is yellow.
-                                set_all_channel_leds(false);
-                                _channelLeds[calibrator.get_current_channel()]->set_color(
-                                    calibrator.is_calibrating_low_point()
-                                        ? LEDBase::kRed
-                                        : LEDBase::kYellow);
-                                _channelLeds[calibrator.get_current_channel()]->on();
-                                update_channel_leds();
-                            }
+                            handle_calibration_mode_button();
                             break;
-                        }
                     }
                     break;
 
@@ -735,6 +693,51 @@ void UI::handle_card_event(const UIEvent & event)
 
         default:
             break;
+    }
+}
+
+void UI::handle_calibration_mode_button()
+{
+    // Tell the calibrator that a button was pressed.
+    Calibrator & calibrator = Calibrator::get();
+    calibrator.button_was_pressed();
+
+    // When calibration is finished, reboot the system.
+    if (calibrator.is_done())
+    {
+        // Turn off all LEDs and wait until they are updated before rebooting.
+        set_all_channel_leds(false);
+        update_channel_leds();
+        _runloop.run(kArNoTimeout, nullptr); // Run runloop to flush leds.
+        while (ChannelLEDManager::get().is_transferring())
+        {
+        }
+
+#if DEBUG
+        __BKPT(0);
+#endif
+
+        NVIC_SystemReset();
+    }
+    else if (calibrator.is_calibrating_pots())
+    {
+        set_all_channel_leds(true, true,
+            calibrator.is_calibrating_low_point()
+                ? LEDBase::kRed
+                : LEDBase::kYellow);
+        update_channel_leds();
+    }
+    else
+    {
+        // Light CV channel being calibrated in the correct color.
+        // Low point is red, high point is yellow.
+        set_all_channel_leds(false);
+        _channelLeds[calibrator.get_current_channel()]->set_color(
+            calibrator.is_calibrating_low_point()
+                ? LEDBase::kRed
+                : LEDBase::kYellow);
+        _channelLeds[calibrator.get_current_channel()]->on();
+        update_channel_leds();
     }
 }
 

@@ -155,6 +155,7 @@ protected:
 
     void handle_button_event(const UIEvent & event);
     void handle_card_event(const UIEvent & event);
+    void handle_calibration_mode_button();
 
     void select_next_bank();
     void select_next_edit_channel();
