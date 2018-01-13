@@ -38,6 +38,8 @@ using namespace slab;
 //------------------------------------------------------------------------------
 
 const float kAdcMax = 65535.0f;
+const float kMinHysteresis = 128.0f;
+const float kMinHysteresisPercent = kMinHysteresis * 100.0f / kAdcMax;
 
 //------------------------------------------------------------------------------
 // Code
@@ -48,7 +50,9 @@ Pot::Pot()
     _scale(0.0f),
     _out(0.0f),
     _last(0.0f),
-    _hysteresis(0.0f)
+    _hysteresis(0.0f),
+    _hysteresisLow(0.0f),
+    _hysteresisHigh(0.0f)
 {
 }
 
@@ -62,6 +66,8 @@ void Pot::init(uint32_t number, const calibration::Points & points)
 void Pot::set_hysteresis(float percent)
 {
     _hysteresis = kAdcMax * percent / 100.0f;
+    _hysteresisLow = max(_last - _hysteresis / 2.0f, 0.0f);
+    _hysteresisHigh = min(_last + _hysteresis / 2.0f, kAdcMax);
 }
 
 void Pot::process(uint32_t value)
@@ -78,13 +84,10 @@ void Pot::process(uint32_t value)
     _out += 0.05f * (corrected - _out);
     float floatValue = _out;
 
-    float hysLow = max(_last - _hysteresis / 2.0f, 0.0f);
-    float hysHigh = min(_last + _hysteresis / 2.0f, kAdcMax);
-
-    if (floatValue < hysLow || floatValue > hysHigh)
+    if (floatValue < _hysteresisLow || floatValue > _hysteresisHigh)
     {
         _last = floatValue;
-        _hysteresis = 64.0f;
+        set_hysteresis(kMinHysteresisPercent);
 
         UI::get().pot_did_change(*this, floatValue);
     }

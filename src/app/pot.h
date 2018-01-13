@@ -65,6 +65,8 @@ protected:
     float _out; //!< y^-1 value for filtering.
     float _last; //!< Previous filtered value for hysteresis.
     float _hysteresis;   //!< Hysteresis amount.
+    float _hysteresisLow;   //!< Hysteresis low point.
+    float _hysteresisHigh;   //!< Hysteresis high point.
 #if DEBUG
     RingBuffer<uint16_t, 128> _history;
 #endif
