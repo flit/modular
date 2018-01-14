@@ -161,11 +161,15 @@ public:
 
     uint32_t get_pending_count() const { return _queue.get_count(); }
 
+    //! @brief Request an event sent to UI when there is a lull in card activity.
+    void request_lull_event() { _lullEventRequested = true; }
+
 protected:
     int16_t _readBuf[SampleBufferManager::kBufferSize * 2];
     Ar::ThreadWithStack<2048> _thread;
     Ar::Semaphore _sem;
     ReadRequestQueue _queue;
+    bool _lullEventRequested;
 
 #if DEBUG
     ReaderStatistics _statistics;

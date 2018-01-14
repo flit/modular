@@ -35,6 +35,7 @@
 #include "utility.h"
 #include "calibrator.h"
 #include "channel_adc_processor.h"
+#include "reader_thread.h"
 #include "fsl_sd_disk.h"
 #include <assert.h>
 #include <cmath>
@@ -223,6 +224,7 @@ UI::UI()
     _potReleaseEditSampleStart(false),
     _potReleaseEditSampleEnd(false),
     _potReleaseSaveGain(false),
+    _isBankSavePending(false),
     _lastSampleStart(-1.0f),
     _lastSampleEnd(-1.0f),
     _retriggerTimestamp{0},
@@ -236,7 +238,7 @@ UI::UI()
     _ledTimeoutCount(0),
     _potReleaseSaveGainChannel(0),
     _editPageBlinkCounter(0),
-    _options{true}
+    _options{false}
 {
 }
 
@@ -466,6 +468,7 @@ void UI::ui_thread()
 
                 case kCardInserted:
                 case kCardRemoved:
+                case kCardLowActivity:
                     handle_card_event(event);
                     break;
 
@@ -519,6 +522,8 @@ void UI::handle_button_event(const UIEvent & event)
                     {
                         // Bank switch in play mode.
                         case kPlayMode:
+                            check_pending_bank_save();
+
                             // Select the next valid bank.
                             select_next_bank();
 
@@ -691,6 +696,13 @@ void UI::handle_card_event(const UIEvent & event)
             }
             break;
 
+        case kCardLowActivity:
+            if (_isCardPresent)
+            {
+                check_pending_bank_save();
+            }
+            break;
+
         default:
             break;
     }
@@ -780,6 +792,18 @@ void UI::select_next_edit_page()
     _editPageBlinkCounter = 0;
 }
 
+void UI::check_pending_bank_save()
+{
+    if (_isBankSavePending)
+    {
+        _isBankSavePending = false;
+
+        // Save params to card.
+        SampleBank & bank = FileManager::get().get_bank(_selectedBank);
+        bank.save_params();
+    }
+}
+
 void UI::save_voice_params(uint32_t channel)
 {
     // Map voice selected for editing to the bank channel.
@@ -791,8 +815,9 @@ void UI::save_voice_params(uint32_t channel)
     const VoiceParameters & params = g_voice[channel].get_params();
     bank.get_sample(mappedBankChannel).set_params(params);
 
-    // Save params to disk.
-    bank.save_params();
+    // Save params to card when we get a chance.
+    _isBankSavePending = true;
+    ReaderThread::get().request_lull_event();
 }
 
 void UI::load_sample_bank(uint32_t bankNumber)

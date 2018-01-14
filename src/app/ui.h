@@ -131,6 +131,7 @@ protected:
     bool _potReleaseEditSampleStart;
     bool _potReleaseEditSampleEnd;
     bool _potReleaseSaveGain;
+    bool _isBankSavePending;
     float _lastSampleStart;
     float _lastSampleEnd;
     uint32_t _retriggerTimestamp[kVoiceCount];
@@ -161,6 +162,7 @@ protected:
     void select_next_edit_channel();
     void select_next_edit_page();
 
+    void check_pending_bank_save();
     void save_voice_params(uint32_t channel);
 
     void handle_blink_timer(Ar::Timer * timer);

@@ -46,6 +46,7 @@ enum UIEventType : uint16_t
     kPotStopped,
     kCardInserted,
     kCardRemoved,
+    kCardLowActivity,
 };
 
 enum UIEventSource : uint16_t

@@ -327,7 +327,8 @@ void ReadRequestQueue::_add_free_node(QueueNode * node)
 ReaderThread::ReaderThread()
 :   _thread(),
     _sem(),
-    _queue()
+    _queue(),
+    _lullEventRequested(false)
 {
 }
 
@@ -368,6 +369,13 @@ void ReaderThread::reader_thread()
         }
 
         fill_buffer(voice);
+
+        // Let UI know if the card will not be accessed for a little bit.
+        if (_lullEventRequested && _sem.getCount() == 0)
+        {
+            _lullEventRequested = false;
+            UI::get().send_event(UIEvent(kCardLowActivity));
+        }
     }
 }
 
