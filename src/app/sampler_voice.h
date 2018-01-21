@@ -212,6 +212,8 @@ public:
     uint32_t get_samples_read() const { return _samplesRead; }
     uint32_t get_samples_queued() const { return _samplesQueued; }
 
+    uint32_t get_buffered_samples() const;
+
 protected:
     typedef SimpleQueue<SampleBuffer*, kBufferCount> BufferQueue;
 
@@ -409,6 +411,8 @@ public:
     const VoiceParameters & get_params() const { return _params; }
     void set_params(const VoiceParameters & params);
 
+    uint32_t get_buffered_microseconds() const;
+
 protected:
     uint32_t _number;
     WaveFile _wav;
@@ -436,6 +440,10 @@ protected:
     float _interpolationBuffer[kInterpolationBufferLength]; //!< Last few samples from previous buffer.
 
     void _reset_voice();
+
+    float _compute_playback_rate(float pitchModifier) const;
+
+    void _report_buffered_time();
 };
 
 } // namespace slab

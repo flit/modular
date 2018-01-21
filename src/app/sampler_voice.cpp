@@ -44,6 +44,9 @@ using namespace slab;
 //! Set to 1 to cause the voice to automatically and repeatedly trigger.
 #define ENABLE_TEST_LOOP_MODE (0)
 
+//! Set to 1 to output buffered time via ITM.
+#define ENABLE_BUFFERED_TIME_TRACE (1)
+
 //! Number of samples to fade in when we can't find a zero crossing.
 const uint32_t kFadeInSampleCount = 128;
 
@@ -51,6 +54,9 @@ const uint32_t kFadeInSampleCount = 128;
 const uint32_t kNoteOffSamples = 128;
 
 static_assert(kNoteOffSamples % kAudioBufferSize == 0, "note off samples must evenly divide buffer size");
+
+//! Number of cents per octave.
+const float kCentsPerOctave = 1200.0f;
 
 //------------------------------------------------------------------------------
 // Variables
@@ -413,6 +419,18 @@ void SampleBufferManager::set_start_end_sample(int32_t start, int32_t end)
     }
 }
 
+uint32_t SampleBufferManager::get_buffered_samples() const
+{
+    uint32_t count = 0;
+    uint32_t i;
+    for (i = 0; i < _fullBuffers.get_count(); ++i)
+    {
+        SampleBuffer * buf = _fullBuffers[i];
+        count += buf->frameCount;
+    }
+    return count;
+}
+
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 SamplerVoice::SamplerVoice()
@@ -583,12 +601,7 @@ void SamplerVoice::render(int16_t * data, uint32_t frameCount)
 
     // Compute the playback rate for this output buffer.
     float pitchModifier = _pitchEnv.next() * _params.pitchEnvDepth;
-    float octave = _params.baseOctaveOffset
-                            + _pitchOctave
-                            + (_params.baseCentsOffset / 1200.0f)
-                            + pitchModifier;
-    constrain(octave, -4.0f, 4.0f);
-    float rate = powf(2.0f, octave);
+    float rate = _compute_playback_rate(pitchModifier);
 
     int16_t * bufferData = voiceBuffer->data;
     float readHead = _readHead;
@@ -756,6 +769,10 @@ void SamplerVoice::render(int16_t * data, uint32_t frameCount)
     {
         UI::get().set_voice_playing(_number, false);
     }
+
+#if ENABLE_BUFFERED_TIME_TRACE
+    _report_buffered_time();
+#endif
 }
 
 void SamplerVoice::set_sample_start(float start)
@@ -853,6 +870,39 @@ void SamplerVoice::set_params(const VoiceParameters & params)
 float SamplerVoice::get_sample_length_in_seconds() const
 {
     return float(_data.get_frames()) / kSampleRate;
+}
+
+uint32_t SamplerVoice::get_buffered_microseconds() const
+{
+    float bufferedSamples = static_cast<float>(_manager.get_buffered_samples()) - _readHead;
+    float rate = _compute_playback_rate(0.0f);
+    float seconds = bufferedSamples / rate / kSampleRate;
+    return static_cast<uint32_t>(seconds * 1000000.0f);
+}
+
+float SamplerVoice::_compute_playback_rate(float pitchModifier) const
+{
+    float octave = _params.baseOctaveOffset
+                    + (_params.baseCentsOffset / kCentsPerOctave)
+                    + _pitchOctave
+                    + pitchModifier;
+    constrain(octave, -4.0f, 4.0f);
+    return powf(2.0f, octave);
+}
+
+void SamplerVoice::_report_buffered_time()
+{
+    // Skip sending if the port is disabled or full.
+    if ((ITM->TCR & ITM_TCR_ITMENA_Msk) && ITM->PORT[1].u32)
+    {
+        // Event data consists of:
+        // [31:29] = 3-bit channel number
+        // [28]    = playing flag
+        // [27:0]  = 28-bits of buffered microseconds
+        ITM->PORT[1].u32 = (_number << 29)
+                            | (static_cast<uint32_t>(_isPlaying) << 28)
+                            | (get_buffered_microseconds() & 0x0fffffff);
+    }
 }
 
 //------------------------------------------------------------------------------

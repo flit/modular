@@ -62,11 +62,6 @@ public:
         _count = 0;
     }
 
-    T& peek()
-    {
-        return _queue[_head];
-    }
-
     bool put(const T& value)
     {
         if (is_full())
@@ -90,6 +85,15 @@ public:
         --_count;
         return true;
     }
+
+    T& peek() { return _queue[_head]; }
+    const T& peek() const { return _queue[_head]; }
+
+    T& peek(uint32_t index) { return _queue[(_head + index) % N]; }
+    const T& peek(uint32_t index) const { return _queue[(_head + index) % N]; }
+
+    T& operator [] (uint32_t index) { return peek(index); }
+    const T& operator [] (uint32_t index) const { return peek(index); }
 
 protected:
     T _queue[N];
