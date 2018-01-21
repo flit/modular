@@ -641,14 +641,19 @@
 			<locationURI>PARENT-2-PROJECT_LOC/src/CMSIS/Include/arm_math.h</locationURI>
 		</link>
 		<link>
+			<name>CMSIS/Include/cmsis_compiler.h</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/src/CMSIS/Include/cmsis_compiler.h</locationURI>
+		</link>
+		<link>
 			<name>CMSIS/Include/cmsis_gcc.h</name>
 			<type>1</type>
 			<locationURI>PARENT-2-PROJECT_LOC/src/CMSIS/Include/cmsis_gcc.h</locationURI>
 		</link>
 		<link>
-			<name>CMSIS/Include/core_cm0plus.h</name>
+			<name>CMSIS/Include/cmsis_version.h</name>
 			<type>1</type>
-			<locationURI>PARENT-2-PROJECT_LOC/src/CMSIS/Include/core_cm0plus.h</locationURI>
+			<locationURI>PARENT-2-PROJECT_LOC/src/CMSIS/Include/cmsis_version.h</locationURI>
 		</link>
 		<link>
 			<name>CMSIS/Include/core_cm4.h</name>
@@ -656,19 +661,9 @@
 			<locationURI>PARENT-2-PROJECT_LOC/src/CMSIS/Include/core_cm4.h</locationURI>
 		</link>
 		<link>
-			<name>CMSIS/Include/core_cmFunc.h</name>
+			<name>CMSIS/Include/mpu_armv7.h</name>
 			<type>1</type>
-			<locationURI>PARENT-2-PROJECT_LOC/src/CMSIS/Include/core_cmFunc.h</locationURI>
-		</link>
-		<link>
-			<name>CMSIS/Include/core_cmInstr.h</name>
-			<type>1</type>
-			<locationURI>PARENT-2-PROJECT_LOC/src/CMSIS/Include/core_cmInstr.h</locationURI>
-		</link>
-		<link>
-			<name>CMSIS/Include/core_cmSimd.h</name>
-			<type>1</type>
-			<locationURI>PARENT-2-PROJECT_LOC/src/CMSIS/Include/core_cmSimd.h</locationURI>
+			<locationURI>PARENT-2-PROJECT_LOC/src/CMSIS/Include/mpu_armv7.h</locationURI>
 		</link>
 		<link>
 			<name>app/board_k22fa12/board.cpp</name>
