@@ -53,7 +53,7 @@ public:
     {
         if (this->is_full())
         {
-            uint32_t temp;
+            uint32_t temp = 0;
             this->RingBuffer<uint32_t, N>::get(temp);
             _sum -= temp;
         }

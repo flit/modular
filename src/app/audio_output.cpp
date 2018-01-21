@@ -137,7 +137,7 @@ void AudioOutput::audio_thread()
 {
     assert(m_source);
 
-    Buffer *buf;
+    Buffer *buf = nullptr;
 
     // Prime all buffers.
     uint32_t i;
@@ -182,7 +182,7 @@ void AudioOutput::audio_thread()
 void AudioOutput::dma_callback(DmaQueue * dmaQueue, bool done, uint32_t tcds)
 {
     // Put the audio buffer back in the free queue.
-    Buffer * buf;
+    Buffer * buf = nullptr;
     dmaQueue->queuedBuffers.get(buf);
     m_freeBufferQueue.put(buf);
 
