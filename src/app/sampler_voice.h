@@ -233,7 +233,6 @@ protected:
     bool _waitingForFileStart;
     bool _isReady;
     bool _snapToZeroStart;
-    bool _snapToZeroEnd;
     uint32_t _preppedCount;
 
     void _reset_buffers();

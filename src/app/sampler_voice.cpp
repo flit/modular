@@ -80,7 +80,6 @@ SampleBufferManager::SampleBufferManager()
     _waitingForFileStart(true),
     _isReady(false),
     _snapToZeroStart(false),
-    _snapToZeroEnd(false),
     _preppedCount(0)
 {
 }
@@ -126,7 +125,6 @@ void SampleBufferManager::set_file(uint32_t totalFrames)
     _waitingForFileStart = true;
     _isReady = false;
     _snapToZeroStart = false;
-    _snapToZeroEnd = false;
     _preppedCount = 0;
     _reset_buffers();
 
