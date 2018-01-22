@@ -31,6 +31,7 @@
 #include "samplbaer.h"
 #include "ui.h"
 #include "debug_log.h"
+#include "itm_trace.h"
 
 using namespace slab;
 
@@ -352,6 +353,7 @@ void ReaderThread::enqueue(SamplerVoice * request)
 {
     _queue.enqueue(request);
     _sem.put();
+    _trace_queue();
 }
 
 void ReaderThread::reader_thread()
@@ -376,6 +378,10 @@ void ReaderThread::reader_thread()
             _lullEventRequested = false;
             UI::get().send_event(UIEvent(kCardLowActivity));
         }
+
+#if ENABLE_TRACE
+        _trace_queue();
+#endif
     }
 }
 
@@ -466,6 +472,11 @@ void ReaderThread::fill_from_stereo(int16_t * data, uint32_t framesRead)
         *data++ = *buf;
         buf += 2;
     }
+}
+
+void ReaderThread::_trace_queue()
+{
+    send_trace<kReaderQueueChannel>(_queue.get_count());
 }
 
 //------------------------------------------------------------------------------

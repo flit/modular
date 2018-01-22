@@ -32,6 +32,7 @@
 #include "ui.h"
 #include "debug_log.h"
 #include "utility.h"
+#include "itm_trace.h"
 #include <cmath>
 #include <algorithm>
 
@@ -183,6 +184,10 @@ void SampleBufferManager::prime()
         }
     }
     DEBUG_PRINTF(QUEUE_MASK, "V%lu: end prime\r\n", _number);
+
+#if ENABLE_TRACE
+    _trace_buffers();
+#endif
 }
 
 SampleBuffer * SampleBufferManager::get_current_buffer()
@@ -205,6 +210,10 @@ void SampleBufferManager::_queue_buffer_for_read(SampleBuffer * buffer)
     _samplesQueued += buffer->frameCount;
 
     ReaderThread::get().enqueue(_voice);
+
+#if ENABLE_TRACE
+    _trace_buffers();
+#endif
 }
 
 SampleBuffer * SampleBufferManager::get_empty_buffer()
@@ -252,6 +261,10 @@ void SampleBufferManager::retire_buffer(SampleBuffer * buffer)
 
         _dequeue_next_buffer();
     }
+
+#if ENABLE_TRACE
+    _trace_buffers();
+#endif
 }
 
 SampleBuffer * SampleBufferManager::_dequeue_next_buffer()
@@ -273,6 +286,11 @@ SampleBuffer * SampleBufferManager::_dequeue_next_buffer()
         _currentBuffer = nullptr;
         UI::get().indicate_voice_underflowed(_number);
     }
+
+#if ENABLE_TRACE
+    _trace_buffers();
+#endif
+
     return _currentBuffer;
 }
 
@@ -313,6 +331,10 @@ void SampleBufferManager::enqueue_full_buffer(SampleBuffer * buffer)
 
         DEBUG_PRINTF(QUEUE_MASK, "V%lu: queuing b%d for play\r\n", _number, buffer->number);
         _fullBuffers.put(buffer);
+
+#if ENABLE_TRACE
+        _trace_buffers();
+#endif
 
         if (isBuffer0)
         {
@@ -429,6 +451,17 @@ uint32_t SampleBufferManager::get_buffered_samples() const
         count += buf->frameCount;
     }
     return count;
+}
+
+void SampleBufferManager::_trace_buffers()
+{
+    // Event structure:
+    // [31:30] = 2-bit channel number
+    // [15:8]  = free buffer count
+    // [7:0]   = ready buffer count
+    send_trace<kBufferCountChannel>((_number << 30)
+                    | (_emptyBuffers.get_count() << 8)
+                    | _fullBuffers.get_count());
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -771,7 +804,7 @@ void SamplerVoice::render(int16_t * data, uint32_t frameCount)
     }
 
 #if ENABLE_BUFFERED_TIME_TRACE
-    _report_buffered_time();
+    _trace_buffered_time();
 #endif
 }
 
@@ -890,19 +923,15 @@ float SamplerVoice::_compute_playback_rate(float pitchModifier) const
     return powf(2.0f, octave);
 }
 
-void SamplerVoice::_report_buffered_time()
+void SamplerVoice::_trace_buffered_time()
 {
-    // Skip sending if the port is disabled or full.
-    if ((ITM->TCR & ITM_TCR_ITMENA_Msk) && ITM->PORT[1].u32)
-    {
-        // Event data consists of:
-        // [31:29] = 3-bit channel number
-        // [28]    = playing flag
-        // [27:0]  = 28-bits of buffered microseconds
-        ITM->PORT[1].u32 = (_number << 29)
-                            | (static_cast<uint32_t>(_isPlaying) << 28)
-                            | (get_buffered_microseconds() & 0x0fffffff);
-    }
+    // Event data consists of:
+    // [31:30] = 2-bit channel number
+    // [29]    = playing flag
+    // [28:0]  = 28-bits of buffered microseconds
+    send_trace<kBufferedTimeChannel>((_number << 30)
+                    | (static_cast<uint32_t>(_isPlaying) << 29)
+                    | (get_buffered_microseconds() & 0x0fffffff));
 }
 
 //------------------------------------------------------------------------------

@@ -243,6 +243,8 @@ protected:
     SampleBuffer * _dequeue_next_buffer();
 
     void _find_zero_crossing(SampleBuffer * buffer);
+
+    void _trace_buffers();
 };
 
 /*!
@@ -443,7 +445,7 @@ protected:
 
     float _compute_playback_rate(float pitchModifier) const;
 
-    void _report_buffered_time();
+    void _trace_buffered_time();
 };
 
 } // namespace slab

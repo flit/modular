@@ -179,6 +179,8 @@ protected:
     void reader_thread();
     void fill_buffer(SamplerVoice * voice);
     void fill_from_stereo(int16_t * data, uint32_t framesRead);
+
+    void _trace_queue();
 };
 
 } // namespace slab
