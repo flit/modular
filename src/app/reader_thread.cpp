@@ -476,7 +476,7 @@ void ReaderThread::fill_from_stereo(int16_t * data, uint32_t framesRead)
 
 void ReaderThread::_trace_queue()
 {
-    send_trace<kReaderQueueChannel>(_queue.get_count());
+    itm<kReaderQueueChannel, uint8_t>::send(_queue.get_count());
 }
 
 //------------------------------------------------------------------------------

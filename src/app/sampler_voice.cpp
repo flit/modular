@@ -456,12 +456,12 @@ uint32_t SampleBufferManager::get_buffered_samples() const
 void SampleBufferManager::_trace_buffers()
 {
     // Event structure:
-    // [31:30] = 2-bit channel number
-    // [15:8]  = free buffer count
-    // [7:0]   = ready buffer count
-    send_trace<kBufferCountChannel>((_number << 30)
-                    | (_emptyBuffers.get_count() << 8)
-                    | _fullBuffers.get_count());
+    // [15:14] = 2-bit channel number
+    // [13:7]  = free buffer count
+    // [6:0]   = ready buffer count
+    itm<kBufferCountChannel, uint32_t>::send((_number << 14)
+                    | ((_emptyBuffers.get_count() && 0x7f) << 7)
+                    | (_fullBuffers.get_count() & 0x7f));
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -929,7 +929,7 @@ void SamplerVoice::_trace_buffered_time()
     // [31:30] = 2-bit channel number
     // [29]    = playing flag
     // [28:0]  = 28-bits of buffered microseconds
-    send_trace<kBufferedTimeChannel>((_number << 30)
+    itm<kBufferedTimeChannel, uint32_t>::send((_number << 30)
                     | (static_cast<uint32_t>(_isPlaying) << 29)
                     | (get_buffered_microseconds() & 0x0fffffff));
 }

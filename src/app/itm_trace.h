@@ -40,6 +40,7 @@
 
 namespace slab {
 
+//! ITM channels.
 enum : uint32_t
 {
     kBufferedTimeChannel = 1,
@@ -47,17 +48,56 @@ enum : uint32_t
     kReaderQueueChannel = 3,
 };
 
-template <uint32_t C>
-inline void send_trace(uint32_t value)
+// Primary template.
+template <uint32_t C, typename T>
+struct itm
 {
+    static inline void send(T value) {}
+};
+
 #if ENABLE_TRACE
-    // Skip sending if the port is disabled or full.
-    if ((ITM->TCR & ITM_TCR_ITMENA_Msk) && ITM->PORT[C].u32)
+// Specialized for 32-bit write.
+template <uint32_t C>
+struct itm<C, uint32_t>
+{
+    static inline void send(uint32_t value)
     {
-        ITM->PORT[C].u32 = value;
+        // Skip sending if the port is disabled or full.
+        if ((ITM->TCR & ITM_TCR_ITMENA_Msk) && ITM->PORT[C].u32)
+        {
+            ITM->PORT[C].u32 = value;
+        }
     }
-#endif
-}
+};
+
+// Specialized for 16-bit write.
+template <uint32_t C>
+struct itm<C, uint16_t>
+{
+    static inline void send(uint16_t value)
+    {
+        // Skip sending if the port is disabled or full.
+        if ((ITM->TCR & ITM_TCR_ITMENA_Msk) && ITM->PORT[C].u32)
+        {
+            ITM->PORT[C].u16 = value;
+        }
+    }
+};
+
+// Specialized for 8-bit write.
+template <uint32_t C>
+struct itm<C, uint8_t>
+{
+    static inline void send(uint8_t value)
+    {
+        // Skip sending if the port is disabled or full.
+        if ((ITM->TCR & ITM_TCR_ITMENA_Msk) && ITM->PORT[C].u32)
+        {
+            ITM->PORT[C].u8 = value;
+        }
+    }
+};
+#endif // ENABLE_TRACE
 
 } // namespace slab
 
