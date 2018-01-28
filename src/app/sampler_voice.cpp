@@ -459,7 +459,7 @@ void SampleBufferManager::_trace_buffers()
     // [15:14] = 2-bit channel number
     // [13:7]  = free buffer count
     // [6:0]   = ready buffer count
-    itm<kBufferCountChannel, uint32_t>::send((_number << 14)
+    itm<kBufferCountChannel, uint16_t>::send((_number << 14)
                     | ((_emptyBuffers.get_count() && 0x7f) << 7)
                     | (_fullBuffers.get_count() & 0x7f));
 }
