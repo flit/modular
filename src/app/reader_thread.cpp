@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017 Immo Software
+ * Copyright (c) 2017-2018 Immo Software
  *
  * Redistribution and use in source and binary forms, with or without modification,
  * are permitted provided that the following conditions are met:
@@ -34,6 +34,11 @@
 #include "itm_trace.h"
 
 using namespace slab;
+
+#define SORT_GROUPED_FIFO (1)
+#define SORT_TIME (2)
+
+#define SORT_MODE (SORT_TIME)
 
 //------------------------------------------------------------------------------
 // Code
@@ -144,6 +149,7 @@ void ReadRequestQueue::enqueue(SamplerVoice * request)
 //! Insert in the earliest voice number sequence that is missing this voice.
 ReadRequestQueue::QueueNode * ReadRequestQueue::_find_insert_position(SamplerVoice * request)
 {
+#if (SORT_MODE == SORT_GROUPED_FIFO)
     uint32_t requestVoiceNumber = request->get_number();
     uint32_t requestVoiceMask = 1 << requestVoiceNumber;
     uint32_t thisSequenceVoicesMask = 0;
@@ -173,6 +179,26 @@ ReadRequestQueue::QueueNode * ReadRequestQueue::_find_insert_position(SamplerVoi
     }
 
     return iter;
+#elif (SORT_MODE == SORT_TIME)
+    // Sort by the least amount of buffered sample data.
+    uint32_t requestBuffered = request->get_buffered_microseconds();
+    QueueNode * iter = _first;
+    while (iter)
+    {
+        assert(iter->voice);
+        uint32_t iterBuffered = iter->voice->get_buffered_microseconds();
+        if (requestBuffered < iterBuffered)
+        {
+            return iter;
+        }
+
+        iter = iter->next;
+    }
+
+    return iter;
+#else
+    #error "Unknown reader queue sort mode"
+#endif
 }
 
 void ReadRequestQueue::clear_voice(SamplerVoice * voice)
