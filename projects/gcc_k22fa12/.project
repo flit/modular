@@ -211,6 +211,11 @@
 			<locationURI>PARENT-2-PROJECT_LOC/src/app/channel_led.h</locationURI>
 		</link>
 		<link>
+			<name>app/cie1931.cpp</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/src/app/cie1931.cpp</locationURI>
+		</link>
+		<link>
 			<name>app/crc16.cpp</name>
 			<type>1</type>
 			<locationURI>PARENT-2-PROJECT_LOC/src/app/crc16.cpp</locationURI>

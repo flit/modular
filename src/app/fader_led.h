@@ -38,6 +38,8 @@
 
 namespace slab {
 
+extern const uint8_t kCie1931[];
+
 /*!
  * @brief LED template.
  */
@@ -71,7 +73,7 @@ public:
 
     virtual void set_duty_cycle(uint32_t percent) override
     {
-        _dutyCycle = percent;
+        _dutyCycle = kCie1931[percent];
         FTM_UpdatePwmDutycycle((FTM_Type *)ftmBase, channel, kFTM_EdgeAlignedPwm, _dutyCycle);
         FTM_SetSoftwareTrigger((FTM_Type *)ftmBase, true);
     }
