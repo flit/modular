@@ -217,7 +217,6 @@ UI::UI()
     _ledMode(LedMode::kCardDetection),
     _voiceStates{0},
     _isCardPresent(false),
-    _debounceCardDetect(false),
     _firstSwitchToPlayMode(true),
     _isChannelLedFlushPending(false),
     _ignoreButton1Release(false),
@@ -266,9 +265,6 @@ void UI::init()
     _runloop.addTimer(&_potReleaseTimer);
 
     // Set up card detection timer.
-    _cardDetectTimer.init("card-detect", this, &UI::handle_card_detect_timer, kArPeriodicTimer, kCardDetectInterval_ms);
-    _runloop.addTimer(&_cardDetectTimer);
-    _cardDetectTimer.start();
 
     _button1.init();
     _button2.init();
@@ -671,7 +667,6 @@ void UI::handle_card_event(const UIEvent & event)
                         load_sample_bank(_selectedBank);
                     }
                 }
-                _cardDetectTimer.start();
             }
             break;
 
@@ -686,9 +681,7 @@ void UI::handle_card_event(const UIEvent & event)
                     set_voice_playing(n, false);
                 }
                 FileManager::get().unmount();
-                SD_HostReset(&g_sd.host);
                 _isCardPresent = false;
-                _cardDetectTimer.start();
 
                 set_ui_mode(kNoCardMode);
                 _button1LedDutyCycle = 0;
@@ -1052,35 +1045,6 @@ void UI::handle_pot_release_timer(Ar::Timer * timer)
     {
         save_voice_params(_potReleaseSaveGainChannel);
         _potReleaseSaveGain = false;
-    }
-}
-
-void UI::handle_card_detect_timer(Ar::Timer * timer)
-{
-    // Detect change in card presence. If a change is detected, set the debounce flag
-    // and exit. We'll process the debounce next time this timer fires.
-    bool isPresent = CardManager::get().check_presence();
-    if (!_debounceCardDetect)
-    {
-        // Set debounce flag if a change in presence is detected.
-        _debounceCardDetect = (isPresent != _isCardPresent);
-    }
-    else
-    {
-        _debounceCardDetect = false;
-
-        // Card inserted.
-        if (isPresent && !_isCardPresent)
-        {
-            _cardDetectTimer.stop();
-            send_event(UIEvent(kCardInserted));
-        }
-        // Card removed.
-        else if (!isPresent && _isCardPresent)
-        {
-            _cardDetectTimer.stop();
-            send_event(UIEvent(kCardRemoved));
-        }
     }
 }
 

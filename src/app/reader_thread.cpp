@@ -452,7 +452,7 @@ void ReaderThread::fill_buffer(SamplerVoice * voice)
     if (status != fs::kSuccess)
     {
         DEBUG_PRINTF(ERROR_MASK, "R: seek error (b%i v%lu)\r\n", request->number, voice->get_number());
-        UI::get().send_event(UIEvent(kCardRemoved));
+        CardManager::get().report_card_error();
         return;
     }
     uint32_t bytesRead;
@@ -460,7 +460,7 @@ void ReaderThread::fill_buffer(SamplerVoice * voice)
     if (status != fs::kSuccess)
     {
         DEBUG_PRINTF(ERROR_MASK, "R: read error = %lu (b%i v%lu)\r\n", status, request->number, voice->get_number());
-        UI::get().send_event(UIEvent(kCardRemoved));
+        CardManager::get().report_card_error();
         return;
     }
     END_ELAPSED_TIME(fileAccess);

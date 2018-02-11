@@ -113,7 +113,6 @@ protected:
     Ar::TimerWithMemberCallback<UI> _blinkTimer;
     Ar::TimerWithMemberCallback<UI> _retriggerTimer;
     Ar::TimerWithMemberCallback<UI> _potReleaseTimer;
-    Ar::TimerWithMemberCallback<UI> _cardDetectTimer;
     LEDBase ** _channelLeds;
     LEDBase * _button1Led;
     Pot * _channelPots;
@@ -124,7 +123,6 @@ protected:
     LedMode _ledMode;
     bool _voiceStates[kVoiceCount];
     bool _isCardPresent;
-    bool _debounceCardDetect;
     bool _firstSwitchToPlayMode;
     bool _isChannelLedFlushPending;
     bool _ignoreButton1Release;
@@ -168,7 +166,6 @@ protected:
     void handle_blink_timer(Ar::Timer * timer);
     void handle_retrigger_timer(Ar::Timer * timer);
     void handle_pot_release_timer(Ar::Timer * timer);
-    void handle_card_detect_timer(Ar::Timer * timer);
 
     void handle_gain_pot(uint32_t potNumber, float value);
     void handle_edit_pot(uint32_t potNumber, float value);

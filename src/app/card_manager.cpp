@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017 Immo Software
+ * Copyright (c) 2017-2018 Immo Software
  *
  * Redistribution and use in source and binary forms, with or without modification,
  * are permitted provided that the following conditions are met:
@@ -28,6 +28,7 @@
  */
 
 #include "card_manager.h"
+#include "samplbaer.h"
 #include "fsl_sd.h"
 #include "fsl_sd_disk.h"
 #include "fsl_sdmmc_common.h"
@@ -35,11 +36,25 @@
 using namespace slab;
 
 //------------------------------------------------------------------------------
+// Definitions
+//------------------------------------------------------------------------------
+
+//! Interval for checking SD card presence.
+const uint32_t kCardDetectInterval_ms = 500;
+
+//! Debounce delay for checking SD card presence.
+const uint32_t kCardDetectDebounceDelay_ms = 50;
+
+//------------------------------------------------------------------------------
 // Code
 //------------------------------------------------------------------------------
 
 CardManager::CardManager()
-:   _isCardPresent(false)
+:   _thread(),
+    _isCardPresent(false),
+    _isCardInited(false),
+    _debounceCardDetect(false),
+    _isImmediateCheckPending(false)
 {
 }
 
@@ -60,12 +75,94 @@ void CardManager::init()
     g_sd.usrParam.cd = &cd;
 
     SD_HostInit(&g_sd);
+
+    // Create and start up card manager thread.
+    _thread.init("card", this, &CardManager::card_thread, kCardThreadPriority, kArSuspendThread);
+    _runloop.init("card", &_thread);
+
+    // Set up card detection timer.
+    _cardDetectTimer.init("card-detect", this, &CardManager::handle_card_detect_timer, kArPeriodicTimer, kCardDetectInterval_ms);
+    _runloop.addTimer(&_cardDetectTimer);
+    _cardDetectTimer.start();
+
+    _thread.resume();
 }
 
-//!
+void CardManager::card_thread()
+{
+    while (true)
+    {
+        _runloop.run(kArInfiniteTimeout, nullptr);
+    }
+}
+
+
+void CardManager::handle_card_detect_timer(Ar::Timer * timer)
+{
+    // Detect change in card presence. If a change is detected, set the debounce flag
+    // and exit. We'll process the debounce next time this timer fires.
+    bool isPresent = check_presence();
+    if (!_debounceCardDetect)
+    {
+        // Set debounce flag if a change in presence is detected.
+        _debounceCardDetect = (isPresent != _isCardPresent);
+        if (_debounceCardDetect)
+        {
+            _cardDetectTimer.setDelay(kCardDetectDebounceDelay_ms);
+        }
+    }
+    else
+    {
+        _debounceCardDetect = false;
+        _cardDetectTimer.setDelay(kCardDetectInterval_ms);
+
+        // Card inserted.
+        if (isPresent && !_isCardPresent)
+        {
+            _isCardPresent = true;
+            UI::get().send_event(UIEvent(kCardInserted));
+        }
+        // Card removed.
+        else if (!isPresent && _isCardPresent)
+        {
+            _isCardPresent = false;
+            UI::get().send_event(UIEvent(kCardRemoved));
+        }
+    }
+}
+
+void CardManager::report_card_error()
+{
+    // Perform the check on the card detect thread so it's serialized with the detect timer.
+    if (!_isImmediateCheckPending)
+    {
+        _isImmediateCheckPending = true;
+        _runloop.perform(check_card_removed_stub, this);
+    }
+}
+
+void CardManager::check_card_removed()
+{
+    if (!check_presence() && _isCardPresent)
+    {
+        // Force immediate debounce.
+        _debounceCardDetect = true;
+        _cardDetectTimer.setDelay(kCardDetectDebounceDelay_ms);
+    }
+
+    _isImmediateCheckPending = false;
+}
+
+void CardManager::check_card_removed_stub(void * param)
+{
+    CardManager * _this = reinterpret_cast<CardManager *>(param);
+    assert(_this);
+    _this->check_card_removed();
+}
+
 bool CardManager::check_presence()
 {
-    if (_isCardPresent)
+    if (_isCardInited)
     {
         // Skip this check if a transfer is in progress so we don't interrupt it.
         // Read and write transfers continue automaticaly until a StopTransmission
@@ -74,7 +171,13 @@ bool CardManager::check_presence()
         if (!SD_IsTransferring(&g_sd))
         {
             bool response = get_card_status();
-            _isCardPresent = response;
+            _isCardInited = response;
+
+            if (!response)
+            {
+                SD_CardDeinit(&g_sd);
+                SD_HostReset(&g_sd.host);
+            }
         }
     }
     else
@@ -83,11 +186,11 @@ bool CardManager::check_presence()
         status_t status = SD_CardInit(&g_sd);
         if (status == kStatus_Success)
         {
-            _isCardPresent = true;
+            _isCardInited = true;
         }
     }
 
-    return _isCardPresent;
+    return _isCardInited;
 }
 
 bool CardManager::get_card_status()

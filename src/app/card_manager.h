@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017 Immo Software
+ * Copyright (c) 2017-2018 Immo Software
  *
  * Redistribution and use in source and binary forms, with or without modification,
  * are permitted provided that the following conditions are met:
@@ -30,6 +30,7 @@
 #define _CARD_MANAGER_H_
 
 #include "singleton.h"
+#include "argon/argon.h"
 #include <stdint.h>
 
 //------------------------------------------------------------------------------
@@ -51,12 +52,32 @@ public:
 
     bool is_card_present() { return _isCardPresent; }
 
+    //! @brief Tell the card manager that an error occurred while accessing the card.
+    //!
+    //! The card manager will immediately check presence. If the card is missing, then
+    //! it will send a #kCardRemoved event to the UI.
+    void report_card_error();
+
+    //! @brief Execute commands to determine whether there is a card present.
     bool check_presence();
 
 protected:
-    bool _isCardPresent;
+    Ar::ThreadWithStack<1024> _thread;
+    Ar::RunLoop _runloop;
+    Ar::TimerWithMemberCallback<CardManager> _cardDetectTimer;
+    bool _isCardPresent;    //!< Debounced card presence.
+    bool _isCardInited;     //!< Whether SD_CardInit() was successful.
+    bool _debounceCardDetect;   //!< Indicates whether we are currently debouncing card detect.
+    bool _isImmediateCheckPending;  //!< Used to coalesce check_card_remove() performs on the runloop.
 
     bool get_card_status();
+
+    void card_thread();
+
+    void check_card_removed();
+    static void check_card_removed_stub(void * param);
+
+    void handle_card_detect_timer(Ar::Timer * timer);
 };
 
 } // namespace slab

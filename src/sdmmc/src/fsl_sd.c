@@ -1674,6 +1674,22 @@ void SD_CardDeinit(sd_card_t *card)
     assert(card);
 
     SD_SelectCard(card, false);
+
+    // Clear card info.
+    card->busClock_Hz = 0U;
+    card->relativeAddress = 0U;
+    card->version = 0U;
+    card->flags = 0U;
+    memset(&card->rawCid, 0, sizeof(card->rawCid));
+    memset(&card->rawCsd, 0, sizeof(card->rawCsd));
+    memset(&card->rawScr, 0, sizeof(card->rawScr));
+    card->ocr = 0U;
+    memset(&card->cid, 0, sizeof(card->cid));
+    memset(&card->csd, 0, sizeof(card->csd));
+    memset(&card->scr, 0, sizeof(card->scr));
+    card->blockCount = 0U;
+    card->blockSize = 0U;
+    card->isTransferring = false;
 }
 
 status_t SD_HostInit(sd_card_t *card)

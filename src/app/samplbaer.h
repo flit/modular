@@ -53,6 +53,7 @@ enum thread_priorties : uint8_t
     kReaderThreadPriority = 120,
     kCVThreadPriority = 80,
     kUIThreadPriority = 60,
+    kCardThreadPriority = 50,
     kInitThreadPriority = 40,
 };
 
