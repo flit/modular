@@ -169,7 +169,7 @@ protected:
     Ar::ThreadWithStack<2048> _thread;
     Ar::Semaphore _sem;
     ReadRequestQueue _queue;
-    bool _lullEventRequested;
+    volatile bool _lullEventRequested;
 
 #if DEBUG
     ReaderStatistics _statistics;
