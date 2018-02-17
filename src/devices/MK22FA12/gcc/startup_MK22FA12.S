@@ -51,10 +51,10 @@ __isr_vector:
     .long   MemManage_Handler                               /* MPU Fault Handler*/
     .long   BusFault_Handler                                /* Bus Fault Handler*/
     .long   UsageFault_Handler                              /* Usage Fault Handler*/
-    .long   0                                               /* Reserved*/
-    .long   0                                               /* Reserved*/
-    .long   0                                               /* Reserved*/
-    .long   0                                               /* Reserved*/
+    .long   0 /* signature goes here */
+    .long   0 /* CRC goes here */
+    .long   0 /* length goes here */
+    .long   g_appVersionInfo
     .long   SVC_Handler                                     /* SVCall Handler*/
     .long   DebugMon_Handler                                /* Debug Monitor Handler*/
     .long   0                                               /* Reserved*/

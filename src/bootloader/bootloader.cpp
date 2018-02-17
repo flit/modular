@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016-2017 Chris Reed
+ * Copyright (c) 2016-2018 Chris Reed
  *
  * Redistribution and use in source and binary forms, with or without modification,
  * are permitted provided that the following conditions are met:
@@ -37,6 +37,8 @@
 #include "microseconds.h"
 #include "debug_log.h"
 #include "crc32.h"
+#include "version_git.h"
+#include "app_version_info.h"
 #include "fsl_flash.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -192,6 +194,15 @@ LED<PIN_BUTTON1_LED_GPIO_BASE, PIN_BUTTON1_LED_BIT> g_button1Led;
 }
 
 DEFINE_DEBUG_LOG
+
+//! @brief Define app info.
+const AppVersionInfo g_appVersionInfo = {
+        .signature = 0x746f6f62, // 'boot'
+        .version = { GIT_VERSION_MAJOR, GIT_VERSION_MINOR, GIT_VERSION_BUGFIX },
+        .name = "sd-bootloader",
+        .versionString = GIT_COMMIT_VERSION,
+        .sha = GIT_COMMIT_SHA,
+    };
 
 //------------------------------------------------------------------------------
 // Code

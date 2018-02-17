@@ -1,3 +1,4 @@
+/* -*- coding: utf-8 -*- */
 /*
  * Copyright (c) 2016-2017 Chris Reed
  *
@@ -41,6 +42,8 @@
 #include "reader_thread.h"
 #include "channel_adc_processor.h"
 #include "calibrator.h"
+#include "version_git.h"
+#include "app_version_info.h"
 #include "fsl_sd_disk.h"
 #include "fsl_edma.h"
 #include "fsl_dmamux.h"
@@ -143,6 +146,15 @@ const char kLedStartupPattern[][5] = {
         "----",
         "rrrr",
         "----",
+    };
+
+//! @brief Define app info.
+const AppVersionInfo g_appVersionInfo = {
+        .signature = 0x72e46273, // 'sbär'
+        .version = { GIT_VERSION_MAJOR, GIT_VERSION_MINOR, GIT_VERSION_BUGFIX },
+        .name = "samplbär",
+        .versionString = GIT_COMMIT_VERSION,
+        .sha = GIT_COMMIT_SHA,
     };
 
 //------------------------------------------------------------------------------
