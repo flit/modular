@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017-2018 Immo Software
+ * Copyright (c) 2018 Immo Software
  *
  * Redistribution and use in source and binary forms, with or without modification,
  * are permitted provided that the following conditions are met:
@@ -26,13 +26,10 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#if !defined(_CHANNEL_ADC_PROCESSOR_H_)
-#define _CHANNEL_ADC_PROCESSOR_H_
+#if !defined(_STACK_SIZES_H_)
+#define _STACK_SIZES_H_
 
-#include "argon/argon.h"
-#include "adc_sequencer.h"
-#include "singleton.h"
-#include "stack_sizes.h"
+#include <stdint.h>
 
 //------------------------------------------------------------------------------
 // Definitions
@@ -40,42 +37,20 @@
 
 namespace slab {
 
-/*!
- * @brief Manage reading ADC and processing results.
- */
-class ChannelAdcProcessor : public Singleton<ChannelAdcProcessor>
+//! @brief Sizes to allocate for each thread's stack.
+enum thread_stacks : uint32_t
 {
-public:
-
-    ChannelAdcProcessor();
-    ~ChannelAdcProcessor()=default;
-
-    void init();
-
-    void suspend(bool doSuspend) { _suspend = doSuspend; }
-
-protected:
-
-    Ar::ThreadWithStack<kCVThreadStack> _thread;
-
-    struct AdcData
-    {
-        AdcSequencer sequencer;
-        Ar::Semaphore waitSem;
-        volatile uint32_t results[4];
-    };
-
-    AdcData _adc0Data;
-    AdcData _adc1Data;
-    volatile bool _suspend;
-
-    void cv_thread();
-
+    kAudioThreadStack = 1024,
+    kReaderThreadStack = 1024,
+    kCVThreadStack = 512,
+    kUIThreadStack = 4096,
+    kCardThreadStack = 768,
+    kInitThreadStack = 2048,
 };
 
 } // namespace slab
 
-#endif // _CHANNEL_ADC_PROCESSOR_H_
+#endif // _STACK_SIZES_H_
 //------------------------------------------------------------------------------
 // EOF
 //------------------------------------------------------------------------------

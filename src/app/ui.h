@@ -35,6 +35,7 @@
 #include "singleton.h"
 #include "button.h"
 #include "pot.h"
+#include "stack_sizes.h"
 
 //------------------------------------------------------------------------------
 // Definitions
@@ -107,7 +108,7 @@ protected:
         kCalibration,
     };
 
-    Ar::ThreadWithStack<4096> _thread;
+    Ar::ThreadWithStack<kUIThreadStack> _thread;
     Ar::RunLoop _runloop;
     Ar::StaticQueue<UIEvent, kMaxEvents> _eventQueue;
     Ar::TimerWithMemberCallback<UI> _blinkTimer;

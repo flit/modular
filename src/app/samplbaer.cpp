@@ -44,6 +44,7 @@
 #include "calibrator.h"
 #include "version_git.h"
 #include "app_version_info.h"
+#include "stack_sizes.h"
 #include "fsl_sd_disk.h"
 #include "fsl_edma.h"
 #include "fsl_dmamux.h"
@@ -463,7 +464,7 @@ int main(void)
     init_board();
     Microseconds::init();
 
-    g_initThread = new Ar::Thread("init", init_thread, 0, NULL, 3072, kInitThreadPriority, kArStartThread);
+    g_initThread = new Ar::Thread("init", init_thread, 0, NULL, kInitThreadStack, kInitThreadPriority, kArStartThread);
     ar_kernel_run();
     return 0;
 }

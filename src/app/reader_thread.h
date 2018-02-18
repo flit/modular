@@ -33,6 +33,7 @@
 #include "sampler_voice.h"
 #include "ring_buffer.h"
 #include "singleton.h"
+#include "stack_sizes.h"
 
 //------------------------------------------------------------------------------
 // Definitions
@@ -166,7 +167,7 @@ public:
 
 protected:
     int16_t _readBuf[SampleBufferManager::kBufferSize * 2];
-    Ar::ThreadWithStack<2048> _thread;
+    Ar::ThreadWithStack<kReaderThreadStack> _thread;
     Ar::Semaphore _sem;
     ReadRequestQueue _queue;
     volatile bool _lullEventRequested;

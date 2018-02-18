@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2017 Immo Software
+ * Copyright (c) 2015-2018 Immo Software
  *
  * Redistribution and use in source and binary forms, with or without modification,
  * are permitted provided that the following conditions are met:
@@ -31,6 +31,7 @@
 
 #include "argon/argon.h"
 #include "simple_queue.h"
+#include "stack_sizes.h"
 #include "fsl_edma.h"
 #include "fsl_sai.h"
 
@@ -102,7 +103,7 @@ protected:
     uint8_t m_minorLoopCount;   //!< The number of DMA transfers to fill the SAI FIFO.
     DmaQueue m_dma[kDmaChannelCount];
     Ar::Semaphore m_transferDone;
-    Ar::ThreadWithStack<4096> m_audioThread;
+    Ar::ThreadWithStack<kAudioThreadStack> m_audioThread;
     Buffer m_buffers[kMaxBufferCount];
     BufferQueue m_freeBufferQueue;
     uint32_t m_bufferCount;

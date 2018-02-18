@@ -31,6 +31,7 @@
 
 #include "singleton.h"
 #include "argon/argon.h"
+#include "stack_sizes.h"
 #include <stdint.h>
 
 //------------------------------------------------------------------------------
@@ -62,7 +63,7 @@ public:
     bool check_presence();
 
 protected:
-    Ar::ThreadWithStack<1024> _thread;
+    Ar::ThreadWithStack<kCardThreadStack> _thread;
     Ar::RunLoop _runloop;
     Ar::TimerWithMemberCallback<CardManager> _cardDetectTimer;
     bool _isCardPresent;    //!< Debounced card presence.
