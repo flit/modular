@@ -285,9 +285,16 @@ void init_adc_config()
     // 16b = 25 cyc
     // long sample = +16 cyc
     // high speed = +2 cyc
-    // = 43 * 32 avg = 1376 cyc = 115 µs
-    // 4x channels = 460 µs
+    // = 43 cyc
+    //
+    // * 32 hw avg = 1376 cyc = 115 µs @ 12 MHz
+    // * 4x channels = 460 µs
     // = 2173 Hz
+    //
+    // * 16 hw avg = 688 cyc = 57 µs @ 12 MHz
+    // * 4x channels = 228 µs
+    // = 4386 Hz
+    //
     g_adcConfig.clockSource = kADC16_ClockSourceAlt2;
     g_adcConfig.enableAsynchronousClock = false;
     g_adcConfig.clockDivider = kADC16_ClockDivider1;

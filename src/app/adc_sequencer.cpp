@@ -68,7 +68,7 @@ void AdcSequencer::init(const adc16_config_t & config)
 
     // Init and configure the ADC instance.
     ADC16_Init(_base, &config);
-    ADC16_SetHardwareAverage(_base, kADC16_HardwareAverageCount32);
+    ADC16_SetHardwareAverage(_base, kADC16_HardwareAverageCount16);
     ADC16_DoAutoCalibration(_base);
     ADC16_EnableDMA(_base, true);
 
