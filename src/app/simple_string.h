@@ -67,6 +67,9 @@ public:
     template <uint32_t J>
     void append(const SimpleString<J> & s) { strncat(_string, s.get(), N); }
 
+    operator char* () { return _string; }
+    operator const char* () const { return _string; }
+
 protected:
     char _string[N];
 };

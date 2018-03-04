@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017 Immo Software
+ * Copyright (c) 2017-2018 Immo Software
  *
  * Redistribution and use in source and binary forms, with or without modification,
  * are permitted provided that the following conditions are met:
@@ -66,7 +66,7 @@ bool SampleBank::is_valid() const
 
 void SampleBank::load_params()
 {
-    FilePath settingsPath(_dirPath);
+    fs::Path settingsPath(_dirPath);
     settingsPath.append("/settings.bin");
     fs::File settingsFile(settingsPath.get());
     if (settingsFile.open() != fs::kSuccess)
@@ -121,7 +121,7 @@ void SampleBank::load_params()
 
 void SampleBank::save_params()
 {
-    FilePath settingsPath(_dirPath);
+    fs::Path settingsPath(_dirPath);
     settingsPath.append("/settings.bin");
     fs::File settingsFile(settingsPath.get());
     settingsFile.remove();
@@ -172,11 +172,11 @@ SampleBank::Sample::Sample()
 void SampleBank::Sample::reset()
 {
     _isValid = false;
-    _path = FilePath("");
+    _path = fs::Path("");
     _params.reset();
 }
 
-void SampleBank::Sample::set_path(const FilePath & path)
+void SampleBank::Sample::set_path(const fs::Path & path)
 {
     _path = path;
 

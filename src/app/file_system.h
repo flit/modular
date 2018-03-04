@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016 Immo Software
+ * Copyright (c) 2016-2018 Immo Software
  *
  * Redistribution and use in source and binary forms, with or without modification,
  * are permitted provided that the following conditions are met:
@@ -30,6 +30,7 @@
 #define _FILE_SYSTEM_H_
 
 #include "stream.h"
+#include "simple_string.h"
 #include "ff.h"
 
 //------------------------------------------------------------------------------
@@ -53,6 +54,9 @@ enum fs_error : uint32_t
 
 //! @brief Filesystem error type.
 using error_t = uint32_t;
+
+//! @brief String type for paths.
+using Path = SimpleString<_MAX_LFN + 1>;
 
 /*!
  * @brief File object.

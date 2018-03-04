@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017 Immo Software
+ * Copyright (c) 2017-2018 Immo Software
  *
  * Redistribution and use in source and binary forms, with or without modification,
  * are permitted provided that the following conditions are met:
@@ -45,7 +45,6 @@ namespace slab {
 class SampleBank
 {
 public:
-    using FilePath = SimpleString<_MAX_LFN + 1>;
 
     /*!
      * @brief Wraps a sample in a bank.
@@ -60,8 +59,8 @@ public:
 
         bool is_valid() const { return _isValid; }
 
-        const FilePath & get_path() const { return _path; }
-        void set_path(const FilePath & path);
+        const fs::Path & get_path() const { return _path; }
+        void set_path(const fs::Path & path);
 
         const VoiceParameters & get_params() const { return _params; }
         void set_params(const VoiceParameters & params) { _params = params; }
@@ -73,7 +72,7 @@ public:
 
     protected:
         bool _isValid;
-        FilePath _path;
+        fs::Path _path;
         VoiceParameters _params;
     };
 
@@ -82,8 +81,8 @@ public:
 
     void reset();
 
-    const FilePath & get_path() const { return _dirPath; }
-    void set_path(const FilePath & path) { _dirPath = path; }
+    const fs::Path & get_path() const { return _dirPath; }
+    void set_path(const fs::Path & path) { _dirPath = path; }
 
     bool is_valid() const;
     bool has_sample(uint32_t sampleNumber) const { return _samples[sampleNumber].is_valid(); }
@@ -94,7 +93,7 @@ public:
     void save_params();
 
 protected:
-    FilePath _dirPath;
+    fs::Path _dirPath;
     Sample _samples[kVoiceCount];
 
     static const uint32_t kSettingsFileDataVersion = 3;
