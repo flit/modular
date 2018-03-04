@@ -73,7 +73,7 @@ extern slab::RingBuffer<slab::SimpleString<DEBUG_LOG_MSG_SIZE>, DEBUG_LOG_ENTRY_
 
 #define DEBUG_PRINTF(f, m, ...) \
     do { if ((f) & DEBUG_PRINTF_MASK) { \
-        snprintf(g_debugLogBuffer, sizeof(g_debugLogBuffer), "[%lu] " m, Microseconds::get(), ##__VA_ARGS__); \
+        snprintf(g_debugLogBuffer, sizeof(g_debugLogBuffer), "[%llu] " m, Microseconds::get(), ##__VA_ARGS__); \
         slab::SimpleString<DEBUG_LOG_MSG_SIZE> _ds(g_debugLogBuffer); \
         g_debugLog.put(_ds); \
     } } while (0)
@@ -85,7 +85,7 @@ extern slab::RingBuffer<slab::SimpleString<DEBUG_LOG_MSG_SIZE>, DEBUG_LOG_ENTRY_
 #elif ENABLE_DEBUG_PRINTF && DEBUG_PRINTF_TO_UART
 
 #define DEBUG_PRINTF(f, m, ...) do { if ((f) & DEBUG_PRINTF_MASK) { \
-        printf("[%lu] " m, Microseconds::get(), ##__VA_ARGS__); \
+        printf("[%llu] " m, Microseconds::get(), ##__VA_ARGS__); \
     } } while (0)
 #define DEFINE_DEBUG_LOG
 

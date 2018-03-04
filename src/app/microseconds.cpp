@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017 Immo Software
+ * Copyright (c) 2017-2018 Immo Software
  *
  * Redistribution and use in source and binary forms, with or without modification,
  * are permitted provided that the following conditions are met:
@@ -37,6 +37,7 @@ using namespace slab;
 //------------------------------------------------------------------------------
 
 uint32_t Microseconds::s_busClock_MHz = 0;
+uint32_t Microseconds::s_upperElapsedTime = 0;
 
 //------------------------------------------------------------------------------
 // Code
@@ -45,12 +46,27 @@ uint32_t Microseconds::s_busClock_MHz = 0;
 void Microseconds::init()
 {
     s_busClock_MHz = CLOCK_GetBusClkFreq() / 1000000;
+    s_upperElapsedTime = 0;
 
     pit_config_t pitConfig;
     PIT_GetDefaultConfig(&pitConfig);
     PIT_Init(PIT, &pitConfig);
     PIT_SetTimerPeriod(PIT, kPIT_Chnl_0, 0xffffffff);
+    PIT_EnableInterrupts(PIT, kPIT_Chnl_0, kPIT_TimerInterruptEnable);
     PIT_StartTimer(PIT, kPIT_Chnl_0);
+
+    NVIC_EnableIRQ(PIT0_IRQn);
+}
+
+void Microseconds::handle_rollover()
+{
+    ++s_upperElapsedTime;
+}
+
+extern "C" void PIT0_IRQHandler(void)
+{
+    Microseconds::handle_rollover();
+    PIT_ClearStatusFlags(PIT, kPIT_Chnl_0, kPIT_TimerFlag);
 }
 
 //------------------------------------------------------------------------------

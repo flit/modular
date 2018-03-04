@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017 Immo Software
+ * Copyright (c) 2017-2018 Immo Software
  *
  * Redistribution and use in source and binary forms, with or without modification,
  * are permitted provided that the following conditions are met:
@@ -44,13 +44,18 @@ public:
 
     static void init();
 
-    static uint32_t get()
+    static uint64_t get()
     {
-        return (~PIT_GetCurrentTimerCount(PIT, kPIT_Chnl_0)) / s_busClock_MHz;
+        return ((static_cast<uint64_t>(s_upperElapsedTime) << 32)
+                | static_cast<uint64_t>(~PIT_GetCurrentTimerCount(PIT, kPIT_Chnl_0)))
+                / s_busClock_MHz;
     }
+
+    static void handle_rollover();
 
 protected:
     static uint32_t s_busClock_MHz;
+    static uint32_t s_upperElapsedTime;
 };
 
 } // namespace slab

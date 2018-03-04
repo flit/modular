@@ -321,6 +321,9 @@ void init_dma()
 
 void init_irq_priorities()
 {
+    // 4 NVIC PRIO bits are implemented, supporting 16 priority levels.
+    // Lowest priority level 15 is reserved for PendSV.
+
     // Audio DMA.
     NVIC_SetPriority(DMA0_IRQn, 0);
     NVIC_SetPriority(DMA1_IRQn, 0);
@@ -336,22 +339,25 @@ void init_irq_priorities()
     NVIC_SetPriority(DMA3_IRQn, 2);
     NVIC_SetPriority(DMA5_IRQn, 2);
 
+    // PIT IRQ for microseconds timer
+    NVIC_SetPriority(PIT0_IRQn, 3);
+
     // Pin IRQ
-    NVIC_SetPriority(PORTA_IRQn, 3);
-    NVIC_SetPriority(PORTB_IRQn, 3);
-    NVIC_SetPriority(PORTC_IRQn, 3);
-    NVIC_SetPriority(PORTD_IRQn, 3);
-    NVIC_SetPriority(PORTE_IRQn, 3);
+    NVIC_SetPriority(PORTA_IRQn, 4);
+    NVIC_SetPriority(PORTB_IRQn, 4);
+    NVIC_SetPriority(PORTC_IRQn, 4);
+    NVIC_SetPriority(PORTD_IRQn, 4);
+    NVIC_SetPriority(PORTE_IRQn, 4);
 
     // SPI used for channel LED update.
-    NVIC_SetPriority(SPI0_IRQn, 4);
+    NVIC_SetPriority(SPI0_IRQn, 5);
 
     // Timer used for button1 LED.
-    NVIC_SetPriority(FTM3_IRQn, 5);
+    NVIC_SetPriority(FTM3_IRQn, 6);
 
     // Error interrupts.
-    NVIC_SetPriority(I2S0_Tx_IRQn, 6);
-    NVIC_SetPriority(DMA_Error_IRQn, 6);
+    NVIC_SetPriority(I2S0_Tx_IRQn, 7);
+    NVIC_SetPriority(DMA_Error_IRQn, 7);
 }
 
 void init_adc_config()
