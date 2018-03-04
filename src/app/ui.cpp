@@ -573,7 +573,7 @@ void UI::handle_button_event(const UIEvent & event)
             switch (event.source)
             {
                 case kButton1:
-                    if (event.value == kVoiceModeLongPressTime)
+                    if (event.intValue == kVoiceModeLongPressTime)
                     {
                         if (_uiMode == kPlayMode)
                         {

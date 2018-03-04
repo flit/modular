@@ -64,14 +64,28 @@ struct UIEvent
 {
     UIEventType event;
     UIEventSource source;
-    float value;
+    union {
+        float floatValue;
+        int32_t intValue;
+    };
 
     UIEvent() {}
-    UIEvent(UIEventType theEvent, UIEventSource theSource=kNoEventSource, float theValue=0)
+    UIEvent(UIEventType theEvent, UIEventSource theSource=kNoEventSource)
     :   event(theEvent),
-        source(theSource),
-        value(theValue)
+        source(theSource)
     {
+    }
+
+    UIEvent& set_float_value(float theValue)
+    {
+        floatValue = theValue;
+        return *this;
+    }
+
+    UIEvent& set_int_value(int32_t theValue)
+    {
+        intValue = theValue;
+        return *this;
     }
 };
 

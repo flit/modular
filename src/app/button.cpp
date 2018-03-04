@@ -130,7 +130,7 @@ void Button::handle_timer(Ar::Timer * timer)
         event.event = kButtonUp;
     }
     event.source = _source;
-    event.value = _timeoutCount;
+    event.intValue = _timeoutCount;
     UI::get().send_event(event);
 
     ++_timeoutCount;
