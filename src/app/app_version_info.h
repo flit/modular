@@ -37,6 +37,9 @@
 
 namespace slab {
 
+//! App starts at 64kB offset.
+#define APP_START_ADDR (0x10000)
+
 /*!
  * @brief Version information.
  */
@@ -57,6 +60,24 @@ struct AppVersionInfo
     const char * name;  //!< Long name of the app.
     const char * versionString; //!< Long form of the version as a string.
     const char * sha;   //!< Git SHA-1.
+};
+
+/*!
+ * @brief Start of the app's vector table.
+ */
+struct AppVectors
+{
+    uint32_t initialStack;
+    uint32_t resetHandler;
+    uint32_t nmiHandler;
+    uint32_t hardFaultHandler;
+    uint32_t memManageHandler;
+    uint32_t busFaultHandler;
+    uint32_t usageFaultHandler;
+    uint32_t signature;
+    uint32_t crc32;
+    uint32_t appSize;
+    AppVersionInfo * appVersionInfo;
 };
 
 } // namespace slab

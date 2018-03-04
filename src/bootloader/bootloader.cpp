@@ -50,9 +50,6 @@ using namespace slab;
 // Definitions
 //------------------------------------------------------------------------------
 
-//! App starts at 64kB offset.
-#define APP_START_ADDR (0x10000)
-
 //! Name of the firmware update file.
 #define FW_UPDATE_FILENAME "/firmware.bin"
 
@@ -70,21 +67,6 @@ using namespace slab;
 
 //! Number of channel LEDs.
 #define CHANNEL_LED_COUNT (4)
-
-//! @brief Start of the app's vector table.
-struct AppVectors
-{
-    uint32_t initialStack;
-    uint32_t resetHandler;
-    uint32_t nmiHandler;
-    uint32_t hardFaultHandler;
-    uint32_t memManageHandler;
-    uint32_t busFaultHandler;
-    uint32_t usageFaultHandler;
-    uint32_t signature;
-    uint32_t crc32;
-    uint32_t appSize;
-};
 
 //! @brief Manages LED flashing.
 class LEDFlasher
