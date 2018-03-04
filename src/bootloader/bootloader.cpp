@@ -280,7 +280,7 @@ Stream::error_t MemoryStream::seek(uint32_t offset)
 
 Bootloader::Bootloader()
 :   _thread("bootloader", this, &Bootloader::bootloader_thread, 100, kArStartThread),
-    _app(reinterpret_cast<volatile AppVectors *>(APP_START_ADDR))
+    _app(reinterpret_cast<volatile AppVectors *>(APP_BASE_ADDR))
 {
 }
 
@@ -452,12 +452,12 @@ void Bootloader::perform_update()
     }
 
     // First erase app's vector table sector without programming it.
-    if (!erase_sector(APP_START_ADDR))
+    if (!erase_sector(APP_BASE_ADDR))
     {
         return;
     }
 
-    uint32_t sectorAddress = APP_START_ADDR + kSectorSize;
+    uint32_t sectorAddress = APP_BASE_ADDR + kSectorSize;
     remainingBytes -= kSectorSize;
     _updateFile.seek(kSectorSize);
 
@@ -487,7 +487,7 @@ void Bootloader::perform_update()
         remainingBytes -= bytesToRead;
     }
 
-    DEBUG_PRINTF(INIT_MASK, "reading sector @ 0x%x\r\n", APP_START_ADDR);
+    DEBUG_PRINTF(INIT_MASK, "reading sector @ 0x%x\r\n", APP_BASE_ADDR);
 
     // Now that the rest of the image is successfully programmed, we can program the vector table sector.
     _updateFile.seek(0);
@@ -499,10 +499,10 @@ void Bootloader::perform_update()
     }
 
     // Program and verify the first sector.
-    if (!program_sector(APP_START_ADDR))
+    if (!program_sector(APP_BASE_ADDR))
     {
         // Verify failed, so erase app's vector table to prevent it from booting.
-        erase_sector(APP_START_ADDR);
+        erase_sector(APP_BASE_ADDR);
 
         return;
     }
@@ -595,7 +595,7 @@ bool Bootloader::have_valid_app()
     bool isCrcOk = false;
     if (areVectorsGood)
     {
-        MemoryStream appInFlash(reinterpret_cast<void *>(APP_START_ADDR), _app->appSize);
+        MemoryStream appInFlash(reinterpret_cast<void *>(APP_BASE_ADDR), _app->appSize);
         isCrcOk = check_crc(appInFlash);
     }
     return areVectorsGood && isCrcOk;

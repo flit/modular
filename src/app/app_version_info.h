@@ -37,8 +37,20 @@
 
 namespace slab {
 
-//! App starts at 64kB offset.
-#define APP_START_ADDR (0x10000)
+#if STANDALONE_BUILD
+
+    //! App starts at address 0 in a standalone build.
+    #define APP_BASE_ADDR (0)
+
+#else // STANDALONE_BUILD
+
+    //! App starts at 64kB offset.
+    #define APP_BASE_ADDR (0x10000)
+
+    //! Bootloader starts at address 0.
+    #define BOOTLOADER_BASE_ADDR (0x0)
+
+#endif // STANDALONE_BUILD
 
 /*!
  * @brief Version information.

@@ -488,9 +488,9 @@
 							<option id="ilg.gnuarmeclipse.managedbuild.cross.option.warnings.toerrors.1122654402" name="Generate errors instead of warnings (-Werror)" superClass="ilg.gnuarmeclipse.managedbuild.cross.option.warnings.toerrors" useByScannerDiscovery="true" value="true" valueType="boolean"/>
 							<option id="ilg.gnuarmeclipse.managedbuild.cross.option.warnings.other.266226774" name="Other warning flags" superClass="ilg.gnuarmeclipse.managedbuild.cross.option.warnings.other" useByScannerDiscovery="true" value="-Wno-unused-variable -Wno-multichar -Wno-format" valueType="string"/>
 							<option id="ilg.gnuarmeclipse.managedbuild.cross.option.optimization.nocommon.850091500" name="No common unitialized (-fno-common)" superClass="ilg.gnuarmeclipse.managedbuild.cross.option.optimization.nocommon" useByScannerDiscovery="true" value="true" valueType="boolean"/>
-							<option id="ilg.gnuarmeclipse.managedbuild.cross.option.optimization.lto.537286199" name="Link-time optimizer (-flto)" superClass="ilg.gnuarmeclipse.managedbuild.cross.option.optimization.lto" value="false" valueType="boolean"/>
-							<option id="ilg.gnuarmeclipse.managedbuild.cross.option.optimization.noinlinefunctions.287633628" name="Do not inline functions (-fno-inline-functions)" superClass="ilg.gnuarmeclipse.managedbuild.cross.option.optimization.noinlinefunctions" value="true" valueType="boolean"/>
-							<option id="ilg.gnuarmeclipse.managedbuild.cross.option.optimization.nomoveloopinvariants.145481333" name="Disable loop invariant move (-fno-move-loop-invariants)" superClass="ilg.gnuarmeclipse.managedbuild.cross.option.optimization.nomoveloopinvariants" value="true" valueType="boolean"/>
+							<option id="ilg.gnuarmeclipse.managedbuild.cross.option.optimization.lto.537286199" name="Link-time optimizer (-flto)" superClass="ilg.gnuarmeclipse.managedbuild.cross.option.optimization.lto" useByScannerDiscovery="true" value="false" valueType="boolean"/>
+							<option id="ilg.gnuarmeclipse.managedbuild.cross.option.optimization.noinlinefunctions.287633628" name="Do not inline functions (-fno-inline-functions)" superClass="ilg.gnuarmeclipse.managedbuild.cross.option.optimization.noinlinefunctions" useByScannerDiscovery="true" value="true" valueType="boolean"/>
+							<option id="ilg.gnuarmeclipse.managedbuild.cross.option.optimization.nomoveloopinvariants.145481333" name="Disable loop invariant move (-fno-move-loop-invariants)" superClass="ilg.gnuarmeclipse.managedbuild.cross.option.optimization.nomoveloopinvariants" useByScannerDiscovery="true" value="true" valueType="boolean"/>
 							<targetPlatform archList="all" binaryParser="org.eclipse.cdt.core.ELF" id="ilg.gnuarmeclipse.managedbuild.cross.targetPlatform.247617606" isAbstract="false" osList="all" superClass="ilg.gnuarmeclipse.managedbuild.cross.targetPlatform"/>
 							<builder autoBuildTarget="all" buildPath="${workspace_loc:/sampler_k22fa12}/Debug" cleanBuildTarget="clean" enableAutoBuild="false" enableCleanBuild="true" enabledIncrementalBuild="true" errorParsers="org.eclipse.cdt.core.GmakeErrorParser;org.eclipse.cdt.core.CWDLocator" id="ilg.gnuarmeclipse.managedbuild.cross.builder.665791277" incrementalBuildTarget="all" keepEnvironmentInBuildfile="false" managedBuildOn="true" name="Gnu Make Builder" parallelBuildOn="true" parallelizationNumber="optimal" superClass="ilg.gnuarmeclipse.managedbuild.cross.builder"/>
 							<tool command="${cross_prefix}${cross_c}${cross_suffix}" commandLinePattern="${COMMAND} ${cross_toolchain_flags} ${FLAGS} -c ${OUTPUT_FLAG} ${OUTPUT_PREFIX}${OUTPUT} ${INPUTS}" errorParsers="org.eclipse.cdt.core.GASErrorParser;org.eclipse.cdt.core.GCCErrorParser" id="ilg.gnuarmeclipse.managedbuild.cross.tool.assembler.693296564" name="Cross ARM GNU Assembler" superClass="ilg.gnuarmeclipse.managedbuild.cross.tool.assembler">
@@ -502,6 +502,7 @@
 							</tool>
 							<tool command="${cross_prefix}${cross_c}${cross_suffix}" commandLinePattern="${COMMAND} ${cross_toolchain_flags} ${FLAGS} -c ${OUTPUT_FLAG} ${OUTPUT_PREFIX}${OUTPUT} ${INPUTS}" errorParsers="org.eclipse.cdt.core.GLDErrorParser;org.eclipse.cdt.core.GCCErrorParser" id="ilg.gnuarmeclipse.managedbuild.cross.tool.c.compiler.1223007972" name="Cross ARM C Compiler" superClass="ilg.gnuarmeclipse.managedbuild.cross.tool.c.compiler">
 								<option id="ilg.gnuarmeclipse.managedbuild.cross.option.c.compiler.defs.1044946904" name="Defined symbols (-D)" superClass="ilg.gnuarmeclipse.managedbuild.cross.option.c.compiler.defs" useByScannerDiscovery="false" valueType="definedSymbols">
+									<listOptionValue builtIn="false" value="STANDALONE_BUILD=1"/>
 									<listOptionValue builtIn="false" value="AR_ENABLE_TICKLESS_IDLE=0"/>
 									<listOptionValue builtIn="false" value="CPU_MK22FX512AVLK12"/>
 									<listOptionValue builtIn="false" value="__FPU_PRESENT=1"/>
@@ -529,6 +530,7 @@
 							</tool>
 							<tool command="${cross_prefix}${cross_cpp}${cross_suffix}" commandLinePattern="${COMMAND} ${cross_toolchain_flags} ${FLAGS} -c ${OUTPUT_FLAG} ${OUTPUT_PREFIX}${OUTPUT} ${INPUTS}" errorParsers="org.eclipse.cdt.core.GLDErrorParser;org.eclipse.cdt.core.GCCErrorParser" id="ilg.gnuarmeclipse.managedbuild.cross.tool.cpp.compiler.1089571416" name="Cross ARM C++ Compiler" superClass="ilg.gnuarmeclipse.managedbuild.cross.tool.cpp.compiler">
 								<option id="ilg.gnuarmeclipse.managedbuild.cross.option.cpp.compiler.defs.179700143" name="Defined symbols (-D)" superClass="ilg.gnuarmeclipse.managedbuild.cross.option.cpp.compiler.defs" useByScannerDiscovery="false" valueType="definedSymbols">
+									<listOptionValue builtIn="false" value="STANDALONE_BUILD=1"/>
 									<listOptionValue builtIn="false" value="AR_ENABLE_TICKLESS_IDLE=0"/>
 									<listOptionValue builtIn="false" value="CPU_MK22FX512AVLK12"/>
 									<listOptionValue builtIn="false" value="__FPU_PRESENT=1"/>
@@ -737,6 +739,7 @@
 									<listOptionValue builtIn="false" value="&quot;${ProjDirPath}/../../src/CMSIS/Include&quot;"/>
 								</option>
 								<option id="ilg.gnuarmeclipse.managedbuild.cross.option.c.compiler.defs.146870128" name="Defined symbols (-D)" superClass="ilg.gnuarmeclipse.managedbuild.cross.option.c.compiler.defs" useByScannerDiscovery="false" valueType="definedSymbols">
+									<listOptionValue builtIn="false" value="STANDALONE_BUILD=1"/>
 									<listOptionValue builtIn="false" value="AR_ENABLE_TICKLESS_IDLE=0"/>
 									<listOptionValue builtIn="false" value="CPU_MK22FX512AVLK12"/>
 									<listOptionValue builtIn="false" value="__FPU_PRESENT=1"/>
@@ -763,6 +766,7 @@
 									<listOptionValue builtIn="false" value="&quot;${ProjDirPath}/../../src/CMSIS/Include&quot;"/>
 								</option>
 								<option id="ilg.gnuarmeclipse.managedbuild.cross.option.cpp.compiler.defs.1729437519" name="Defined symbols (-D)" superClass="ilg.gnuarmeclipse.managedbuild.cross.option.cpp.compiler.defs" useByScannerDiscovery="false" valueType="definedSymbols">
+									<listOptionValue builtIn="false" value="STANDALONE_BUILD=1"/>
 									<listOptionValue builtIn="false" value="AR_ENABLE_TICKLESS_IDLE=0"/>
 									<listOptionValue builtIn="false" value="CPU_MK22FX512AVLK12"/>
 									<listOptionValue builtIn="false" value="__FPU_PRESENT=1"/>
