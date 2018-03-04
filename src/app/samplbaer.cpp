@@ -1,6 +1,6 @@
 /* -*- coding: utf-8 -*- */
 /*
- * Copyright (c) 2016-2017 Chris Reed
+ * Copyright (c) 2016-2018 Chris Reed
  *
  * Redistribution and use in source and binary forms, with or without modification,
  * are permitted provided that the following conditions are met:
@@ -55,6 +55,7 @@
 #include <assert.h>
 #include <ctype.h>
 #include <utility>
+#include <memory>
 
 using namespace slab;
 
@@ -158,6 +159,21 @@ const AppVersionInfo g_appVersionInfo = {
         .sha = GIT_COMMIT_SHA,
     };
 
+#define VERSION_INFO_FILENAME "/version.txt"
+
+const char kVersionInfoTemplate[] = u8"\
+## samplbär version info ##\n\
+Application Version: %lu.%lu.%lu (%s)\n\
+Application Commit SHA-1: %s\n\
+Application CRC: 0x%08lx\n\
+Application Size: %lu\n\
+Bootloader Version: %lu.%lu.%lu (%s)\n\
+Bootloader Commit SHA-1: %s\n\
+Bootloader CRC: 0x%08lx\n\
+Bootloader Size: %lu\n";
+
+const uint32_t kVersionInfoBufferSize = 512;
+
 //------------------------------------------------------------------------------
 // Code
 //------------------------------------------------------------------------------
@@ -165,6 +181,66 @@ const AppVersionInfo g_appVersionInfo = {
 uint64_t ar_get_microseconds()
 {
     return Microseconds::get();
+}
+
+void slab::write_version_info_file()
+{
+    std::unique_ptr<char[]> buf{new char[kVersionInfoBufferSize]};
+    if (!buf)
+    {
+        return;
+    }
+
+    fs::File versionInfo(VERSION_INFO_FILENAME);
+    versionInfo.remove();
+    fs::error_t err = versionInfo.open(true, true);
+    if (err)
+    {
+        return;
+    }
+
+#if STANDALONE_BUILD
+    const AppVectors * appVectors = reinterpret_cast<const AppVectors *>(APP_BASE_ADDR);
+
+    snprintf(buf.get(), kVersionInfoBufferSize, kVersionInfoTemplate,
+        appVectors->appVersionInfo->version.major,
+        appVectors->appVersionInfo->version.minor,
+        appVectors->appVersionInfo->version.bugfix,
+        appVectors->appVersionInfo->versionString,
+        appVectors->appVersionInfo->sha,
+        appVectors->crc32,
+        appVectors->appSize,
+        0,
+        0,
+        0,
+        "",
+        "",
+        0,
+        0);
+#else // STANDALONE_BUILD
+    const AppVectors * appVectors = reinterpret_cast<const AppVectors *>(APP_BASE_ADDR);
+    const AppVectors * bootloaderVectors = reinterpret_cast<const AppVectors *>(BOOTLOADER_BASE_ADDR);
+
+    snprintf(buf.get(), kVersionInfoBufferSize, kVersionInfoTemplate,
+        appVectors->appVersionInfo->version.major,
+        appVectors->appVersionInfo->version.minor,
+        appVectors->appVersionInfo->version.bugfix,
+        appVectors->appVersionInfo->versionString,
+        appVectors->appVersionInfo->sha,
+        appVectors->crc32,
+        appVectors->appSize,
+        bootloaderVectors->appVersionInfo->version.major,
+        bootloaderVectors->appVersionInfo->version.minor,
+        bootloaderVectors->appVersionInfo->version.bugfix,
+        bootloaderVectors->appVersionInfo->versionString,
+        bootloaderVectors->appVersionInfo->sha,
+        bootloaderVectors->crc32,
+        bootloaderVectors->appSize);
+#endif // STANDALONE_BUILD
+
+    uint32_t actualCount = 0;
+    versionInfo.write(strlen(buf.get()), buf.get(), &actualCount);
+    versionInfo.close();
 }
 
 void flash_leds()

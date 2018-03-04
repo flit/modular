@@ -37,6 +37,32 @@
 using namespace slab;
 
 //------------------------------------------------------------------------------
+// Definitions
+//------------------------------------------------------------------------------
+
+namespace {
+
+//! @brief Details of each special file.
+struct SpecialFileInfo
+{
+    const char * name;
+    SpecialFile value;
+    bool deleteIt;
+};
+
+//------------------------------------------------------------------------------
+// Variables
+//------------------------------------------------------------------------------
+
+const SpecialFileInfo kSpecialFiles[] = {
+        { "firmware.bin",       kFirmwareUpdateFile,        false },
+        { "recalibrate.cmd",    kRecalibrateCmdFile,        true },
+        { "version.cmd",        kReportVersionCmdFile,      true },
+    };
+
+} // anon namespace
+
+//------------------------------------------------------------------------------
 // Code
 //------------------------------------------------------------------------------
 
@@ -100,36 +126,36 @@ void FileManager::scan_for_files()
         {
             continue;
         }
-        // Skip files.
+
+        char * name = info.lfname[0] ? info.lfname : info.fname;
+
+        // Handle special files.
         if ((info.fattrib & AM_DIR) != AM_DIR)
         {
-            continue;
+            _check_special_files(name);
         }
-
-        char * dirName = info.lfname[0] ? info.lfname : info.fname;
-
         // Look for '[0-9].*' directories.
-        if (!isdigit(dirName[0]))
+        else if (isdigit(name[0]))
         {
-            continue;
-        }
-
-        uint32_t bankNumber = strtoul(dirName, nullptr, 10);
-        if (bankNumber > 0 && bankNumber <= kMaxBankCount)
-        {
-            --bankNumber;
-            snprintf(_dirPath, sizeof(_dirPath), "/%s", dirName);
-            _scan_bank_directory(bankNumber, _dirPath);
+            uint32_t bankNumber = strtoul(name, nullptr, 10);
+            if (bankNumber > 0 && bankNumber <= kMaxBankCount)
+            {
+                --bankNumber;
+                _scan_bank_directory(bankNumber, name);
+            }
         }
     }
 }
 
-void FileManager::_scan_bank_directory(uint32_t bankNumber, const char * dirPath)
+void FileManager::_scan_bank_directory(uint32_t bankNumber, const char * dirName)
 {
-    fs::DirectoryIterator dir = _fs.open_dir(dirPath);
+    _path.set("/");
+    _path.append(dirName);
+
+    fs::DirectoryIterator dir = _fs.open_dir(_path);
     FILINFO info;
 
-    _banks[bankNumber].set_path(dirPath);
+    _banks[bankNumber].set_path(_path);
 
     while (dir.next(&info))
     {
@@ -154,10 +180,13 @@ void FileManager::_scan_bank_directory(uint32_t bankNumber, const char * dirPath
             if (channel > 0 && channel <= kVoiceCount)
             {
                 --channel;
-                snprintf(_filePath, sizeof(_filePath), "%s/%s", dirPath, fileName);
-                SampleBank::FilePath path(_filePath);
 
-                _banks[bankNumber].get_sample(channel).set_path(path);
+                _path.set("/");
+                _path.append(dirName);
+                _path.append("/");
+                _path.append(fileName);
+
+                _banks[bankNumber].get_sample(channel).set_path(_path);
             }
         }
     }
@@ -165,6 +194,34 @@ void FileManager::_scan_bank_directory(uint32_t bankNumber, const char * dirPath
     if (_banks[bankNumber].is_valid())
     {
         _banks[bankNumber].load_params();
+    }
+}
+
+void FileManager::_check_special_files(const char * name)
+{
+    // Scan over our list of special files.
+    uint32_t i;
+    for (i = 0; i < ARRAY_SIZE(kSpecialFiles); ++i)
+    {
+        const SpecialFileInfo & info = kSpecialFiles[i];
+
+        // Check if the filename matches.
+        if (strncmp(name, info.name, strlen(info.name)) == 0)
+        {
+            // Send event to UI to handle the file.
+            UI::get().send_event(UIEvent(kSpecialFileDetected).set_int_value(info.value));
+
+            // Delete the file if requested.
+            if (info.deleteIt)
+            {
+                _path.set("/");
+                _path.append(name);
+                fs::File fileToDelete(_path);
+                fileToDelete.remove();
+            }
+
+            return;
+        }
     }
 }
 

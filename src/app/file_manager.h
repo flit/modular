@@ -64,11 +64,11 @@ public:
 protected:
     fs::FileSystem _fs;
     SampleBank _banks[kMaxBankCount];
-    char _dirPath[_MAX_LFN + 1];
-    char _filePath[_MAX_LFN + 1];
+    fs::Path _path;
 
     void _reset_banks();
-    void _scan_bank_directory(uint32_t bankNumber, const char * dirPath);
+    void _scan_bank_directory(uint32_t bankNumber, const char * dirName);
+    void _check_special_files(const char * name);
 };
 
 } // namespace slab

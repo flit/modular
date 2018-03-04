@@ -47,6 +47,7 @@ enum UIEventType : uint16_t
     kCardInserted,
     kCardRemoved,
     kCardLowActivity,
+    kSpecialFileDetected,
 };
 
 enum UIEventSource : uint16_t
@@ -58,6 +59,13 @@ enum UIEventSource : uint16_t
     kPot2,
     kPot3,
     kPot4
+};
+
+enum SpecialFile : int32_t
+{
+    kFirmwareUpdateFile,
+    kRecalibrateCmdFile,
+    kReportVersionCmdFile,
 };
 
 struct UIEvent

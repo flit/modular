@@ -468,6 +468,10 @@ void UI::ui_thread()
                     handle_card_event(event);
                     break;
 
+                case kSpecialFileDetected:
+                    handle_special_file(event);
+                    break;
+
                 default:
                     break;
             }
@@ -694,6 +698,32 @@ void UI::handle_card_event(const UIEvent & event)
             {
                 check_pending_bank_save();
             }
+            break;
+
+        default:
+            break;
+    }
+}
+
+void UI::handle_special_file(const UIEvent & event)
+{
+    switch (event.intValue)
+    {
+        case kFirmwareUpdateFile:
+            // Immediately reboot into the bootloader if a firmware update file is detected.
+            NVIC_SystemReset();
+            break;
+
+        case kRecalibrateCmdFile:
+            // Erase the persistent data store, including calibration settings.
+            PersistentDataStore::get().reset();
+
+            // Then reboot to start calibration process.
+            NVIC_SystemReset();
+            break;
+
+        case kReportVersionCmdFile:
+            write_version_info_file();
             break;
 
         default:

@@ -94,6 +94,9 @@ extern CardManager g_cardManager;
 extern FileManager g_fileManager;
 extern adc16_config_t g_adcConfig;
 
+//! Write a text file containing version details.
+void write_version_info_file();
+
 } // namespace slab
 
 #endif // _SAMPLBAER_H_
