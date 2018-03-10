@@ -105,10 +105,12 @@ inline T constrained(T v, T _min, T _max)
 #define DECLARE_ELAPSED_TIME(name) uint64_t start_ ## name ## _time = 0ULL; static uint64_t elapsed_ ## name ## _time __attribute__((used)) = 0ULL
 #define START_ELAPSED_TIME(name) start_ ## name ## _time = Microseconds::get()
 #define END_ELAPSED_TIME(name) elapsed_ ## name ## _time = Microseconds::get() - start_ ## name ## _time
+#define GET_ELAPSED_TIME(name) (elapsed_ ## name ## _time)
 #else // DEBUG
 #define DECLARE_ELAPSED_TIME(name)
 #define START_ELAPSED_TIME(name)
 #define END_ELAPSED_TIME(name)
+#define GET_ELAPSED_TIME(name) (0)
 #endif // DEBUG
 
 } // namespace slab
