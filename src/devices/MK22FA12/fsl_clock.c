@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2015, Freescale Semiconductor, Inc.
+ * Copyright (c) 2016 - 2017 , NXP
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without modification,
@@ -189,17 +190,36 @@ static uint32_t CLOCK_GetPll0RefFreq(void);
  */
 static uint8_t CLOCK_GetOscRangeFromFreq(uint32_t freq);
 
+/*******************************************************************************
+ * Code
+ ******************************************************************************/
+
+#ifndef MCG_USER_CONFIG_FLL_STABLE_DELAY_EN
 /*!
  * @brief Delay function to wait FLL stable.
  *
  * Delay function to wait FLL stable in FEI mode or FEE mode, should wait at least
  * 1ms. Every time changes FLL setting, should wait this time for FLL stable.
  */
-static void CLOCK_FllStableDelay(void);
-
-/*******************************************************************************
- * Code
- ******************************************************************************/
+void CLOCK_FllStableDelay(void)
+{
+    /*
+       Should wait at least 1ms. Because in these modes, the core clock is 100MHz
+       at most, so this function could obtain the 1ms delay.
+     */
+    volatile uint32_t i = 30000U;
+    while (i--)
+    {
+        __NOP();
+    }
+}
+#else  /* With MCG_USER_CONFIG_FLL_STABLE_DELAY_EN defined. */
+/* Once user defines the MCG_USER_CONFIG_FLL_STABLE_DELAY_EN to use their own delay function, he has to
+ * create his own CLOCK_FllStableDelay() function in application code. Since the clock functions in this
+ * file would call the CLOCK_FllStableDelay() regardness how it is defined.
+ */
+extern void CLOCK_FllStableDelay(void);
+#endif /* MCG_USER_CONFIG_FLL_STABLE_DELAY_EN */
 
 static uint32_t CLOCK_GetMcgExtClkFreq(void)
 {
@@ -331,19 +351,6 @@ static uint8_t CLOCK_GetOscRangeFromFreq(uint32_t freq)
     }
 
     return range;
-}
-
-static void CLOCK_FllStableDelay(void)
-{
-    /*
-       Should wait at least 1ms. Because in these modes, the core clock is 100MHz
-       at most, so this function could obtain the 1ms delay.
-     */
-    volatile uint32_t i = 30000U;
-    while (i--)
-    {
-        __NOP();
-    }
 }
 
 uint32_t CLOCK_GetOsc0ErClkFreq(void)
@@ -1689,7 +1696,7 @@ status_t CLOCK_SetMcgConfig(const mcg_config_t *config)
     if (MCG_C7_OSCSEL_VAL != config->oscsel)
     {
         /* If external clock is in use, change to FEI first. */
-        if (!(MCG->S & MCG_S_IRCST_MASK))
+        if (kMCG_FllSrcExternal == MCG_S_IREFST_VAL)
         {
             CLOCK_ExternalModeToFbeModeQuick();
             CLOCK_SetFeiMode(config->dmx32, config->drs, (void (*)(void))0);

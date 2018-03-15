@@ -59,7 +59,7 @@ void init_board()
     // Disable MPU.
     if (SIM->SCGC7 & SIM_SCGC7_MPU_MASK)
     {
-        MPU->CESR = 0;
+        SYSMPU->CESR = 0;
         SIM->SCGC7 &= ~SIM_SCGC7_MPU_MASK;
     }
 

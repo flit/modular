@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2015, Freescale Semiconductor, Inc.
+ * Copyright (c) 2016 - 2017 , NXP
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without modification,
@@ -248,9 +249,9 @@ extern uint32_t g_xtal32Freq;
     }
 
 /*! @brief Clock ip name array for MPU. */
-#define MPU_CLOCKS  \
-    {               \
-        kCLOCK_Mpu0 \
+#define SYSMPU_CLOCKS  \
+    {                  \
+        kCLOCK_Sysmpu0 \
     }
 
 /*! @brief Clock ip name array for CMP. */
@@ -402,7 +403,7 @@ typedef enum _clock_ip_name
 
     kCLOCK_Flexbus0 = CLK_GATE_DEFINE(0x1040U, 0U),
     kCLOCK_Dma0 = CLK_GATE_DEFINE(0x1040U, 1U),
-    kCLOCK_Mpu0 = CLK_GATE_DEFINE(0x1040U, 2U),
+    kCLOCK_Sysmpu0 = CLK_GATE_DEFINE(0x1040U, 2U),
 } clock_ip_name_t;
 
 /*!@brief SIM configuration structure for clock setting. */
