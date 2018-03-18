@@ -51,6 +51,9 @@ class SamplerVoice;
  */
 struct SampleBuffer
 {
+    //! @brief Extra samples required for interpolation.
+    static const uint32_t kInterpolationFrameCount = 3;
+
     //! @brief States of the buffer.
     enum class State : uint8_t
     {
@@ -73,7 +76,8 @@ struct SampleBuffer
     uint8_t number; //!< Sample buffer number, mostly for debugging.
     State state;    //!< Current state of the buffer.
     bool reread;    //!< Whether to auto re-queue the buffer for reading after current read is finished.
-    int16_t * data; //!< Pointer to the buffer's data. The size is #SampleBufferManager::kBufferSize.
+    int16_t * data; //!< Pointer to the buffer's data, post interpolation frames. The size is #kVoiceBufferSize.
+    int16_t * dataWithInterpolationFrames;  //!< Pointer to interpolation frames and data that follows.
     uint32_t startFrame;    //!< Frame number within the source file for this buffer's first frame.
     uint32_t zeroSnapOffset;    //!< Offset frame snapped to zero. This is frame from which we should start reading. Only applies to the file start buffer (will be zero for all others).
     uint32_t frameCount;    //!< Number of valid frames within this buffer.
@@ -129,22 +133,10 @@ struct SampleBuffer
         else
         {
             // Read the 4 points used for interpolation.
-            float xm1;
-            if (intOffset > 2)
-            {
-                // All four points come from this buffer.
-                xm1 = data[intOffset - 3];
-                x0 = data[intOffset - 2];
-                x1 = data[intOffset - 1];
-            }
-            else
-            {
-                // Mix of points from both the previous buffer and this one.
-                xm1 = preBufferFrames[intOffset];
-                x0 = (intOffset > 1) ? data[intOffset - 2] : preBufferFrames[intOffset + 1];
-                x1 = (intOffset > 0) ? data[intOffset - 1] : preBufferFrames[intOffset + 2];
-            }
-            float x2 = data[intOffset];
+            float xm1 = dataWithInterpolationFrames[intOffset];
+            x0 = dataWithInterpolationFrames[intOffset + 1];
+            x1 = dataWithInterpolationFrames[intOffset + 2];
+            float x2 = dataWithInterpolationFrames[intOffset + 3];
 
             if (mode == InterpolationMode::kCubic)
             {
@@ -174,10 +166,6 @@ struct SampleBuffer
 class SampleBufferManager
 {
 public:
-    static const uint32_t kBufferCount = 4; //!< Number of buffers available to cycle through sample data. The first one will always be used to hold the first #kBufferSize frames of the sample.
-    static const uint32_t kBufferSize = 1024; //!< Number of frames per buffer.
-    static_assert(kBufferSize % kAudioBufferSize == 0, "sai buffers must fit evenly in voice buffers");
-
     SampleBufferManager();
     ~SampleBufferManager()=default;
 
@@ -215,11 +203,11 @@ public:
     uint32_t get_buffered_samples() const;
 
 protected:
-    typedef SimpleQueue<SampleBuffer*, kBufferCount> BufferQueue;
+    typedef SimpleQueue<SampleBuffer*, kVoiceBufferCount> BufferQueue;
 
     SamplerVoice * _voice;
     uint32_t _number;
-    SampleBuffer _buffer[kBufferCount];
+    SampleBuffer _buffer[kVoiceBufferCount];
     BufferQueue _fullBuffers;
     BufferQueue _emptyBuffers;
     Ar::Mutex _primeMutex;
@@ -438,8 +426,7 @@ protected:
     static AudioBuffer s_workBuffer;
     static AudioBuffer s_workBuffer2;
 
-    static const uint32_t kInterpolationBufferLength = 3;
-    float _interpolationBuffer[kInterpolationBufferLength]; //!< Last few samples from previous buffer.
+    float _interpolationBuffer[SampleBuffer::kInterpolationFrameCount]; //!< Last few samples from previous buffer.
 
     void _reset_voice();
 

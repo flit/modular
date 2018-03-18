@@ -90,7 +90,7 @@ void init_fs();
 namespace slab {
 
 int16_t g_outBuf[kAudioBufferCount][kAudioBufferSize * kAudioChannelCount] __attribute__ ((section(".buffers"),aligned(4)));
-int16_t g_sampleBufs[kVoiceCount][SampleBufferManager::kBufferCount * SampleBufferManager::kBufferSize] __attribute__ ((section(".buffers"),aligned(4)));
+int16_t g_sampleBufs[kVoiceCount][kVoiceBufferCount * (kVoiceBufferSize + SampleBuffer::kInterpolationFrameCount)] __attribute__ ((section(".buffers"),aligned(4)));
 
 Ar::Thread * g_initThread = NULL;
 

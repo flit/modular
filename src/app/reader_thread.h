@@ -166,7 +166,7 @@ public:
     void request_lull_event() { _lullEventRequested = true; }
 
 protected:
-    int16_t _readBuf[SampleBufferManager::kBufferSize * 2];
+    int16_t _readBuf[kVoiceBufferSize * 2];
     Ar::ThreadWithStack<kReaderThreadStack> _thread;
     Ar::Semaphore _sem;
     ReadRequestQueue _queue;

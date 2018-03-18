@@ -99,10 +99,11 @@ void SampleBufferManager::init(SamplerVoice * voice, int16_t * buffer)
 
     // Init invariant buffer fields.
     uint32_t i;
-    for (i = 0; i < kBufferCount; ++i)
+    for (i = 0; i < kVoiceBufferCount; ++i)
     {
         _buffer[i].number = i;
-        _buffer[i].data = &buffer[i * kBufferSize];
+        _buffer[i].dataWithInterpolationFrames = &buffer[i * (kVoiceBufferSize + SampleBuffer::kInterpolationFrameCount)];
+        _buffer[i].data = _buffer[i].dataWithInterpolationFrames + SampleBuffer::kInterpolationFrameCount;
     }
 
     set_file(0);
@@ -112,7 +113,7 @@ void SampleBufferManager::init(SamplerVoice * voice, int16_t * buffer)
 void SampleBufferManager::_reset_buffers()
 {
     uint32_t i;
-    for (i = 0; i < kBufferCount; ++i)
+    for (i = 0; i < kVoiceBufferCount; ++i)
     {
         _buffer[i].set_unused();
     }
@@ -123,7 +124,7 @@ void SampleBufferManager::set_file(uint32_t totalFrames)
     _startSample = 0;
     _totalSamples = totalFrames;
     _endSample = totalFrames;
-    _activeBufferCount = min(round_up_div(_totalSamples, kBufferSize), kBufferCount);
+    _activeBufferCount = min(round_up_div(_totalSamples, kVoiceBufferSize), kVoiceBufferCount);
     _currentBuffer = nullptr;
     _samplesPlayed = 0;
     _samplesRead = 0;
@@ -146,7 +147,7 @@ void SampleBufferManager::prime()
 
     // Reset state.
     _samplesPlayed = _startSample;
-    _samplesRead = _didReadFileStart ? min(_startSample + kBufferSize, _totalSamples) : _startSample;
+    _samplesRead = _didReadFileStart ? min(_startSample + kVoiceBufferSize, _totalSamples) : _startSample;
     _samplesQueued = _samplesRead;
 
     // Clear buffers queues.
@@ -202,7 +203,7 @@ SampleBuffer * SampleBufferManager::get_current_buffer()
 void SampleBufferManager::_queue_buffer_for_read(SampleBuffer * buffer)
 {
     buffer->startFrame = _samplesQueued;
-    buffer->frameCount = min(kBufferSize, _endSample - _samplesQueued);
+    buffer->frameCount = min(kVoiceBufferSize, _endSample - _samplesQueued);
     buffer->reread = false;
     buffer->state = SampleBuffer::State::kFree;
 
@@ -329,6 +330,9 @@ void SampleBufferManager::enqueue_full_buffer(SampleBuffer * buffer)
         buffer->state = SampleBuffer::State::kReady;
         buffer->zeroSnapOffset = 0;
 
+        // Clear interpolation frames. The renderer will copy interpolation frames between buffers.
+        std::fill_n(buffer->dataWithInterpolationFrames, SampleBuffer::kInterpolationFrameCount, 0);
+
         DEBUG_PRINTF(QUEUE_MASK, "V%lu: queuing b%d for play\r\n", _number, buffer->number);
         _fullBuffers.put(buffer);
 
@@ -419,11 +423,11 @@ void SampleBufferManager::set_start_end_sample(int32_t start, int32_t end)
     _endSample = constrained(uend, ustart, _totalSamples);
 
     // Update number of used buffers.
-    _activeBufferCount = min(round_up_div(get_active_samples(), kBufferSize), kBufferCount);
+    _activeBufferCount = min(round_up_div(get_active_samples(), kVoiceBufferSize), kVoiceBufferCount);
 
     // Set any unused buffers to kUnused state.
     uint32_t i;
-    for (i = _activeBufferCount; i < kBufferCount; ++i)
+    for (i = _activeBufferCount; i < kVoiceBufferCount; ++i)
     {
         _buffer[i].set_unused();
     }
@@ -541,7 +545,7 @@ void SamplerVoice::_reset_voice()
     _readHead = 0.0f;
     _volumeEnv.trigger();
     _pitchEnv.trigger();
-    std::fill_n(&_interpolationBuffer[0], kInterpolationBufferLength, 0);
+    std::fill_n(&_interpolationBuffer[0], SampleBuffer::kInterpolationFrameCount, 0);
 }
 
 void SamplerVoice::prime()
@@ -711,8 +715,13 @@ void SamplerVoice::render(int16_t * data, uint32_t frameCount)
         {
             START_ELAPSED_TIME(retire);
 
+            // Adjust read head.
             readHead -= bufferFrameCount;
-            std::copy_n(&bufferData[bufferFrameCount - kInterpolationBufferLength], kInterpolationBufferLength, _interpolationBuffer);
+
+            // Temporarily save last few frames from this buffer.
+            std::copy_n(&bufferData[bufferFrameCount - SampleBuffer::kInterpolationFrameCount],
+                        SampleBuffer::kInterpolationFrameCount,
+                        _interpolationBuffer);
 
             _manager.retire_buffer(voiceBuffer);
 
@@ -732,6 +741,11 @@ void SamplerVoice::render(int16_t * data, uint32_t frameCount)
             }
             bufferData = voiceBuffer->data;
             bufferFrameCount = voiceBuffer->frameCount;
+
+            // Copy saved frames to beginning of new buffer.
+            std::copy_n(_interpolationBuffer,
+                        SampleBuffer::kInterpolationFrameCount,
+                        voiceBuffer->dataWithInterpolationFrames);
 
             END_ELAPSED_TIME(retire);
         }
@@ -791,9 +805,24 @@ void SamplerVoice::render(int16_t * data, uint32_t frameCount)
     // Did we finish this buffer?
     if (_readHead >= bufferFrameCount && voiceBuffer)
     {
-        std::copy_n(&bufferData[bufferFrameCount - kInterpolationBufferLength], kInterpolationBufferLength, _interpolationBuffer);
-        _manager.retire_buffer(voiceBuffer);
+        // Adjust read head.
         _readHead -= bufferFrameCount;
+
+        // Temporarily save last few frames from this buffer.
+        std::copy_n(&bufferData[bufferFrameCount - SampleBuffer::kInterpolationFrameCount],
+                    SampleBuffer::kInterpolationFrameCount,
+                    _interpolationBuffer);
+
+        _manager.retire_buffer(voiceBuffer);
+
+        // Copy saved frames to beginning of new buffer.
+        voiceBuffer = _manager.get_current_buffer();
+        if (voiceBuffer)
+        {
+            std::copy_n(_interpolationBuffer,
+                        SampleBuffer::kInterpolationFrameCount,
+                        voiceBuffer->dataWithInterpolationFrames);
+        }
     }
     assert(_readHead < bufferFrameCount);
 

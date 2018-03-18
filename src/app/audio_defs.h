@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017 Immo Software
+ * Copyright (c) 2017-2018 Immo Software
  *
  * Redistribution and use in source and binary forms, with or without modification,
  * are permitted provided that the following conditions are met:
@@ -45,6 +45,14 @@ enum : uint32_t {
     kBitsPerSample = 16,
     kVoiceCount = 4,
 };
+
+//! @brief Number of buffers available to cycle through sample data.
+//!
+//! The first one will always be used to hold the first #kBufferSize frames of the sample.
+static const uint32_t kVoiceBufferCount = 4;
+
+//! @brief Number of frames per buffer.
+static const uint32_t kVoiceBufferSize = 1024;
 
 const float kSampleRate = 48000.0f; // 48kHz
 
