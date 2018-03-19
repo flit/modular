@@ -171,7 +171,7 @@ static const int8_t kVoiceToBankChannelMap[kVoiceModeCount][kVoiceCount] = {
     };
 
 //! Number of edit pages.
-static const uint32_t kEditPageCount = 3;
+static const uint32_t kEditPageCount = 2;
 
 //! Map from pot number within an edit page to voice parameter.
 static const VoiceParameters::ParameterName kPotToParameterMap[kEditPageCount][kVoiceCount] = {
@@ -185,14 +185,14 @@ static const VoiceParameters::ParameterName kPotToParameterMap[kEditPageCount][k
                 [0] = VoiceParameters::kPitchEnvAttack,
                 [1] = VoiceParameters::kPitchEnvRelease,
                 [2] = VoiceParameters::kPitchEnvDepth,
-                [3] = VoiceParameters::kUnused,
+                [3] = VoiceParameters::kVolumeEnvAttack,
             },
-        [2] = {
-                [0] = VoiceParameters::kVolumeEnvAttack,
-                [1] = VoiceParameters::kVolumeEnvRelease,
-                [2] = VoiceParameters::kUnused,
-                [3] = VoiceParameters::kUnused,
-            },
+//         [2] = {
+//                 [0] = VoiceParameters::kVolumeEnvAttack,
+//                 [1] = VoiceParameters::kVolumeEnvRelease,
+//                 [2] = VoiceParameters::kUnused,
+//                 [3] = VoiceParameters::kUnused,
+//             },
     };
 
 //! Number of 100 ms ticks over which the edit page blink patterns are played.
@@ -202,7 +202,7 @@ static const uint32_t kEditPageBlinkPatternLength = 15;
 static const uint8_t kEditPageBlinkStates[kEditPageCount][kEditPageBlinkPatternLength] = {
         [0] = { 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, },
         [1] = { 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 0, 0, },
-        [2] = { 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, },
+//         [2] = { 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, },
     };
 
 //------------------------------------------------------------------------------
