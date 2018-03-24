@@ -63,7 +63,6 @@
 							<tool id="ilg.gnuarmeclipse.managedbuild.cross.tool.c.compiler.1180604882" name="Cross ARM GNU C Compiler" superClass="ilg.gnuarmeclipse.managedbuild.cross.tool.c.compiler">
 								<option id="ilg.gnuarmeclipse.managedbuild.cross.option.c.compiler.defs.1878410776" name="Defined symbols (-D)" superClass="ilg.gnuarmeclipse.managedbuild.cross.option.c.compiler.defs" useByScannerDiscovery="true" valueType="definedSymbols">
 									<listOptionValue builtIn="false" value="DEBUG_PRINTF_TO_UART=1"/>
-									<listOptionValue builtIn="false" value="AR_ENABLE_TICKLESS_IDLE=0"/>
 									<listOptionValue builtIn="false" value="CPU_MK22FX512AVLK12"/>
 									<listOptionValue builtIn="false" value="__FPU_PRESENT=1"/>
 									<listOptionValue builtIn="false" value="DEBUG"/>
@@ -89,7 +88,6 @@
 							<tool id="ilg.gnuarmeclipse.managedbuild.cross.tool.cpp.compiler.1948098275" name="Cross ARM GNU C++ Compiler" superClass="ilg.gnuarmeclipse.managedbuild.cross.tool.cpp.compiler">
 								<option id="ilg.gnuarmeclipse.managedbuild.cross.option.cpp.compiler.defs.1452581618" name="Defined symbols (-D)" superClass="ilg.gnuarmeclipse.managedbuild.cross.option.cpp.compiler.defs" useByScannerDiscovery="true" valueType="definedSymbols">
 									<listOptionValue builtIn="false" value="DEBUG_PRINTF_TO_UART=1"/>
-									<listOptionValue builtIn="false" value="AR_ENABLE_TICKLESS_IDLE=0"/>
 									<listOptionValue builtIn="false" value="CPU_MK22FX512AVLK12"/>
 									<listOptionValue builtIn="false" value="__FPU_PRESENT=1"/>
 									<listOptionValue builtIn="false" value="DEBUG"/>
@@ -220,7 +218,6 @@
 							</tool>
 							<tool id="ilg.gnuarmeclipse.managedbuild.cross.tool.c.compiler.1461210321" name="Cross ARM GNU C Compiler" superClass="ilg.gnuarmeclipse.managedbuild.cross.tool.c.compiler">
 								<option id="ilg.gnuarmeclipse.managedbuild.cross.option.c.compiler.defs.1579167424" name="Defined symbols (-D)" superClass="ilg.gnuarmeclipse.managedbuild.cross.option.c.compiler.defs" useByScannerDiscovery="true" valueType="definedSymbols">
-									<listOptionValue builtIn="false" value="AR_ENABLE_TICKLESS_IDLE=0"/>
 									<listOptionValue builtIn="false" value="CPU_MK22FX512AVLK12"/>
 									<listOptionValue builtIn="false" value="__FPU_PRESENT=1"/>
 									<listOptionValue builtIn="false" value="NDEBUG"/>
@@ -245,7 +242,6 @@
 							</tool>
 							<tool id="ilg.gnuarmeclipse.managedbuild.cross.tool.cpp.compiler.232067189" name="Cross ARM GNU C++ Compiler" superClass="ilg.gnuarmeclipse.managedbuild.cross.tool.cpp.compiler">
 								<option id="ilg.gnuarmeclipse.managedbuild.cross.option.cpp.compiler.defs.1114781895" name="Defined symbols (-D)" superClass="ilg.gnuarmeclipse.managedbuild.cross.option.cpp.compiler.defs" useByScannerDiscovery="true" valueType="definedSymbols">
-									<listOptionValue builtIn="false" value="AR_ENABLE_TICKLESS_IDLE=0"/>
 									<listOptionValue builtIn="false" value="CPU_MK22FX512AVLK12"/>
 									<listOptionValue builtIn="false" value="__FPU_PRESENT=1"/>
 									<listOptionValue builtIn="false" value="NDEBUG"/>
