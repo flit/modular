@@ -72,7 +72,7 @@
     //!
     //! Set to 1 to enable. The default is to disable idle sleep for debug builds, enabled for
     //! release builds.
-    #define AR_ENABLE_IDLE_SLEEP (!(DEBUG))
+    #define AR_ENABLE_IDLE_SLEEP (0) //(!(DEBUG))
 #endif
 
 #if !defined(AR_ENABLE_SYSTEM_LOAD)
@@ -134,12 +134,12 @@
 
 #if !defined(AR_ENABLE_TICKLESS_IDLE)
     //! @brief Set to 1 to enable tickless idle.
-    #define AR_ENABLE_TICKLESS_IDLE (1)
+    #define AR_ENABLE_TICKLESS_IDLE (0)
 #endif
 
 #if !defined(AR_DEFERRED_ACTION_QUEUE_SIZE)
     //! @brief Maximum number of actions deferred from IRQ context.
-    #define AR_DEFERRED_ACTION_QUEUE_SIZE (8)
+    #define AR_DEFERRED_ACTION_QUEUE_SIZE (16)
 #endif
 
 #if !defined(AR_RUNLOOP_FUNCTION_QUEUE_SIZE)
