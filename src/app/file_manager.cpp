@@ -33,6 +33,7 @@
 #include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <memory>
 
 using namespace slab;
 
@@ -114,6 +115,7 @@ bool FileManager::has_bank(uint32_t bankNumber) const
 
 void FileManager::scan_for_files()
 {
+    std::unique_ptr<fs::Path> dirPath{new fs::Path};
     fs::DirectoryIterator dir = _fs.open_dir("/");
     FILINFO info;
 
@@ -141,7 +143,11 @@ void FileManager::scan_for_files()
             if (bankNumber > 0 && bankNumber <= kMaxBankCount)
             {
                 --bankNumber;
-                _scan_bank_directory(bankNumber, name);
+
+                dirPath->set("/");
+                dirPath->append(name);
+
+                _scan_bank_directory(bankNumber, dirPath->get());
             }
         }
     }
@@ -149,10 +155,7 @@ void FileManager::scan_for_files()
 
 void FileManager::_scan_bank_directory(uint32_t bankNumber, const char * dirName)
 {
-    _path.set("/");
-    _path.append(dirName);
-
-    fs::DirectoryIterator dir = _fs.open_dir(_path);
+    fs::DirectoryIterator dir = _fs.open_dir(dirName);
     FILINFO info;
 
     _banks[bankNumber].set_path(_path);
@@ -181,8 +184,7 @@ void FileManager::_scan_bank_directory(uint32_t bankNumber, const char * dirName
             {
                 --channel;
 
-                _path.set("/");
-                _path.append(dirName);
+                _path.set(dirName);
                 _path.append("/");
                 _path.append(fileName);
 
