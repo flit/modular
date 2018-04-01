@@ -245,7 +245,7 @@ void UI::init()
 {
     // Create UI thread and its runloop.
     _thread.init("ui", this, &UI::ui_thread, kUIThreadPriority, kArSuspendThread);
-    _runloop.init("ui", &_thread);
+    _runloop.init("ui");
 
     // Create event queue and add it to the runloop.
     _eventQueue.init("events");

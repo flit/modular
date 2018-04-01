@@ -78,7 +78,7 @@ void CardManager::init()
 
     // Create and start up card manager thread.
     _thread.init("card", this, &CardManager::card_thread, kCardThreadPriority, kArSuspendThread);
-    _runloop.init("card", &_thread);
+    _runloop.init("card");
 
     // Set up card detection timer.
     _cardDetectTimer.init("card-detect", this, &CardManager::handle_card_detect_timer, kArPeriodicTimer, kCardDetectInterval_ms);
