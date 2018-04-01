@@ -307,8 +307,10 @@ status_t AudioOutput::enqueue_tcd(edma_handle_t *handle, const edma_tcd_t *tcd)
         */
         if (tcdRegs->DLAST_SGA == (uint32_t)currentTcd)
         {
+            /* Clear the DREQ bits for the dynamic scatter gather */
+            tcdRegs->CSR |= DMA_CSR_DREQ_MASK;
             /* Enable scatter/gather also in the TCD registers. */
-            csr = (tcdRegs->CSR | DMA_CSR_ESG_MASK) & ~DMA_CSR_DREQ_MASK;
+            csr = tcdRegs->CSR | DMA_CSR_ESG_MASK;
 
             /* Must write the CSR register one-time, because the transfer maybe finished anytime. */
             tcdRegs->CSR = csr;
@@ -325,6 +327,7 @@ status_t AudioOutput::enqueue_tcd(edma_handle_t *handle, const edma_tcd_t *tcd)
             */
             if (tcdRegs->CSR & DMA_CSR_ESG_MASK)
             {
+                tcdRegs->CSR &= ~DMA_CSR_DREQ_MASK;
                 return kStatus_Success;
             }
 
