@@ -508,7 +508,7 @@ void load_thread(void * arg)
     {
         uint32_t ms = ar_get_millisecond_count();
 
-        static char buffer[128];
+        static char buffer[300];
         ar_thread_status_t report[10];
 
         uint32_t count = ar_thread_get_report(report, 10);
@@ -521,8 +521,10 @@ void load_thread(void * arg)
             uint32_t percentFrac = report[i].m_cpu - percentInt * 10;
             assert(l < sizeof(buffer));
             l += snprintf(buffer + (l - 1), sizeof(buffer) - l,
-                "%2lu.%1lu%% %-8s%s",
-                percentInt, percentFrac, report[i].m_name,
+                "%2lu.%1lu%% %4lu/%-4lu %-8s%s",
+                percentInt, percentFrac,
+                report[i].m_maxStackUsed, report[i].m_stackSize,
+                report[i].m_name,
                 (i == (count - 1) ? "\n" : ""));
         }
         printf(buffer);
