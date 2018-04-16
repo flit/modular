@@ -29,8 +29,9 @@
 #if !defined(_FADER_LED_H_)
 #define _FADER_LED_H_
 
-#include <stdint.h>
+#include "utility.h"
 #include "fsl_ftm.h"
+#include <stdint.h>
 
 //------------------------------------------------------------------------------
 // Definitions
@@ -73,7 +74,7 @@ public:
 
     virtual void set_duty_cycle(uint32_t percent) override
     {
-        _dutyCycle = kCie1931[percent];
+        _dutyCycle = kCie1931[constrained(percent, 0ul, 100ul)];
         FTM_UpdatePwmDutycycle((FTM_Type *)ftmBase, channel, kFTM_EdgeAlignedPwm, _dutyCycle);
         FTM_SetSoftwareTrigger((FTM_Type *)ftmBase, true);
     }
