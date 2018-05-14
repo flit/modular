@@ -393,13 +393,15 @@ bool Bootloader::check_crc(Stream & data)
     }
 
     // Compute CRC over header, substituting 0 for the CRC32 field.
+    const uint32_t kCrc32Offset = offsetof(AppVectors, crc32);
+    static_assert(offsetof(AppVectors, appSize) == kCrc32Offset + 4);
     uint32_t zeroWord = 0;
-    crc.compute(&header, offsetof(AppVectors, crc32))
+    crc.compute(&header, kCrc32Offset)
         .compute(&zeroWord, sizeof(zeroWord))
-        .compute(&header.appSize, sizeof(header.appSize));
+        .compute(&header.appSize, sizeof(header) - (kCrc32Offset + sizeof(zeroWord)));
 
     // Compute CRC over the rest of the data.
-    uint32_t remainingBytes = _updateFile.get_size() - sizeof(header);
+    uint32_t remainingBytes = data.get_size() - sizeof(header);
     while (remainingBytes)
     {
         uint32_t bytesToRead = min(kSectorSize, remainingBytes);
