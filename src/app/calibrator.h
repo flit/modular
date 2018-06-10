@@ -51,6 +51,7 @@ public:
     void init();
 
     void button_was_pressed();
+    void skip();
     void update_readings(const uint32_t * pots, const uint32_t * cvs);
 
     bool is_calibrating_pots() const;

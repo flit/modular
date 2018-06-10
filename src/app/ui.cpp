@@ -600,6 +600,10 @@ void UI::handle_button_event(const UIEvent & event)
                                     break;
                             }
                         }
+                        else if (_uiMode == kCalibrationMode)
+                        {
+                            handle_calibration_mode_button1_long_press();
+                        }
                     }
                     break;
 
@@ -774,6 +778,15 @@ void UI::handle_calibration_mode_button()
         _channelLeds[calibrator.get_current_channel()]->on();
         update_channel_leds();
     }
+}
+
+//! A button1 long press in calibration mode tells us to just skip the calibration
+//! process and store fake "perfect" calibration points. This is useful when testing.
+void UI::handle_calibration_mode_button1_long_press()
+{
+    Calibrator & calibrator = Calibrator::get();
+    calibrator.skip();
+    NVIC_SystemReset();
 }
 
 //! Select the next bank for playback that has samples. At least one valid bank

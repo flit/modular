@@ -124,6 +124,22 @@ void Calibrator::button_was_pressed()
     }
 }
 
+void Calibrator::skip()
+{
+    uint32_t i;
+
+    // Fill in fake calibration data.
+    for (i = 0; i < kVoiceCount; ++i)
+    {
+        _data.pots[i].low = 0;
+        _data.pots[i].high = 65535;
+        _data.cvs[i].low = 0;
+        _data.cvs[i].high = 65535;
+    }
+
+    persistent_data::g_calibrationData.write(_data);
+}
+
 void Calibrator::update_readings(const uint32_t * pots, const uint32_t * cvs)
 {
     switch (_stage)
