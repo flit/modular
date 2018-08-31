@@ -220,6 +220,7 @@ UI::UI()
     _firstSwitchToPlayMode(true),
     _isChannelLedFlushPending(false),
     _ignoreButton1Release(false),
+    _button2LongPressTriggered(false),
     _potReleaseEditSampleStart(false),
     _potReleaseEditSampleEnd(false),
     _potReleaseSaveGain(false),
@@ -485,6 +486,15 @@ void UI::handle_button_event(const UIEvent & event)
     switch (event.event)
     {
         case kButtonDown:
+            switch (event.source)
+            {
+                case kButton2:
+                    _button2LongPressTriggered = false;
+                    break;
+
+                default:
+                    break;
+            }
             break;
 
         case kButtonUp:
@@ -540,22 +550,14 @@ void UI::handle_button_event(const UIEvent & event)
 
                         // In edit mode, select next channel to edit.
                         case kEditMode:
-                            // Update edit LED.
-                            _channelLeds[_editChannel]->off();
-
-                            // Save params for the previous edit channel.
-                            save_voice_params(_editChannel);
-
-                            // Select next valid channel.
-                            select_next_edit_channel();
-
-                            _channelLeds[_editChannel]->set_color(LEDBase::kRed);
-                            _channelLeds[_editChannel]->on();
-
-                            update_channel_leds();
-
-                            // Set hysteresis on all pots.
-                            set_all_pot_hysteresis(kPotEditHysteresisPercent);
+                            if (_button2LongPressTriggered)
+                            {
+                                handle_reset_edit_page_params_button();
+                            }
+                            else
+                            {
+                                handle_next_edit_channel_button();
+                            }
                             break;
 
                         // Ignore button2 if we don't have a card present.
@@ -608,6 +610,13 @@ void UI::handle_button_event(const UIEvent & event)
                     break;
 
                 case kButton2:
+                    if (event.intValue == kVoiceModeLongPressTime)
+                    {
+                        if (_uiMode == kEditMode)
+                        {
+                            _button2LongPressTriggered = true;
+                        }
+                    }
                     break;
 
                 default:
@@ -787,6 +796,39 @@ void UI::handle_calibration_mode_button1_long_press()
     Calibrator & calibrator = Calibrator::get();
     calibrator.skip();
     NVIC_SystemReset();
+}
+
+//! When editing voice params, a button2 long press will reset the current edit page's parameters.
+void UI::handle_reset_edit_page_params_button()
+{
+    assert(_uiMode == kEditMode);
+
+    // Iterate over the knobs on this edit page and reset the associated parameters.
+    uint32_t paramIndex;
+    for (paramIndex = 0; paramIndex < kVoiceCount; ++paramIndex)
+    {
+        g_voice[_editChannel].reset_parameter(kPotToParameterMap[_editPage][paramIndex]);
+    }
+}
+
+void UI::handle_next_edit_channel_button()
+{
+    // Update edit LED.
+    _channelLeds[_editChannel]->off();
+
+    // Save params for the previous edit channel.
+    save_voice_params(_editChannel);
+
+    // Select next valid channel.
+    select_next_edit_channel();
+
+    _channelLeds[_editChannel]->set_color(LEDBase::kRed);
+    _channelLeds[_editChannel]->on();
+
+    update_channel_leds();
+
+    // Set hysteresis on all pots.
+    set_all_pot_hysteresis(kPotEditHysteresisPercent);
 }
 
 //! Select the next bank for playback that has samples. At least one valid bank
@@ -1230,6 +1272,7 @@ void UI::handle_edit_pot(uint32_t potNumber, float value)
 
         // Pot is unused in this edit page.
         case VoiceParameters::kUnused:
+        default:
             break;
     }
 }

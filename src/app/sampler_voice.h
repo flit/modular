@@ -253,6 +253,7 @@ struct VoiceParameters
         kPitchEnvAttack,
         kPitchEnvRelease,
         kPitchEnvDepth,
+        kGain,
     };
 
     float gain;             //!< Range 0..1.
@@ -389,6 +390,9 @@ public:
     void set_pitch_env_attack(float seconds);
     void set_pitch_env_release(float seconds);
     void set_pitch_env_depth(float depth) { _params.pitchEnvDepth = depth; }
+
+    //! @brief Restore a parameter to its default value.
+    void reset_parameter(VoiceParameters::ParameterName which);
 
     void render(int16_t * data, uint32_t frameCount);
 

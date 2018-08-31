@@ -127,6 +127,7 @@ protected:
     bool _firstSwitchToPlayMode;
     bool _isChannelLedFlushPending;
     bool _ignoreButton1Release;
+    bool _button2LongPressTriggered;
     bool _potReleaseEditSampleStart;
     bool _potReleaseEditSampleEnd;
     bool _potReleaseSaveGain;
@@ -158,6 +159,8 @@ protected:
     void handle_special_file(const UIEvent & event);
     void handle_calibration_mode_button();
     void handle_calibration_mode_button1_long_press();
+    void handle_reset_edit_page_params_button();
+    void handle_next_edit_channel_button();
 
     void select_next_bank();
     void select_next_edit_channel();

@@ -929,6 +929,47 @@ void SamplerVoice::set_params(const VoiceParameters & params)
     _manager.set_start_end_sample(start, end);
 }
 
+//! @brief Restore a parameter to its default value.
+void SamplerVoice::reset_parameter(VoiceParameters::ParameterName which)
+{
+    switch (which)
+    {
+        case VoiceParameters::kGain:
+            set_gain(1.0f);
+            break;
+        case VoiceParameters::kBaseOctave:
+            set_base_octave_offset(0.0f);
+            break;
+        case VoiceParameters::kBaseCents:
+            set_base_cents_offset(0.0f);
+            break;
+        case VoiceParameters::kSampleStart:
+            set_sample_start(0.0f);
+            break;
+        case VoiceParameters::kSampleEnd:
+            set_sample_end(1.0f);
+            break;
+        case VoiceParameters::kVolumeEnvAttack:
+            set_volume_env_attack(0.0f);
+            break;
+        case VoiceParameters::kVolumeEnvRelease:
+            set_volume_env_release(0.0f);
+            break;
+        case VoiceParameters::kPitchEnvAttack:
+            set_pitch_env_attack(0.0f);
+            break;
+        case VoiceParameters::kPitchEnvRelease:
+            set_pitch_env_release(0.0f);
+            break;
+        case VoiceParameters::kPitchEnvDepth:
+            set_pitch_env_depth(0.0f);
+            break;
+        case VoiceParameters::kUnused:
+        default:
+            break;
+    }
+}
+
 float SamplerVoice::get_sample_length_in_seconds() const
 {
     return float(_data.get_frames()) / kSampleRate;
