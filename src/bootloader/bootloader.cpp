@@ -56,9 +56,6 @@ using namespace slab;
 //! Value of a word of flash that is erased.
 #define ERASED_WORD (0xffffffff)
 
-//! Unique ID for the app. (sbär)
-#define APP_SIGNATURE (0x72e46273)
-
 //! Time in milliseconds LEDs are on when flashing.
 #define LED_FLASH_TIME_MS (100)
 
@@ -179,7 +176,7 @@ DEFINE_DEBUG_LOG
 
 //! @brief Define app info.
 const AppVersionInfo g_appVersionInfo = {
-        .signature = 0x746f6f62, // 'boot'
+        .signature = BOOTLOADER_SIGNATURE, // 'boot'
         .version = { GIT_VERSION_MAJOR, GIT_VERSION_MINOR, GIT_VERSION_BUGFIX },
         .name = "sd-bootloader",
         .versionString = GIT_COMMIT_VERSION,

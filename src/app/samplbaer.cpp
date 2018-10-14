@@ -152,7 +152,7 @@ const char kLedStartupPattern[][5] = {
 
 //! @brief Define app info.
 const AppVersionInfo g_appVersionInfo = {
-        .signature = 0x72e46273, // 'sbär'
+        .signature = APP_SIGNATURE, // 'sbär'
         .version = { GIT_VERSION_MAJOR, GIT_VERSION_MINOR, GIT_VERSION_BUGFIX },
         .name = "samplbär",
         .versionString = GIT_COMMIT_VERSION,

@@ -52,6 +52,12 @@ namespace slab {
 
 #endif // STANDALONE_BUILD
 
+//! Unique ID for the samplbär app ('sbär').
+#define APP_SIGNATURE (0x72e46273)
+
+//! Unique ID for the bootloader ('boot').
+#define BOOTLOADER_SIGNATURE (0x746f6f62)
+
 /*!
  * @brief Version information.
  */
