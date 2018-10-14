@@ -46,6 +46,9 @@
 
 using namespace slab;
 
+//! Set to 1 to prevent deletion of the firmware update file.
+#define RETAIN_UPDATE_FILE (0)
+
 //------------------------------------------------------------------------------
 // Definitions
 //------------------------------------------------------------------------------
@@ -146,6 +149,7 @@ protected:
 
     void start_app();
     void perform_update();
+    void remove_update_file();
     bool find_update_file();
     bool validate_update_file();
     bool have_valid_app();
@@ -506,9 +510,14 @@ void Bootloader::perform_update()
         return;
     }
 
-#if !DEBUG
-    // Delete the firmware update file since it was successfully programmed.
-    DEBUG_PRINTF(INIT_MASK, "update complete; deleting %s\r\n", FW_UPDATE_FILENAME);
+    DEBUG_PRINTF(INIT_MASK, "update complete\r\n");
+}
+
+//! @brief Delete the firmware update file.
+void Bootloader::remove_update_file()
+{
+#if !RETAIN_UPDATE_FILE
+//    DEBUG_PRINTF(INIT_MASK, "deleting %s\r\n", FW_UPDATE_FILENAME);
     _updateFile.remove();
 #endif
 }
@@ -609,8 +618,7 @@ void Bootloader::bootloader_thread()
     g_flasher.init();
 
     // Init SD card manager.
-    _cardManager.init();
-    _cardManager.check_presence();
+    _cardManager.init(false);
 
     // If a card is present:
     //  - check for and process a firmware update.
@@ -623,15 +631,24 @@ void Bootloader::bootloader_thread()
 
     while (true)
     {
-        if (_cardManager.is_card_present())
+        if (_cardManager.check_presence())
         {
             // Look for a firmware update file.
             fs::error_t result = _fs.mount();
             if (result == fs::kSuccess)
             {
-                if (find_update_file() && validate_update_file())
+                // Look for an update file on the card.
+                if (find_update_file())
                 {
-                    perform_update();
+                    // If the update file is valid and different from the current app,
+                    // then install the update.
+                    if (validate_update_file())
+                    {
+                        perform_update();
+                    }
+
+                    // Delete the update file so the app doesn't the file and reboot.
+                    remove_update_file();
                 }
             }
             else

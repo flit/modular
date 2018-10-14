@@ -49,7 +49,7 @@ public:
     CardManager();
     ~CardManager()=default;
 
-    void init();
+    void init(bool useThread);
 
     bool is_card_present() { return _isCardPresent; }
 

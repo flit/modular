@@ -58,7 +58,7 @@ CardManager::CardManager()
 {
 }
 
-void CardManager::init()
+void CardManager::init(bool useThread)
 {
     // Configure SD host.
     // Setting card detect to gpio even though we're using command polling to
@@ -76,16 +76,19 @@ void CardManager::init()
 
     SD_HostInit(&g_sd);
 
-    // Create and start up card manager thread.
-    _thread.init("card", this, &CardManager::card_thread, kCardThreadPriority, kArSuspendThread);
-    _runloop.init("card");
+    if (useThread)
+    {
+        // Create and start up card manager thread.
+        _thread.init("card", this, &CardManager::card_thread, kCardThreadPriority, kArSuspendThread);
+        _runloop.init("card");
 
-    // Set up card detection timer.
-    _cardDetectTimer.init("card-detect", this, &CardManager::handle_card_detect_timer, kArPeriodicTimer, kCardDetectInterval_ms);
-    _runloop.addTimer(&_cardDetectTimer);
-    _cardDetectTimer.start();
+        // Set up card detection timer.
+        _cardDetectTimer.init("card-detect", this, &CardManager::handle_card_detect_timer, kArPeriodicTimer, kCardDetectInterval_ms);
+        _runloop.addTimer(&_cardDetectTimer);
+        _cardDetectTimer.start();
 
-    _thread.resume();
+        _thread.resume();
+    }
 }
 
 void CardManager::card_thread()
