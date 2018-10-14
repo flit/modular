@@ -51,6 +51,7 @@
 							<option id="ilg.gnuarmeclipse.managedbuild.cross.option.optimization.nocommon.1037429519" name="No common unitialized (-fno-common)" superClass="ilg.gnuarmeclipse.managedbuild.cross.option.optimization.nocommon" useByScannerDiscovery="true" value="true" valueType="boolean"/>
 							<option id="ilg.gnuarmeclipse.managedbuild.cross.option.optimization.noinlinefunctions.1334656678" name="Do not inline functions (-fno-inline-functions)" superClass="ilg.gnuarmeclipse.managedbuild.cross.option.optimization.noinlinefunctions" useByScannerDiscovery="true" value="true" valueType="boolean"/>
 							<option id="ilg.gnuarmeclipse.managedbuild.cross.option.optimization.nomoveloopinvariants.266239684" name="Disable loop invariant move (-fno-move-loop-invariants)" superClass="ilg.gnuarmeclipse.managedbuild.cross.option.optimization.nomoveloopinvariants" useByScannerDiscovery="true" value="true" valueType="boolean"/>
+							<option id="ilg.gnuarmeclipse.managedbuild.cross.option.toolchain.id.1510930475" superClass="ilg.gnuarmeclipse.managedbuild.cross.option.toolchain.id" value="1287942917" valueType="string"/>
 							<targetPlatform archList="all" binaryParser="org.eclipse.cdt.core.ELF" id="ilg.gnuarmeclipse.managedbuild.cross.targetPlatform.81491142" isAbstract="false" osList="all" superClass="ilg.gnuarmeclipse.managedbuild.cross.targetPlatform"/>
 							<builder buildPath="${workspace_loc:/bootloader_gcc_k22fa12}/Debug" id="ilg.gnuarmeclipse.managedbuild.cross.builder.845099391" keepEnvironmentInBuildfile="false" managedBuildOn="true" name="Gnu Make Builder" parallelBuildOn="true" parallelizationNumber="optimal" superClass="ilg.gnuarmeclipse.managedbuild.cross.builder"/>
 							<tool id="ilg.gnuarmeclipse.managedbuild.cross.tool.assembler.1802196109" name="Cross ARM GNU Assembler" superClass="ilg.gnuarmeclipse.managedbuild.cross.tool.assembler">
@@ -157,6 +158,21 @@
 				</configuration>
 			</storageModule>
 			<storageModule moduleId="org.eclipse.cdt.core.externalSettings"/>
+			<storageModule moduleId="ilg.gnumcueclipse.managedbuild.packs">
+				<option id="cmsis.device.name" value="MK22FX512Axxx12"/>
+				<option id="cmsis.family.name" value="K20 Series"/>
+				<option id="cmsis.device.vendor.name" value="NXP"/>
+				<option id="cmsis.device.vendor.id" value="11"/>
+				<option id="cmsis.device.pack.vendor" value="Keil"/>
+				<option id="cmsis.device.pack.name" value="Kinetis_K20_DFP"/>
+				<option id="cmsis.device.pack.version" value="1.5.2"/>
+				<option id="cmsis.core.name" value="Cortex-M4"/>
+				<option id="cmsis.compiler.define" value="MK22FX512Axxx12"/>
+				<memory section="IRAM1" size="0x00010000" start="0x20000000" startup="0"/>
+				<memory section="IRAM2" size="0x00010000" start="0x1FFF0000" startup="0"/>
+				<memory section="IROM1" size="0x00080000" start="0x00000000" startup="1"/>
+				<memory section="IROM2" size="0x00020000" start="0x10000000" startup="0"/>
+			</storageModule>
 		</cconfiguration>
 		<cconfiguration id="ilg.gnuarmeclipse.managedbuild.cross.config.elf.release.1895032119">
 			<storageModule buildSystemId="org.eclipse.cdt.managedbuilder.core.configurationDataProvider" id="ilg.gnuarmeclipse.managedbuild.cross.config.elf.release.1895032119" moduleId="org.eclipse.cdt.core.settings" name="Release">
@@ -317,6 +333,21 @@
 				<option id="cmsis.device.pack.vendor" value="Keil"/>
 				<option id="cmsis.device.pack.name" value="Kinetis_K20_DFP"/>
 				<option id="cmsis.device.pack.version" value="1.5.0"/>
+				<option id="cmsis.core.name" value="Cortex-M4"/>
+				<option id="cmsis.compiler.define" value="MK22FX512Axxx12"/>
+				<memory section="IRAM1" size="0x00010000" start="0x20000000" startup="0"/>
+				<memory section="IRAM2" size="0x00010000" start="0x1FFF0000" startup="0"/>
+				<memory section="IROM1" size="0x00080000" start="0x00000000" startup="1"/>
+				<memory section="IROM2" size="0x00020000" start="0x10000000" startup="0"/>
+			</storageModule>
+			<storageModule moduleId="ilg.gnumcueclipse.managedbuild.packs">
+				<option id="cmsis.device.name" value="MK22FX512Axxx12"/>
+				<option id="cmsis.family.name" value="K20 Series"/>
+				<option id="cmsis.device.vendor.name" value="NXP"/>
+				<option id="cmsis.device.vendor.id" value="11"/>
+				<option id="cmsis.device.pack.vendor" value="Keil"/>
+				<option id="cmsis.device.pack.name" value="Kinetis_K20_DFP"/>
+				<option id="cmsis.device.pack.version" value="1.5.2"/>
 				<option id="cmsis.core.name" value="Cortex-M4"/>
 				<option id="cmsis.compiler.define" value="MK22FX512Axxx12"/>
 				<memory section="IRAM1" size="0x00010000" start="0x20000000" startup="0"/>
