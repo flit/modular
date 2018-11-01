@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017 Immo Software
+ * Copyright (c) 2017-2018 Immo Software
  *
  * Redistribution and use in source and binary forms, with or without modification,
  * are permitted provided that the following conditions are met:
@@ -37,8 +37,6 @@ using namespace slab;
 //------------------------------------------------------------------------------
 
 const uint32_t kErasedWord = 0xffffffff;
-
-const uint32_t PersistentDataStore::FieldHeader::kHeaderCrcDataLength = sizeof(FieldHeader) - sizeof(uint16_t);
 
 const uint32_t PersistentDataStore::Page::kMaxDataOffset = DATA_STORE_PAGE_SIZE - PersistentDataStore::FieldHeader::get_length();
 
@@ -137,9 +135,8 @@ bool PersistentDataStore::write_key(KeyInfo * info, const uint8_t * data, uint32
     FieldHeader newHeader;
     newHeader.key = info->key;
     newHeader.dataLength = length;
-    newHeader.fieldLength = fieldLength;
+    newHeader.fieldLength = FieldHeader::compute_field_length(length);
     newHeader.fieldVersion = nextVersion;
-    newHeader.crc = newHeader.compute_crc(data);
 
     // Write to the active page.
     FieldHeader * writtenHeader = _activePage->write_field(&newHeader, data);
@@ -409,7 +406,7 @@ PersistentDataStore::FieldHeader * PersistentDataStore::Page::find_newest_field(
         if (field->key == key)
         {
             // Check CRC.
-            if (field->compute_crc(field->get_data()) == field->crc
+            if (field->compute_crc(field->get_data()) == *(field->get_crc())
                 && field->fieldVersion > newestVersion)
             {
                 newestField = field;
@@ -542,12 +539,25 @@ PersistentDataStore::FieldHeader * PersistentDataStore::Page::write_field(const 
 {
     assert((_nextWriteOffset + header->fieldLength) < DATA_STORE_PAGE_SIZE);
     PersistentDataStore & store = PersistentDataStore::get();
+
+    // Write header.
     uint32_t writeAddress = _address + _nextWriteOffset;
     if (!store._write_data(writeAddress, header, sizeof(FieldHeader)))
     {
         return nullptr;
     }
-    if (!store._write_data(writeAddress + FieldHeader::get_length(), data, header->dataLength))
+
+    // Write data.
+    writeAddress += FieldHeader::get_length();
+    if (!store._write_data(writeAddress, data, header->dataLength))
+    {
+        return nullptr;
+    }
+
+    // Write CRC32.
+    writeAddress += align_up<kWriteAlignment>(header->dataLength);
+    uint32_t crc = header->compute_crc(data);
+    if (!store._write_data(writeAddress, &crc, sizeof(crc)))
     {
         return nullptr;
     }

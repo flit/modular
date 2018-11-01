@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017 Immo Software
+ * Copyright (c) 2017-2018 Immo Software
  *
  * Redistribution and use in source and binary forms, with or without modification,
  * are permitted provided that the following conditions are met:
@@ -33,7 +33,7 @@
 #include "singleton.h"
 #include "board.h"
 #include "utility.h"
-#include "crc16.h"
+#include "crc32.h"
 #include "fsl_flash.h"
 
 //------------------------------------------------------------------------------
@@ -68,8 +68,24 @@ public:
     /*!
      * @brief Header for each field entry in a page.
      *
-     * The actual size of the header is rounded up to the minimum flash write size,
-     * the #kWriteAlignment constant.
+     * The complete field layout is composed of three regions:
+     *
+     *  |-----------------------|
+     *  |                       |
+     *  |        header         |
+     *  |                       |
+     *  |-----------------------|  <-- get_length()
+     *  |                       |
+     *  |                       |
+     *  |        data           |
+     *  |        ...            |
+     *  |                       |
+     *  |-----------------------|  <-- compute_crc_offset()
+     *  |        crc32          |
+     *  |-----------------------|  <-- compute_field_length()
+     *
+     * The actual size of each field region is rounded up to the flash minimum write size,
+     * the #kWriteAlignment constant
      */
     struct FieldHeader
     {
@@ -77,21 +93,41 @@ public:
         uint16_t dataLength;
         uint16_t fieldLength;
         uint16_t fieldVersion;
-        uint16_t crc;
 
-        static const uint32_t kHeaderCrcDataLength;
-
+        //! @brief Size of the header rounded up to minimum write size.
         static constexpr uint32_t get_length() { return align_up<kWriteAlignment>(sizeof(FieldHeader)); }
 
+        //! @brief Offset from the start of the field to the CRC32.
+        static uint32_t compute_crc_offset(uint32_t dataLen)
+        {
+            return get_length() + align_up<kWriteAlignment>(dataLen);
+        }
+
+        //! @brief Computes the total length of the field on media.
+        static uint32_t compute_field_length(uint32_t dataLen)
+        {
+            return compute_crc_offset(dataLen) + align_up<kWriteAlignment>(sizeof(uint32_t));
+        }
+
+        //! @brief Get a pointer to data from the start of the field.
         uint8_t * get_data()
         {
             return reinterpret_cast<uint8_t *>(reinterpret_cast<uint32_t>(this) + get_length());
         }
 
-        uint16_t compute_crc(const uint8_t * data)
+        //! @brief Get a pointer to the CRC from the start of the field.
+        uint32_t * get_crc()
         {
-            return Crc16()
-                    .compute(this, kHeaderCrcDataLength)
+            return reinterpret_cast<uint32_t *>(reinterpret_cast<uint32_t>(this) + compute_crc_offset(dataLength));
+        }
+
+        //! @brief Calculate the CRC from provided data.
+        //!
+        //! The field header (this struct) must have already been filled in.
+        uint32_t compute_crc(const uint8_t * data) const
+        {
+            return Crc32()
+                    .compute(this, sizeof(FieldHeader))
                     .compute(data, dataLength)
                     .get();
         }
@@ -129,7 +165,7 @@ protected:
     struct PageHeader
     {
         static const uint32_t kMagicNumber = 'pdat';
-        static const uint32_t kFormatVersion = 1;
+        static const uint32_t kFormatVersion = 2;
 
         uint32_t magic;
         uint32_t formatVersion;
