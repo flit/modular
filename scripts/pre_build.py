@@ -30,22 +30,22 @@ from subprocess import check_output, CalledProcessError
 VERSION_GIT_FILE_TEMPLATE = """
 /*
  * Copyright (c) 2018 Immo Software
+ *
+ * This file is auto-generated. Do not edit by hand!
  */
 #ifndef VERSION_GIT_H
 #define VERSION_GIT_H
 
-#define GIT_COMMIT_VERSION  \"{}\"
-#define GIT_COMMIT_SHA      \"{}\"
+#define GIT_COMMIT_VERSION  \"{full}\"
+#define GIT_COMMIT_SHA      \"{sha}\"
 
-#define GIT_VERSION_MAJOR   ({})
-#define GIT_VERSION_MINOR   ({})
-#define GIT_VERSION_BUGFIX  ({})
+#define GIT_VERSION_MAJOR   ({major})
+#define GIT_VERSION_MINOR   ({minor})
+#define GIT_VERSION_BUGFIX  ({bugfix})
 
 #endif
 
 """
-
-GIT_VERSION_FILE_PATH = "../../../src/app/version_git.h"
 
 def parse_version(git_vers):
     git_vers = git_vers.split('-')[0]
@@ -58,6 +58,17 @@ def parse_version(git_vers):
     return versionFields
 
 def pre_build():
+    # Tag prefix argument
+    if len(sys.argv) > 1:
+        tagPrefix = sys.argv[1]
+    else:
+        tagPrefix = ""
+    if len(tagPrefix):
+        tagPrefix += "-"
+
+    # Output file argument.
+    outputFilePath = sys.argv[-1]
+
     # Get the git SHA.
     try:
         git_sha = check_output("git rev-parse --verify HEAD", shell=True)
@@ -67,12 +78,6 @@ def pre_build():
         git_sha = "<unknown>"
 
     # Get version tag.
-    if len(sys.argv) > 1:
-        tagPrefix = sys.argv[1]
-    else:
-        tagPrefix = ""
-    if len(tagPrefix):
-        tagPrefix += "-"
     try:
         git_vers = check_output("git describe --match '{}v*' --always".format(tagPrefix), shell=True)
         git_vers = git_vers.strip()
@@ -87,22 +92,31 @@ def pre_build():
     except ValueError:
         fields = [0, 0, 0]
 
-    print("#> git: {}; version={}.{}.{}; sha={}".format(git_vers, fields[0], fields[1], fields[2], git_sha))
+    # Create format data dictionary.
+    format_dict = {
+        'full' : git_vers,
+        'sha' : git_sha,
+        'major' : fields[0],
+        'minor' : fields[1],
+        'bugfix' : fields[2],
+        }
+
+    print("#> git: {full}; version={major}.{minor}.{bugfix}; sha={sha}".format(**format_dict))
 
     # Generate output from template.
-    output = VERSION_GIT_FILE_TEMPLATE.format(git_vers, git_sha, fields[0], fields[1], fields[2])
+    output = VERSION_GIT_FILE_TEMPLATE.format(**format_dict)
 
     # Read existing file content.
     try:
-        with open(GIT_VERSION_FILE_PATH, 'r') as f:
+        with open(outputFilePath, 'r') as f:
             content = f.read()
-    except OSError:
+    except IOError:
         content = None
 
     # Only write file if the content has changed, so we don't always retrigger a build.
     if output != content:
         # Create the version file.
-        with open(GIT_VERSION_FILE_PATH, 'w+') as version_file:
+        with open(outputFilePath, 'w+') as version_file:
             version_file.write(output)
 
     return 0
