@@ -168,14 +168,6 @@ void ASREnvelope::trigger()
 
 float ASREnvelope::next()
 {
-//     if (m_attack.is_finished())
-//     {
-//         return m_release.next();
-//     }
-//     else
-//     {
-//         return m_attack.next();
-//     }
     float sample;
     process(&sample, 1);
     return sample;
@@ -190,44 +182,6 @@ bool ASREnvelope::is_finished()
 
 void ASREnvelope::process(float * samples, uint32_t count)
 {
-//     if (!m_attack.is_finished())
-//     {
-//         // Attack
-//         uint32_t attackCount = m_attack.get_remaining_samples();
-//         if (attackCount > count)
-//         {
-//             attackCount = count;
-//         }
-//         m_attack.process(samples, attackCount);
-//
-//         // Sustain
-//         if (attackCount < count)
-//         {
-//             uint32_t sustainCount = count - attackCount;
-//             if (sustainCount + m_elapsedSamples > m_releaseOffset)
-//             {
-//                 sustainCount = m_releaseOffset - m_elapsedSamples;
-//             }
-//             arm_fill_f32(m_sustain, samples + attackCount, sustainCount);
-//
-//             // Release
-//             if (attackCount < count)
-//             {
-//                 m_release.process(samples + attackCount, count - attackCount);
-//             }
-//         }
-//     }
-//     else
-//     {
-// //         uint32_t releaseCount = m_release.get_remaining_samples();
-// //         if (releaseCount > count)
-// //         {
-// //             releaseCount = count;
-// //         }
-// //         m_release.process(samples, releaseCount);
-//         m_release.process(samples, count);
-//     }
-
     if (!m_isTriggered)
     {
         arm_fill_f32(0.0f, samples, count);
@@ -263,12 +217,6 @@ void ASREnvelope::process(float * samples, uint32_t count)
                         sustainCount = 0;
                     }
                 }
-            }
-            if (sustainCount > 1000)
-            {
-#if __arm__
-                Ar::_halt();
-#endif
             }
             if (sustainCount > 0)
             {
