@@ -205,6 +205,9 @@ static const uint8_t kEditPageBlinkStates[kEditPageCount][kEditPageBlinkPatternL
         [2] = { 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, },
     };
 
+//! Number of 100 ms ticks to alternate between selected channel and param indicator.
+const uint32_t kEditPageChannelLedBlinkTime = 2;
+
 //------------------------------------------------------------------------------
 // Code
 //------------------------------------------------------------------------------
@@ -238,6 +241,8 @@ UI::UI()
     _ledTimeoutCount(0),
     _potReleaseSaveGainChannel(0),
     _editPageBlinkCounter(0),
+    _editPageChannelLedBlinkCounter(0),
+    _editPageChannelLedState(false),
     _options{false}
 {
 }
@@ -822,6 +827,9 @@ void UI::handle_next_edit_channel_button()
     // Select next valid channel.
     select_next_edit_channel();
 
+    _editPageChannelLedBlinkCounter = 0;
+    update_edit_page_leds();
+
     _channelLeds[_editChannel]->set_color(LEDBase::kRed);
     _channelLeds[_editChannel]->on();
 
@@ -859,6 +867,8 @@ void UI::select_next_edit_page()
         set_ui_mode(kPlayMode);
         return;
     }
+
+    update_edit_page_leds();
 
     set_all_pot_hysteresis(kPotEditHysteresisPercent);
 
@@ -1013,6 +1023,34 @@ void UI::handle_blink_timer(Ar::Timer * timer)
             }
 
             _button1Led->set(!kEditPageBlinkStates[_editPage][_editPageBlinkCounter]);
+            
+            // If the same voice is selected as an edit param that has its corresponding LED
+            // turned on, we need to blink back and forth between the channel indicator and edit LED.
+            if (pot_has_edit_page_led(_editChannel))
+            {
+                if (++_editPageChannelLedBlinkCounter > kEditPageChannelLedBlinkTime)
+                {
+                    _editPageChannelLedBlinkCounter = 0;
+                    _editPageChannelLedState = !_editPageChannelLedState;
+
+                    bool ledStatus = get_edit_page_led_status(_editChannel);
+                    if (ledStatus)
+                    {
+                        if (_editPageChannelLedState)
+                        {
+                            _channelLeds[_editChannel]->set_color(LEDBase::kYellow);
+                            _channelLeds[_editChannel]->on();
+                        }
+                        else
+                        {
+                            _channelLeds[_editChannel]->set_color(LEDBase::kRed);
+                            _channelLeds[_editChannel]->on();
+                        }
+
+                        update_channel_leds();
+                    }
+                }
+            }
             break;
 
         case LedMode::kBankSwitch:
@@ -1294,6 +1332,8 @@ void UI::handle_edit_pot(uint32_t potNumber, float value)
         default:
             break;
     }
+
+    update_one_edit_page_led(potNumber);
 }
 
 void UI::set_all_pot_hysteresis(uint32_t percent)
@@ -1348,6 +1388,119 @@ void UI::flush_channel_leds(void * param)
     UI * _ui = reinterpret_cast<UI *>(param);
     _ui->_isChannelLedFlushPending = false;
     ChannelLEDManager::get().flush();
+}
+
+//! @brief Helper to determine whether a float value is close to zero.
+static bool near_zero(float value)
+{
+    return (value > -0.01) && (value < 0.01);
+}
+
+//! @brief Returns whether the specified pot uses the channel LED to indicate value.
+bool UI::pot_has_edit_page_led(uint32_t potNumber)
+{
+    VoiceParameters::ParameterName param = kPotToParameterMap[_editPage][potNumber];
+    switch (param)
+    {
+        case VoiceParameters::kBaseOctave:
+        case VoiceParameters::kBaseCents:
+        case VoiceParameters::kPlaybackMode:
+        case VoiceParameters::kPitchEnvDepth:
+        case VoiceParameters::kPitchEnvMode:
+        case VoiceParameters::kVolumeEnvDepth:
+        case VoiceParameters::kVolumeEnvMode:
+            return true;
+
+        default:
+            // no action
+            return false;
+    }
+}
+
+//! @brief Returns the LED enabled state for the param associated with the specified pot.
+bool UI::get_edit_page_led_status(uint32_t potNumber)
+{
+    VoiceParameters::ParameterName param = kPotToParameterMap[_editPage][potNumber];
+    const VoiceParameters & voiceParams = g_voice[_editChannel].get_params();
+    float value;
+    VoiceParameters::PlaybackMode playbackMode;
+    VoiceParameters::EnvMode envMode;
+    bool ledEnabled = false;
+
+    switch (param)
+    {
+        case VoiceParameters::kBaseOctave:
+            value = voiceParams.baseOctaveOffset;
+            return near_zero(value);
+
+        case VoiceParameters::kBaseCents:
+            value = voiceParams.baseCentsOffset;
+            return near_zero(value);
+
+        case VoiceParameters::kPlaybackMode:
+            playbackMode = voiceParams.playbackMode;
+            return (playbackMode == VoiceParameters::kReversePlayback);
+
+        case VoiceParameters::kPitchEnvDepth:
+            value = voiceParams.pitchEnvDepth;
+            return near_zero(value);
+
+        case VoiceParameters::kPitchEnvMode:
+            envMode = voiceParams.pitchEnvMode;
+            return (envMode == VoiceParameters::kLoopEnv);
+
+        case VoiceParameters::kVolumeEnvDepth:
+            value = voiceParams.volumeEnvDepth;
+            return near_zero(value);
+
+        case VoiceParameters::kVolumeEnvMode:
+            envMode = voiceParams.volumeEnvMode;
+            return (envMode == VoiceParameters::kLoopEnv);
+
+        default:
+            // no action
+            return false;
+    }
+}
+
+//! @brief Update the specified LED based on the edit param value.
+void UI::update_one_edit_page_led(uint32_t potNumber)
+{
+    VoiceParameters::ParameterName param = kPotToParameterMap[_editPage][potNumber];
+    if (!pot_has_edit_page_led(potNumber))
+    {
+        return;
+    }
+
+    // Update edit LED if it's for a param not showing the currently selected edit
+    // channel, or the led should be showing the param value.
+    if (_editChannel != potNumber || _editPageChannelLedState)
+    {
+        bool ledEnabled = get_edit_page_led_status(potNumber);
+        if (ledEnabled)
+        {
+            _channelLeds[potNumber]->set_color(LEDBase::kYellow);
+        }
+        else if (_editChannel == potNumber)
+        {
+            // If the param is shared with the currently selected edit channel, then
+            // we need to set the LED back to red if the param value is false.
+            _channelLeds[potNumber]->set_color(LEDBase::kRed);
+            ledEnabled = true;
+        }
+        _channelLeds[potNumber]->set(ledEnabled);
+        update_channel_leds();
+    }
+}
+
+//! @brief Update state for all channel LEDs in the current edit page.
+void UI::update_edit_page_leds()
+{
+    uint32_t i;
+    for (i = 0; i < kVoiceCount; ++i)
+    {
+        update_one_edit_page_led(i);
+    }
 }
 
 //------------------------------------------------------------------------------

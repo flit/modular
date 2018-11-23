@@ -145,6 +145,8 @@ protected:
     uint32_t _ledTimeoutCount;
     uint32_t _potReleaseSaveGainChannel;
     uint32_t _editPageBlinkCounter;
+    uint32_t _editPageChannelLedBlinkCounter;
+    bool _editPageChannelLedState; //!< True means show param state, false show selected channel.
 
     struct Options
     {
@@ -175,6 +177,11 @@ protected:
 
     void handle_gain_pot(uint32_t potNumber, float value);
     void handle_edit_pot(uint32_t potNumber, float value);
+
+    bool pot_has_edit_page_led(uint32_t potNumber);
+    bool get_edit_page_led_status(uint32_t potNumber);
+    void update_one_edit_page_led(uint32_t potNumber);
+    void update_edit_page_leds();
 
     void set_all_pot_hysteresis(uint32_t percent);
     void set_voice_activity_led_mode();
