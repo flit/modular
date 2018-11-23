@@ -171,38 +171,38 @@ static const int8_t kVoiceToBankChannelMap[kVoiceModeCount][kVoiceCount] = {
     };
 
 //! Number of edit pages.
-static const uint32_t kEditPageCount = 2;
+const uint32_t kEditPageCount = 3;
 
 //! Map from pot number within an edit page to voice parameter.
 static const VoiceParameters::ParameterName kPotToParameterMap[kEditPageCount][kVoiceCount] = {
         [0] = {
                 [0] = VoiceParameters::kBaseOctave,
-                [1] = VoiceParameters::kBaseCents,
-                [2] = VoiceParameters::kSampleStart,
-                [3] = VoiceParameters::kSampleEnd,
+                [1] = VoiceParameters::kSampleStart,
+                [2] = VoiceParameters::kSampleEnd,
+                [3] = VoiceParameters::kPlaybackMode,
             },
         [1] = {
-                [0] = VoiceParameters::kPitchEnvAttack,
-                [1] = VoiceParameters::kPitchEnvRelease,
-                [2] = VoiceParameters::kPitchEnvDepth,
-                [3] = VoiceParameters::kVolumeEnvAttack,
+                [0] = VoiceParameters::kPitchEnvDepth,
+                [1] = VoiceParameters::kPitchEnvAttack,
+                [2] = VoiceParameters::kPitchEnvRelease,
+                [3] = VoiceParameters::kPitchEnvMode,
             },
-//         [2] = {
-//                 [0] = VoiceParameters::kVolumeEnvAttack,
-//                 [1] = VoiceParameters::kVolumeEnvRelease,
-//                 [2] = VoiceParameters::kUnused,
-//                 [3] = VoiceParameters::kUnused,
-//             },
+        [2] = {
+                [0] = VoiceParameters::kVolumeEnvDepth,
+                [1] = VoiceParameters::kVolumeEnvAttack,
+                [2] = VoiceParameters::kVolumeEnvRelease,
+                [3] = VoiceParameters::kVolumeEnvMode,
+            },
     };
 
 //! Number of 100 ms ticks over which the edit page blink patterns are played.
-static const uint32_t kEditPageBlinkPatternLength = 15;
+const uint32_t kEditPageBlinkPatternLength = 15;
 
 //! Button1 blink pattern for edit pages.
 static const uint8_t kEditPageBlinkStates[kEditPageCount][kEditPageBlinkPatternLength] = {
         [0] = { 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, },
         [1] = { 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 0, 0, },
-//         [2] = { 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, },
+        [2] = { 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, },
     };
 
 //------------------------------------------------------------------------------
@@ -380,10 +380,10 @@ void UI::set_voice_mode(VoiceMode mode)
             g_voice[3].set_pitch_octave(0.0f);
 
             // Set all voices to trigger mode.
-            g_voice[0].set_volume_env_mode(SamplerVoice::VolumeEnvMode::kTrigger);
-            g_voice[1].set_volume_env_mode(SamplerVoice::VolumeEnvMode::kTrigger);
-            g_voice[2].set_volume_env_mode(SamplerVoice::VolumeEnvMode::kTrigger);
-            g_voice[3].set_volume_env_mode(SamplerVoice::VolumeEnvMode::kTrigger);
+            g_voice[0].set_trigger_mode(SamplerVoice::TriggerMode::kTrigger);
+            g_voice[1].set_trigger_mode(SamplerVoice::TriggerMode::kTrigger);
+            g_voice[2].set_trigger_mode(SamplerVoice::TriggerMode::kTrigger);
+            g_voice[3].set_trigger_mode(SamplerVoice::TriggerMode::kTrigger);
 
             // Reset inputs.
             g_gates[0].reset();
@@ -401,9 +401,9 @@ void UI::set_voice_mode(VoiceMode mode)
             g_voice[3].set_pitch_octave(0.0f);
 
             // Set volume env mode.
-            g_voice[0].set_volume_env_mode(SamplerVoice::VolumeEnvMode::kGate);
-            g_voice[2].set_volume_env_mode(SamplerVoice::VolumeEnvMode::kTrigger);
-            g_voice[3].set_volume_env_mode(SamplerVoice::VolumeEnvMode::kTrigger);
+            g_voice[0].set_trigger_mode(SamplerVoice::TriggerMode::kGate);
+            g_voice[2].set_trigger_mode(SamplerVoice::TriggerMode::kTrigger);
+            g_voice[3].set_trigger_mode(SamplerVoice::TriggerMode::kTrigger);
 
             // Reset inputs.
             g_gates[0].reset();
@@ -417,8 +417,8 @@ void UI::set_voice_mode(VoiceMode mode)
 
         case k2VoiceMode:
             // Set volume env mode.
-            g_voice[0].set_volume_env_mode(SamplerVoice::VolumeEnvMode::kGate);
-            g_voice[2].set_volume_env_mode(SamplerVoice::VolumeEnvMode::kGate);
+            g_voice[0].set_trigger_mode(SamplerVoice::TriggerMode::kGate);
+            g_voice[2].set_trigger_mode(SamplerVoice::TriggerMode::kGate);
 
             // Reset inputs.
             g_gates[0].reset();
@@ -1198,6 +1198,7 @@ void UI::handle_gain_pot(uint32_t potNumber, float value)
 void UI::handle_edit_pot(uint32_t potNumber, float value)
 {
     float fvalue = value / kAdcMax;
+    bool bvalue = fvalue >= 0.5f; // Convert float pot value to boolean switch.
     float delta;
     VoiceParameters::ParameterName editParam = kPotToParameterMap[_editPage][potNumber];
     switch (editParam)
@@ -1236,6 +1237,14 @@ void UI::handle_edit_pot(uint32_t potNumber, float value)
             }
             break;
 
+        case VoiceParameters::kPlaybackMode:
+            g_voice[_editChannel].set_playback_mode(static_cast<VoiceParameters::PlaybackMode>(bvalue));
+            break;
+
+        case VoiceParameters::kVolumeEnvMode:
+            g_voice[_editChannel].set_volume_env_mode(static_cast<VoiceParameters::EnvMode>(bvalue));
+            break;
+
         case VoiceParameters::kVolumeEnvAttack:
             // Apply curve and shift from 0..1 to 0..(sample length)
             fvalue = powf(fvalue, 1.5f);
@@ -1248,6 +1257,16 @@ void UI::handle_edit_pot(uint32_t potNumber, float value)
             fvalue = powf(fvalue, 1.5f);
             fvalue *= g_voice[_editChannel].get_sample_length_in_seconds();
             g_voice[_editChannel].set_volume_env_release(fvalue);
+            break;
+
+        case VoiceParameters::kVolumeEnvDepth:
+            // Shift from 0..1 to -1..+1.
+            fvalue = (fvalue * 2.0f) - 1.0f;
+            g_voice[_editChannel].set_volume_env_depth(fvalue);
+            break;
+
+        case VoiceParameters::kPitchEnvMode:
+            g_voice[_editChannel].set_pitch_env_mode(static_cast<VoiceParameters::EnvMode>(bvalue));
             break;
 
         case VoiceParameters::kPitchEnvAttack:

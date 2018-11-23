@@ -248,12 +248,30 @@ struct VoiceParameters
         kBaseCents,
         kSampleStart,
         kSampleEnd,
+        kPlaybackMode,
         kVolumeEnvAttack,
         kVolumeEnvRelease,
+        kVolumeEnvDepth,
+        kVolumeEnvMode,
         kPitchEnvAttack,
         kPitchEnvRelease,
         kPitchEnvDepth,
+        kPitchEnvMode,
         kGain,
+    };
+
+    //! @brief Options for playback mode.
+    enum PlaybackMode : uint8_t
+    {
+        kForwardPlayback = 0,
+        kReversePlayback = 1,
+    };
+
+    //! @brief Available envelope modes.
+    enum EnvMode : uint8_t
+    {
+        kOneShotEnv = 0,
+        kLoopEnv = 1,
     };
 
     float gain;             //!< Range 0..1.
@@ -261,8 +279,12 @@ struct VoiceParameters
     float baseCentsOffset;  //!< Base +/- cents offset, nominal range -100..+100 cents.
     float startSample;      //!< Range 0..1.
     float endSample;        //!< Range 0..1.
+    PlaybackMode playbackMode; //!< Forward or reverse setting.
+    EnvMode volumeEnvMode;  //!< One-shot or loop mode for volume envelope.
     float volumeEnvAttack;  //!< Attack time in seconds, nominal range 0..(sample length in seconds).
     float volumeEnvRelease; //!< Release time in seconds, nominal range 0..(sample length in seconds).
+    float volumeEnvDepth;    //!< +/- gain env depth, nominal range -1..+1.
+    EnvMode pitchEnvMode;   //!< One-shot or loop mode for pitch envelope.
     float pitchEnvAttack;   //!< Attack time in seconds, nominal range 0..(sample length in seconds).
     float pitchEnvRelease;  //!< Release time in seconds, nominal range 0..(sample length in seconds).
     float pitchEnvDepth;    //!< +/- octave env depth, nominal range -2..+2 octaves.
@@ -273,8 +295,12 @@ struct VoiceParameters
         baseCentsOffset(0.0f),
         startSample(0.0f),
         endSample(1.0f),
+        playbackMode(kForwardPlayback),
+        volumeEnvMode(kOneShotEnv),
         volumeEnvAttack(0.0f),
         volumeEnvRelease(0.0f),
+        volumeEnvDepth(0.0f),
+        pitchEnvMode(kOneShotEnv),
         pitchEnvAttack(0.0f),
         pitchEnvRelease(0.0f),
         pitchEnvDepth(0.0f)
@@ -292,8 +318,12 @@ struct VoiceParameters
         baseCentsOffset = other.baseCentsOffset;
         startSample = other.startSample;
         endSample = other.endSample;
+        playbackMode = other.playbackMode;
+        volumeEnvMode = other.volumeEnvMode;
         volumeEnvAttack = other.volumeEnvAttack;
         volumeEnvRelease = other.volumeEnvRelease;
+        volumeEnvDepth = other.volumeEnvDepth;
+        pitchEnvMode = other.pitchEnvMode;
         pitchEnvAttack = other.pitchEnvAttack;
         pitchEnvRelease = other.pitchEnvRelease;
         pitchEnvDepth = other.pitchEnvDepth;
@@ -307,8 +337,12 @@ struct VoiceParameters
         baseCentsOffset = 0.0f;
         startSample = 0.0f;
         endSample = 1.0f;
+        playbackMode = kForwardPlayback;
+        volumeEnvMode = kOneShotEnv;
         volumeEnvAttack = 0.0f;
         volumeEnvRelease = 0.0f;
+        volumeEnvDepth = 0.0f;
+        pitchEnvMode = kOneShotEnv;
         pitchEnvAttack = 0.0f;
         pitchEnvRelease = 0.0f;
         pitchEnvDepth = 0.0f;
@@ -320,8 +354,12 @@ struct VoiceParameters
             && settings.read("base_cents_offset", &baseCentsOffset)
             && settings.read("start_sample", &startSample)
             && settings.read("end_sample", &endSample)
+            && settings.read("playback_mode", &playbackMode)
+            && settings.read("volume_env_mode", &volumeEnvMode)
             && settings.read("volume_env_attack", &volumeEnvAttack)
             && settings.read("volume_env_release", &volumeEnvRelease)
+            && settings.read("volume_env_depth", &volumeEnvDepth)
+            && settings.read("pitch_env_mode", &pitchEnvMode)
             && settings.read("pitch_env_attack", &pitchEnvAttack)
             && settings.read("pitch_env_release", &pitchEnvRelease)
             && settings.read("pitch_env_depth", &pitchEnvDepth);
@@ -333,8 +371,12 @@ struct VoiceParameters
             && settings.write("base_cents_offset", baseCentsOffset)
             && settings.write("start_sample", startSample)
             && settings.write("end_sample", endSample)
+            && settings.write("playback_mode", playbackMode)
+            && settings.write("volume_env_mode", &volumeEnvMode)
             && settings.write("volume_env_attack", volumeEnvAttack)
             && settings.write("volume_env_release", volumeEnvRelease)
+            && settings.write("volume_env_depth", volumeEnvDepth)
+            && settings.write("pitch_env_mode", pitchEnvMode)
             && settings.write("pitch_env_attack", pitchEnvAttack)
             && settings.write("pitch_env_release", pitchEnvRelease)
             && settings.write("pitch_env_depth", pitchEnvDepth);
@@ -347,7 +389,7 @@ struct VoiceParameters
 class SamplerVoice
 {
 public:
-    enum class VolumeEnvMode
+    enum class TriggerMode
     {
         kTrigger,   //!< Once triggered, voice plays until end of sample.
         kGate,      //!< Voice plays starting with trigger until note off.
@@ -378,18 +420,22 @@ public:
     void manager_ready_did_change(bool isReady) { _isReady = isReady; }
     void playing_did_finish();
 
+    void set_trigger_mode(TriggerMode mode);
     void set_gain(float gain) { _params.gain = gain; }
     void set_base_octave_offset(float octave) { _params.baseOctaveOffset = octave; }
     void set_base_cents_offset(float cents) { _params.baseCentsOffset = cents; }
     void set_pitch_octave(float pitch) { _pitchOctave = pitch; }
     void set_sample_start(float start);
     void set_sample_end(float end);
+    void set_playback_mode(VoiceParameters::PlaybackMode mode);
     void set_volume_env_attack(float seconds);
     void set_volume_env_release(float seconds);
-    void set_volume_env_mode(VolumeEnvMode mode);
+    void set_volume_env_depth(float depth) { _params.volumeEnvDepth = depth; }
+    void set_volume_env_mode(VoiceParameters::EnvMode mode);
     void set_pitch_env_attack(float seconds);
     void set_pitch_env_release(float seconds);
     void set_pitch_env_depth(float depth) { _params.pitchEnvDepth = depth; }
+    void set_pitch_env_mode(VoiceParameters::EnvMode mode);
 
     //! @brief Restore a parameter to its default value.
     void reset_parameter(VoiceParameters::ParameterName which);
@@ -421,7 +467,7 @@ protected:
     float _readHead;    //!< Fractional read head within current buffer.
     float _pitchOctave;
     VoiceParameters _params;
-    VolumeEnvMode _volumeEnvMode;
+    TriggerMode _triggerMode;
     ASREnvelope _volumeEnv;
     ASREnvelope _pitchEnv;
     uint32_t _triggerNoteOffSample;

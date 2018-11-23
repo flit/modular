@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015 Immo Software
+ * Copyright (c) 2015,2018 Immo Software
  *
  * Redistribution and use in source and binary forms, with or without modification,
  * are permitted provided that the following conditions are met:
@@ -51,6 +51,14 @@ public:
         kRelease
     };
 
+    //! @brief Different modes for the envelope.
+    enum EnvelopeMode : uint8_t
+    {
+        kOneShotAR,
+        kLoopingAR,
+        kOneShotASR,
+    };
+
     ASREnvelope();
     virtual ~ASREnvelope() {}
 
@@ -58,7 +66,7 @@ public:
 
     void set_peak(float peak);
 
-    void enable_sustain(bool enable) { m_enableSustain = enable; }
+    void set_mode(EnvelopeMode mode);
 
     void set_length_in_seconds(EnvelopeStage stage, float seconds);
     void set_length_in_samples(EnvelopeStage stage, uint32_t samples);
@@ -89,6 +97,7 @@ protected:
     AudioRamp m_attack;
     AudioRamp m_release;
     float m_peak;
+    EnvelopeMode m_mode;
     bool m_enableSustain;
     uint32_t m_releaseOffset;
     uint32_t m_elapsedSamples;

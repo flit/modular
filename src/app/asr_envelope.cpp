@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015 Immo Software
+ * Copyright (c) 2015,2018 Immo Software
  *
  * Redistribution and use in source and binary forms, with or without modification,
  * are permitted provided that the following conditions are met:
@@ -30,10 +30,6 @@
 #include "asr_envelope.h"
 #include "arm_math.h"
 
-#if __arm__
-#include "argon/argon.h"
-#endif
-
 using namespace slab;
 
 //------------------------------------------------------------------------------
@@ -45,6 +41,7 @@ ASREnvelope::ASREnvelope()
     m_attack(),
     m_release(),
     m_peak(1.0f),
+    m_mode(kOneShotAR),
     m_enableSustain(false),
     m_releaseOffset(0),
     m_elapsedSamples(0),
@@ -57,6 +54,12 @@ void ASREnvelope::set_sample_rate(float rate)
     AudioFilter::set_sample_rate(rate);
     m_attack.set_sample_rate(rate);
     m_release.set_sample_rate(rate);
+}
+
+void ASREnvelope::set_mode(EnvelopeMode mode)
+{
+    m_mode = mode;
+    m_enableSustain = (mode == kOneShotASR);
 }
 
 void ASREnvelope::set_peak(float peak)
@@ -182,6 +185,11 @@ bool ASREnvelope::is_finished()
 
 void ASREnvelope::process(float * samples, uint32_t count)
 {
+    if (count == 0)
+    {
+        return;
+    }
+
     if (!m_isTriggered)
     {
         arm_fill_f32(0.0f, samples, count);
@@ -229,9 +237,27 @@ void ASREnvelope::process(float * samples, uint32_t count)
         if (attackSustainCount < count)
         {
             uint32_t releaseCount = count - attackSustainCount;
-            if (releaseCount)
+            if (m_mode == kLoopingAR)
             {
-                m_release.process(samples + attackSustainCount, releaseCount);
+                uint32_t releaseRemaining = m_release.get_remaining_samples();
+                if (releaseRemaining > releaseCount)
+                {
+                    m_release.process(samples + attackSustainCount, releaseCount);
+                }
+                else
+                {
+                    m_release.process(samples + attackSustainCount, releaseRemaining);
+                    trigger();
+                    process(samples + (attackSustainCount + releaseRemaining), releaseCount - releaseRemaining);
+                }
+            }
+            else
+            {
+                // For non-looping modes, we can just let the release stage fill to the end.
+                if (releaseCount)
+                {
+                    m_release.process(samples + attackSustainCount, releaseCount);
+                }
             }
         }
     }

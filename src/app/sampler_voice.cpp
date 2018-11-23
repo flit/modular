@@ -483,7 +483,7 @@ SamplerVoice::SamplerVoice()
     _readHead(0.0f),
     _pitchOctave(0.0f),
     _params(),
-    _volumeEnvMode(VolumeEnvMode::kTrigger),
+    _triggerMode(TriggerMode::kTrigger),
     _volumeEnv(),
     _pitchEnv()
 {
@@ -494,12 +494,14 @@ void SamplerVoice::init(uint32_t n, int16_t * buffer)
     _number = n;
 
     _volumeEnv.set_sample_rate(kSampleRate);
+    _volumeEnv.set_curve_type(ASREnvelope::kAttack, AudioRamp::kCubic);
+    _volumeEnv.set_mode(ASREnvelope::kOneShotAR);
     _volumeEnv.set_peak(1.0f);
-    _volumeEnv.enable_sustain(true);
 
     _pitchEnv.set_sample_rate(kSampleRate);
+    _pitchEnv.set_curve_type(ASREnvelope::kAttack, AudioRamp::kCubic);
+    _pitchEnv.set_mode(ASREnvelope::kOneShotAR);
     _pitchEnv.set_peak(1.0f);
-    _pitchEnv.enable_sustain(false);
 
     _manager.init(this, buffer);
     clear_file();
@@ -582,7 +584,7 @@ void SamplerVoice::trigger()
 void SamplerVoice::note_off()
 {
     // Shouldn't be getting note offs unless we're in gate mode.
-    assert(_volumeEnvMode == VolumeEnvMode::kGate);
+    assert(_triggerMode == TriggerMode::kGate);
 
     // Ignore the note off event if the manager isn't ready to play.
     if (!is_ready())
@@ -640,6 +642,12 @@ void SamplerVoice::render(int16_t * data, uint32_t frameCount)
     float pitchModifier = _pitchEnv.next() * _params.pitchEnvDepth;
     float rate = _compute_playback_rate(pitchModifier);
 
+    // Handle looping pitch env.
+    if (_params.pitchEnvMode == VoiceParameters::kLoopEnv && _pitchEnv.is_finished())
+    {
+        _pitchEnv.trigger();
+    }
+
     int16_t * bufferData = voiceBuffer->data;
     float readHead = _readHead;
     uint32_t bufferFrameCount = voiceBuffer->frameCount;
@@ -681,7 +689,7 @@ void SamplerVoice::render(int16_t * data, uint32_t frameCount)
             }
 
             // Start volume env release phase for trigger mode.
-            if (_volumeEnvMode == VolumeEnvMode::kTrigger)
+            if (_triggerMode == TriggerMode::kTrigger)
             {
                 // Will unsigned underflow when we're past the trigger note off sample, preventing
                 // us from restarting the volume env release phase.
@@ -862,17 +870,51 @@ void SamplerVoice::set_sample_end(float end)
     _manager.set_start_end_sample(-1, sample);
 }
 
-void SamplerVoice::set_volume_env_mode(VolumeEnvMode mode)
+void SamplerVoice::set_playback_mode(VoiceParameters::PlaybackMode mode)
 {
-    _volumeEnvMode = mode;
+    _params.playbackMode = mode;
+}
 
-    if (mode == VolumeEnvMode::kTrigger)
+void SamplerVoice::set_trigger_mode(TriggerMode mode)
+{
+    _triggerMode = mode;
+
+    if (mode == TriggerMode::kTrigger)
     {
-        _volumeEnv.set_release(_params.volumeEnvRelease);
+        _volumeEnv.set_mode(ASREnvelope::kOneShotAR);
     }
     else
     {
-        _volumeEnv.set_release(max(_params.volumeEnvRelease, 128.0f / kSampleRate));
+        _volumeEnv.set_mode(ASREnvelope::kOneShotASR);
+    }
+
+    // Update volume env release time.
+    set_volume_env_release(_params.volumeEnvRelease);
+}
+
+void SamplerVoice::set_volume_env_mode(VoiceParameters::EnvMode mode)
+{
+    _params.volumeEnvMode = mode;
+    switch (mode)
+    {
+        case VoiceParameters::kOneShotEnv:
+            // In one shot env mode, the volume env behaviour changes based
+            // on whether the voice is in trigger or gate mode.
+            switch (_triggerMode)
+            {
+                case TriggerMode::kTrigger:
+                    _volumeEnv.set_mode(ASREnvelope::kOneShotAR);
+                    break;
+                case TriggerMode::kGate:
+                    _volumeEnv.set_mode(ASREnvelope::kOneShotASR);
+                    break;
+            }
+            break;
+        case VoiceParameters::kLoopEnv:
+            // In looping env mode, the volume env always loops regarless
+            // of whether in trigger or gate mode.
+            _volumeEnv.set_mode(ASREnvelope::kLoopingAR);
+            break;
     }
 }
 
@@ -885,9 +927,30 @@ void SamplerVoice::set_volume_env_attack(float seconds)
 void SamplerVoice::set_volume_env_release(float seconds)
 {
     _params.volumeEnvRelease = seconds;
-    set_volume_env_mode(_volumeEnvMode);
+
+    if (_triggerMode == TriggerMode::kTrigger)
+    {
+        _volumeEnv.set_release(_params.volumeEnvRelease);
+    }
+    else
+    {
+        _volumeEnv.set_release(max(_params.volumeEnvRelease, 128.0f / kSampleRate));
+    }
 
     _triggerNoteOffSample = _data.get_frames() - static_cast<uint32_t>(seconds * kSampleRate);
+}
+
+void SamplerVoice::set_pitch_env_mode(VoiceParameters::EnvMode mode)
+{
+    _params.pitchEnvMode = mode;
+    if (mode == VoiceParameters::kOneShotEnv)
+    {
+        _pitchEnv.set_mode(ASREnvelope::kOneShotAR);
+    }
+    else if (mode == VoiceParameters::kLoopEnv)
+    {
+        _pitchEnv.set_mode(ASREnvelope::kLoopingAR);
+    }
 }
 
 void SamplerVoice::set_pitch_env_attack(float seconds)
@@ -917,8 +980,11 @@ void SamplerVoice::set_params(const VoiceParameters & params)
     // Update params.
     _params = params;
 
+    // Update params that require computation.
+    set_volume_env_mode(_params.volumeEnvMode);
     set_volume_env_attack(_params.volumeEnvAttack);
     set_volume_env_release(_params.volumeEnvRelease);
+    set_pitch_env_mode(_params.pitchEnvMode);
     set_pitch_env_attack(_params.pitchEnvAttack);
     set_pitch_env_release(_params.pitchEnvRelease);
 
@@ -963,6 +1029,9 @@ void SamplerVoice::reset_parameter(VoiceParameters::ParameterName which)
             break;
         case VoiceParameters::kPitchEnvDepth:
             set_pitch_env_depth(0.0f);
+            break;
+        case VoiceParameters::kPitchEnvMode:
+            set_pitch_env_mode(VoiceParameters::kOneShotEnv);
             break;
         case VoiceParameters::kUnused:
         default:
