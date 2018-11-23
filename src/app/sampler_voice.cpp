@@ -485,7 +485,8 @@ SamplerVoice::SamplerVoice()
     _params(),
     _triggerMode(TriggerMode::kTrigger),
     _volumeEnv(),
-    _pitchEnv()
+    _pitchEnv(),
+    _triggerNoteOffSample(0)
 {
 }
 
@@ -642,12 +643,6 @@ void SamplerVoice::render(int16_t * data, uint32_t frameCount)
     float pitchModifier = _pitchEnv.next() * _params.pitchEnvDepth;
     float rate = _compute_playback_rate(pitchModifier);
 
-    // Handle looping pitch env.
-    if (_params.pitchEnvMode == VoiceParameters::kLoopEnv && _pitchEnv.is_finished())
-    {
-        _pitchEnv.trigger();
-    }
-
     int16_t * bufferData = voiceBuffer->data;
     float readHead = _readHead;
     uint32_t bufferFrameCount = voiceBuffer->frameCount;
@@ -669,7 +664,7 @@ void SamplerVoice::render(int16_t * data, uint32_t frameCount)
         uint32_t framesAtRate = std::ceil(remainingFrames * rate);
         uint32_t integerReadHead = readHead;
         uint32_t framesRemainingInBuffer = bufferFrameCount - integerReadHead;
-        uint32_t outputFrames;
+        uint32_t outputFrames; // Number of frames we're outputting this time through the loop.
 
         // Handle case where there are fewer remaining frames in the buffer than
         // the playback rate, in which case we need to just move to the next buffer.
