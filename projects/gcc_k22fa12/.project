@@ -361,6 +361,21 @@
 			<locationURI>PARENT-2-PROJECT_LOC/src/app/sample_bank.h</locationURI>
 		</link>
 		<link>
+			<name>app/sample_buffer.h</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/src/app/sample_buffer.h</locationURI>
+		</link>
+		<link>
+			<name>app/sample_buffer_manager.cpp</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/src/app/sample_buffer_manager.cpp</locationURI>
+		</link>
+		<link>
+			<name>app/sample_buffer_manager.h</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/src/app/sample_buffer_manager.h</locationURI>
+		</link>
+		<link>
 			<name>app/sampler_synth.cpp</name>
 			<type>1</type>
 			<locationURI>PARENT-2-PROJECT_LOC/src/app/sampler_synth.cpp</locationURI>
@@ -424,6 +439,11 @@
 			<name>app/utility.h</name>
 			<type>1</type>
 			<locationURI>PARENT-2-PROJECT_LOC/src/app/utility.h</locationURI>
+		</link>
+		<link>
+			<name>app/voice_parameters.h</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/src/app/voice_parameters.h</locationURI>
 		</link>
 		<link>
 			<name>app/wav_file.cpp</name>
