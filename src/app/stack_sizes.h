@@ -42,7 +42,7 @@ enum thread_stacks : uint32_t
 {
     kAudioThreadStack = 1024,
     kReaderThreadStack = 1024,
-    kCVThreadStack = 512,
+    kCVThreadStack = 640,
     kUIThreadStack = 4096,
     kCardThreadStack = 768,
     kInitThreadStack = 2048,
