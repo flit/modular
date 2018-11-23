@@ -1,0 +1,25 @@
+{
+    "configurations": [
+        {
+            "name": "samplbaer",
+            "includePath": [
+                "${workspaceFolder}/**",
+                "/opt/gcc-arm-none-eabi-7-2018-q2-update/arm-none-eabi/include/**"
+            ],
+            "defines": [
+                "CPU_MK22FX512AVLH12"
+            ],
+            "macFrameworkPath": [
+                "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.14.sdk/System/Library/Frameworks"
+            ],
+            "compilerPath": "/opt/gcc-arm-none-eabi-7-2018-q2-update/bin/arm-none-eabi-gcc",
+            "cStandard": "c11",
+            "cppStandard": "c++17",
+            "intelliSenseMode": "gcc-x64",
+            "forcedInclude": [
+                "/opt/gcc-arm-none-eabi-7-2018-q2-update/arm-none-eabi/include/sys/_stdint.h"
+            ]
+        }
+    ],
+    "version": 4
+}
