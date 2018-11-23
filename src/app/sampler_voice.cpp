@@ -606,11 +606,20 @@ void SamplerVoice::reset_parameter(VoiceParameters::ParameterName which)
         case VoiceParameters::kSampleEnd:
             set_sample_end(1.0f);
             break;
+        case VoiceParameters::kPlaybackMode:
+            set_playback_mode(VoiceParameters::kForwardPlayback);
+            break;
         case VoiceParameters::kVolumeEnvAttack:
             set_volume_env_attack(0.0f);
             break;
         case VoiceParameters::kVolumeEnvRelease:
             set_volume_env_release(0.0f);
+            break;
+        case VoiceParameters::kVolumeEnvDepth:
+            set_volume_env_depth(0.0f);
+            break;
+        case VoiceParameters::kVolumeEnvMode:
+            set_volume_env_mode(VoiceParameters::kOneShotEnv);
             break;
         case VoiceParameters::kPitchEnvAttack:
             set_pitch_env_attack(0.0f);

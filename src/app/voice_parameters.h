@@ -134,20 +134,7 @@ struct VoiceParameters
 
     void reset()
     {
-        gain = 1.0f;
-        baseOctaveOffset = 0.0f;
-        baseCentsOffset = 0.0f;
-        startSample = 0.0f;
-        endSample = 1.0f;
-        playbackMode = kForwardPlayback;
-        volumeEnvMode = kOneShotEnv;
-        volumeEnvAttack = 0.0f;
-        volumeEnvRelease = 0.0f;
-        volumeEnvDepth = 0.0f;
-        pitchEnvMode = kOneShotEnv;
-        pitchEnvAttack = 0.0f;
-        pitchEnvRelease = 0.0f;
-        pitchEnvDepth = 0.0f;
+        *this = VoiceParameters{};
     }
 
     bool load(Archive & settings)
