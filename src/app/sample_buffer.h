@@ -86,13 +86,13 @@ struct SampleBuffer
 
     //! @brief Fill a buffer with interpolated samples.
     template <InterpolationMode mode>
-    float read_into(float * buffer, uint32_t count, float fractionalFrame, float rate, const float * preBufferFrames)
+    float read_into(float * buffer, uint32_t count, float fractionalFrame, float rate)
     {
         assert(fractionalFrame + float(count) * rate < frameCount + 1);
         uint32_t n;
         for (n = 0; n < count; ++n)
         {
-            *buffer++ = read<mode>(fractionalFrame, preBufferFrames);
+            *buffer++ = read<mode>(fractionalFrame);
             fractionalFrame += rate;
         }
         return fractionalFrame;
@@ -100,7 +100,7 @@ struct SampleBuffer
 
     //! @brief Return one interpolated sample at a fractional position within this buffer.
     template <InterpolationMode mode>
-    float read(float fractionalFrame, const float * preBufferFrames)
+    float read(float fractionalFrame)
     {
         uint32_t intOffset = static_cast<uint32_t>(fractionalFrame);
         float fractOffset = fractionalFrame - static_cast<float>(intOffset);
@@ -111,14 +111,7 @@ struct SampleBuffer
         if (mode == InterpolationMode::kLinear)
         {
             // Linear interpolator.
-            if (intOffset == 0)
-            {
-                x0 = preBufferFrames[2];
-            }
-            else
-            {
-                x0 = data[intOffset - 1];
-            }
+            x0 = dataWithInterpolationFrames[intOffset + 2];
             x1 = data[intOffset];
             return (x0 + fractOffset * (x1 - x0));
         }

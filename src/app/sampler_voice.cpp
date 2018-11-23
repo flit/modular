@@ -298,7 +298,7 @@ void SamplerVoice::render(int16_t * data, uint32_t frameCount)
 
             // Render sample data into the output buffer at the specified playback rate.
             readHead = voiceBuffer->read_into<SampleBuffer::InterpolationMode::kHermite>(
-                        s_workBuffer, outputFrames, readHead, rate, _interpolationBuffer);
+                        s_workBuffer, outputFrames, readHead, rate);
             s_workBuffer.multiply_scalar(_params.gain, outputFrames);
             _volumeEnv.process(s_workBuffer2, outputFrames);
             s_workBuffer.multiply_vector(s_workBuffer2, outputFrames);
