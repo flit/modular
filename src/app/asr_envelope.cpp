@@ -185,84 +185,91 @@ bool ASREnvelope::is_finished()
 
 void ASREnvelope::process(float * samples, uint32_t count)
 {
-    if (count == 0)
+    uint32_t totalRemaining = count;
+    while (totalRemaining)
     {
-        return;
-    }
-
-    if (!m_isTriggered)
-    {
-        arm_fill_f32(0.0f, samples, count);
-        return;
-    }
-
-    // Attack.
-    uint32_t attackCount = m_attack.get_remaining_samples();
-    if (attackCount > count)
-    {
-        attackCount = count;
-    }
-    if (attackCount)
-    {
-        m_attack.process(samples, attackCount);
-    }
-
-    // Sustain.
-    if (attackCount < count)
-    {
-        int32_t sustainCount = 0;
-        if (m_enableSustain)
+        if (!m_isTriggered)
         {
-            sustainCount = count - attackCount;
-            if (m_releaseOffset > 0)
-            {
-                if (attackCount + sustainCount + m_elapsedSamples > m_releaseOffset)
-                {
-                    sustainCount = m_releaseOffset - m_elapsedSamples - attackCount;
-
-                    if (sustainCount < 0)
-                    {
-                        sustainCount = 0;
-                    }
-                }
-            }
-            if (sustainCount > 0)
-            {
-                arm_fill_f32(m_peak, samples + attackCount, sustainCount);
-            }
+            arm_fill_f32(0.0f, samples, count);
+            return;
         }
 
-        // Release.
-        uint32_t attackSustainCount = attackCount + sustainCount;
-        if (attackSustainCount < count)
+        // Attack.
+        uint32_t attackCount = m_attack.get_remaining_samples();
+        if (attackCount > count)
         {
-            uint32_t releaseCount = count - attackSustainCount;
-            if (m_mode == kLoopingAR)
+            attackCount = count;
+        }
+        if (attackCount)
+        {
+            m_attack.process(samples, attackCount);
+        }
+
+        // Sustain.
+        if (attackCount < count)
+        {
+            int32_t sustainCount = 0;
+            if (m_enableSustain)
             {
-                uint32_t releaseRemaining = m_release.get_remaining_samples();
-                if (releaseRemaining > releaseCount)
+                sustainCount = count - attackCount;
+                if (m_releaseOffset > 0)
                 {
-                    m_release.process(samples + attackSustainCount, releaseCount);
+                    if (attackCount + sustainCount + m_elapsedSamples > m_releaseOffset)
+                    {
+                        sustainCount = m_releaseOffset - m_elapsedSamples - attackCount;
+
+                        if (sustainCount < 0)
+                        {
+                            sustainCount = 0;
+                        }
+                    }
+                }
+                if (sustainCount > 0)
+                {
+                    arm_fill_f32(m_peak, samples + attackCount, sustainCount);
+                }
+            }
+
+            // Release.
+            uint32_t attackSustainCount = attackCount + sustainCount;
+            if (attackSustainCount < count)
+            {
+                uint32_t releaseCount = count - attackSustainCount;
+                if (m_mode == kLoopingAR)
+                {
+                    uint32_t releaseRemaining = m_release.get_remaining_samples();
+                    if (releaseRemaining > releaseCount)
+                    {
+                        m_release.process(samples + attackSustainCount, releaseCount);
+                    }
+                    else
+                    {
+                        // Fill last part of release stage, then retrigger and loop.
+                        m_release.process(samples + attackSustainCount, releaseRemaining);
+                        trigger();
+
+                        uint32_t thisLoopCount = attackSustainCount + releaseRemaining;
+                        totalRemaining -= thisLoopCount;
+                        samples += thisLoopCount;
+                        m_elapsedSamples += thisLoopCount;
+                        count = releaseCount - releaseRemaining;
+                        continue;
+                    }
                 }
                 else
                 {
-                    m_release.process(samples + attackSustainCount, releaseRemaining);
-                    trigger();
-                    process(samples + (attackSustainCount + releaseRemaining), releaseCount - releaseRemaining);
-                }
-            }
-            else
-            {
-                // For non-looping modes, we can just let the release stage fill to the end.
-                if (releaseCount)
-                {
-                    m_release.process(samples + attackSustainCount, releaseCount);
+                    // For non-looping modes, we can just let the release stage fill to the end.
+                    if (releaseCount)
+                    {
+                        m_release.process(samples + attackSustainCount, releaseCount);
+                    }
                 }
             }
         }
-    }
 
-    m_elapsedSamples += count;
+        totalRemaining -= count;
+        m_elapsedSamples += count;
+    }
 }
 
 //------------------------------------------------------------------------------
