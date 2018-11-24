@@ -68,18 +68,16 @@ public:
     void flush();
     bool is_transferring() const { return _isTransferring; }
 
-protected:
-    dspi_master_handle_t _spiHandle;    //!< Non-blocking transfer handle for DSPI driver.
-    uint8_t _editBuffer;    //!< Buffer updated prior to flush.
-    uint8_t _transferBuffer;    //!< Buffer used for the transfer.
-    bool _isTransferring;   //!< Whether a transfer is in progress.
+    void clear_is_transferring() { _isTransferring = false; }
 
-    static void _transfer_callback(SPI_Type *base, dspi_master_handle_t *handle, status_t status, void *userData);
+protected:
+    uint8_t _editBuffer;    //!< Buffer updated prior to flush.
+    bool _isTransferring;   //!< Whether a transfer is in progress.
 
 };
 
 /*!
- * @brief LED template.
+ * @brief Channel LED template.
  */
 template <uint32_t channel>
 class ChannelLED : public LEDBase
@@ -112,6 +110,7 @@ public:
 
     virtual void set_polarity(bool polarity) override
     {
+        // No-op.
     }
 
 protected:

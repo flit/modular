@@ -38,7 +38,6 @@ using namespace slab;
 
 ChannelLEDManager::ChannelLEDManager()
 :   _editBuffer(0),
-    _transferBuffer(0),
     _isTransferring(false)
 {
 }
@@ -60,7 +59,11 @@ void ChannelLEDManager::init()
     masterConfig.samplePoint = kDSPI_SckToSin0Clock;
     DSPI_MasterInit(SPI0, &masterConfig, CLOCK_GetBusClkFreq());
 
-    DSPI_MasterTransferCreateHandle(SPI0, &_spiHandle, _transfer_callback, this);
+    DSPI_EnableInterrupts(SPI0, kDSPI_TxCompleteInterruptEnable);
+    DSPI_SetFifoEnable(SPI0, true, false); // tx fifo enabled, rx fifo disabled
+    DSPI_Enable(SPI0, true);
+    DSPI_StartTransfer(SPI0);
+    NVIC_EnableIRQ(SPI0_IRQn);
 
     // Enable output.
     GPIO_PinWrite(PIN_CH_LED_OE_N_GPIO, PIN_CH_LED_OE_N_BIT, 0);
@@ -70,28 +73,24 @@ void ChannelLEDManager::flush()
 {
     _isTransferring = true;
 
-    // Copy edit buffer to transfer buffer.
-    _transferBuffer = _editBuffer;
-
     // Reset latch.
     GPIO_PinWrite(PIN_CH_LED_LATCH_GPIO, PIN_CH_LED_LATCH_BIT, 0);
 
     // Initiate transfer.
-    dspi_transfer_t transfer = {0};
-    transfer.txData = &_transferBuffer;
-    transfer.rxData = NULL;
-    transfer.dataSize = 1;
-    transfer.configFlags = kDSPI_MasterCtar0 | kDSPI_MasterPcs0;
-    DSPI_MasterTransferNonBlocking(SPI0, &_spiHandle, &transfer);
+    dspi_command_data_config_t commandConfig;
+    commandConfig.isPcsContinuous = false;
+    commandConfig.whichCtar = kDSPI_Ctar0;
+    commandConfig.whichPcs = kDSPI_Pcs0;
+    commandConfig.clearTransferCount = false;
+    commandConfig.isEndOfQueue = false;
+    DSPI_MasterWriteData(SPI0, &commandConfig, _editBuffer);
 }
 
-void ChannelLEDManager::_transfer_callback(SPI_Type *base, dspi_master_handle_t *handle, status_t status, void *userData)
+extern "C" void SPI0_IRQHandler(void)
 {
-    // Latch. Can stay high until next flush.
     GPIO_PinWrite(PIN_CH_LED_LATCH_GPIO, PIN_CH_LED_LATCH_BIT, 1);
-
-    // Clear transferring flag.
-    reinterpret_cast<ChannelLEDManager *>(userData)->_isTransferring = false;
+    ChannelLEDManager::get().clear_is_transferring();
+    DSPI_ClearStatusFlags(SPI0, kDSPI_TxCompleteFlag);
 }
 
 //------------------------------------------------------------------------------
