@@ -31,7 +31,6 @@
 #include "reader_thread.h"
 #include "ui.h"
 #include "debug_log.h"
-// #include "utility.h"
 #include "itm_trace.h"
 #include <algorithm>
 
