@@ -61,6 +61,9 @@ const float kPotMaxSnapValue = kAdcMax - kPotExtremaSnapValue;
 //! Hysteresis to use when switching between edit and play mode and edit pages.
 const float kPotEditHysteresisPercent = 3.0f;
 
+//! Power used to apply a curve to envelope attack and release pots.
+const float kEnvCurvePower = 2.1f;
+
 //! Interval for checking SD card presence.
 const uint32_t kCardDetectInterval_ms = 500;
 
@@ -1285,14 +1288,14 @@ void UI::handle_edit_pot(uint32_t potNumber, float value)
 
         case VoiceParameters::kVolumeEnvAttack:
             // Apply curve and shift from 0..1 to 0..(sample length)
-            fvalue = powf(fvalue, 1.5f);
+            fvalue = powf(fvalue, kEnvCurvePower);
             fvalue *= g_voice[_editChannel].get_sample_length_in_seconds();
             g_voice[_editChannel].set_volume_env_attack(fvalue);
             break;
 
         case VoiceParameters::kVolumeEnvRelease:
             // Apply curve and shift from 0..1 to 0..(sample length)
-            fvalue = powf(fvalue, 1.5f);
+            fvalue = powf(fvalue, kEnvCurvePower);
             fvalue *= g_voice[_editChannel].get_sample_length_in_seconds();
             g_voice[_editChannel].set_volume_env_release(fvalue);
             break;
@@ -1309,14 +1312,14 @@ void UI::handle_edit_pot(uint32_t potNumber, float value)
 
         case VoiceParameters::kPitchEnvAttack:
             // Apply curve and shift from 0..1 to 0..(sample length)
-            fvalue = powf(fvalue, 1.5f);
+            fvalue = powf(fvalue, kEnvCurvePower);
             fvalue *= g_voice[_editChannel].get_sample_length_in_seconds();
             g_voice[_editChannel].set_pitch_env_attack(fvalue);
             break;
 
         case VoiceParameters::kPitchEnvRelease:
             // Apply curve and shift from 0..1 to 0..(sample length)
-            fvalue = powf(fvalue, 1.5f);
+            fvalue = powf(fvalue, kEnvCurvePower);
             fvalue *= g_voice[_editChannel].get_sample_length_in_seconds();
             g_voice[_editChannel].set_pitch_env_release(fvalue);
             break;
