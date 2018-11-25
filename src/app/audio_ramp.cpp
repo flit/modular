@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015 Immo Software
+ * Copyright (c) 2015,2018 Immo Software
  *
  * Redistribution and use in source and binary forms, with or without modification,
  * are permitted provided that the following conditions are met:
@@ -46,6 +46,7 @@ AudioRamp::AudioRamp(float begin, float end)
     m_currentSample(0),
     m_slope(0.0f),
     m_curveType(kLinear),
+    m_initialY1(0),
     m_y1(0),
     m_y2(0)
 {
@@ -59,7 +60,6 @@ void AudioRamp::set_length_in_seconds(float seconds)
     {
         m_currentSample = m_lengthInSamples;
     }
-    recalculate_slope();
 }
 
 void AudioRamp::set_length_in_samples(uint32_t samples)
@@ -70,24 +70,21 @@ void AudioRamp::set_length_in_samples(uint32_t samples)
     {
         m_currentSample = m_lengthInSamples;
     }
-    recalculate_slope();
 }
 
 void AudioRamp::set_begin_value(float beginValue)
 {
     m_beginValue = beginValue;
-    recalculate_slope();
 }
 
 void AudioRamp::set_end_value(float endValue)
 {
     m_endValue = endValue;
-    recalculate_slope();
 }
 
 //! Computes the values needed by next() and process() to return
 //! intermediate ramp values.
-void AudioRamp::recalculate_slope()
+void AudioRamp::recompute()
 {
     if (m_lengthInSamples == 0)
     {
@@ -108,12 +105,14 @@ void AudioRamp::recalculate_slope()
             m_slope = (m_y2 - m_y1) / float(m_lengthInSamples);
             break;
     }
+
+    m_initialY1 = m_y1;
 }
 
 void AudioRamp::reset()
 {
     m_currentSample = 0;
-    recalculate_slope();
+    m_y1 = m_initialY1;
 }
 
 float AudioRamp::next()

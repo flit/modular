@@ -44,8 +44,7 @@ ASREnvelope::ASREnvelope()
     m_mode(kOneShotAR),
     m_enableSustain(false),
     m_releaseOffset(0),
-    m_elapsedSamples(0),
-    m_isTriggered(false)
+    m_elapsedSamples(0)
 {
 }
 
@@ -154,19 +153,24 @@ void ASREnvelope::set_curve_type(EnvelopeStage stage, AudioRamp::CurveType theTy
     }
 }
 
+void ASREnvelope::recompute()
+{
+    // Recompute the slope of both ramps.
+    m_attack.recompute();
+    m_release.recompute();
+}
+
 void ASREnvelope::set_release_offset(uint32_t offset)
 {
     m_releaseOffset = m_elapsedSamples + offset;
 }
 
-void ASREnvelope::trigger()
+void ASREnvelope::reset()
 {
-    set_peak(m_peak);
     m_attack.reset();
     m_release.reset();
     m_elapsedSamples = 0;
     m_releaseOffset = 0;
-    m_isTriggered = true;
 }
 
 float ASREnvelope::next()
@@ -188,9 +192,13 @@ void ASREnvelope::process(float * samples, uint32_t count)
     uint32_t totalRemaining = count;
     while (totalRemaining)
     {
-        if (!m_isTriggered)
+        // Special case to prevent infinite loop if the stages are both 0 length and
+        // we're in the looping envelope mode.
+        if (m_mode == kLoopingAR
+            && m_attack.get_length_in_samples() == 0
+            && m_release.get_length_in_samples() == 0)
         {
-            arm_fill_f32(0.0f, samples, count);
+            arm_fill_f32(0.0f, samples, totalRemaining);
             return;
         }
 
@@ -246,7 +254,7 @@ void ASREnvelope::process(float * samples, uint32_t count)
                     {
                         // Fill last part of release stage, then retrigger and loop.
                         m_release.process(samples + attackSustainCount, releaseRemaining);
-                        trigger();
+                        reset();
 
                         uint32_t thisLoopCount = attackSustainCount + releaseRemaining;
                         totalRemaining -= thisLoopCount;

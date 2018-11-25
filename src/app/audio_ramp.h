@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015 Immo Software
+ * Copyright (c) 2015,2018 Immo Software
  *
  * Redistribution and use in source and binary forms, with or without modification,
  * are permitted provided that the following conditions are met:
@@ -68,6 +68,9 @@ public:
     //! the slope itself.
     void set_curve_type(CurveType theType) { m_curveType = theType; }
 
+    //! @brief Recalculate the slope.
+    void recompute();
+
     uint32_t get_remaining_samples() { return m_lengthInSamples - m_currentSample; }
 
     virtual void reset();
@@ -87,10 +90,9 @@ protected:
     uint32_t m_currentSample;
     float m_slope;
     CurveType m_curveType;
+    float m_initialY1;
     float m_y1;
     float m_y2;
-
-    void recalculate_slope();
 
 };
 

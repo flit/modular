@@ -94,11 +94,13 @@ void SamplerVoice::init(uint32_t n, int16_t * buffer)
     _volumeEnv.set_curve_type(ASREnvelope::kAttack, AudioRamp::kCubic);
     _volumeEnv.set_mode(ASREnvelope::kOneShotASR);
     _volumeEnv.set_peak(1.0f);
+    _volumeEnv.recompute();
 
     _pitchEnv.set_sample_rate(kSampleRate);
     _pitchEnv.set_curve_type(ASREnvelope::kAttack, AudioRamp::kCubic);
     _pitchEnv.set_mode(ASREnvelope::kOneShotAR);
     _pitchEnv.set_peak(1.0f);
+    _pitchEnv.recompute();
 
     _manager.init(this, buffer);
     clear_file();
@@ -142,8 +144,8 @@ void SamplerVoice::_reset_voice()
     _doRetrigger = false;
     _noteOffSamplesRemaining = 0;
     _readHead = 0.0f;
-    _volumeEnv.trigger();
-    _pitchEnv.trigger();
+    _volumeEnv.reset();
+    _pitchEnv.reset();
     std::fill_n(&_interpolationBuffer[0], SampleBuffer::kInterpolationFrameCount, 0);
 }
 
@@ -517,6 +519,7 @@ void SamplerVoice::set_volume_env_attack(float seconds)
 {
     _params.volumeEnvAttack = seconds;
     _volumeEnv.set_attack(seconds);
+    _volumeEnv.recompute();
 }
 
 void SamplerVoice::set_volume_env_release(float seconds)
@@ -531,6 +534,7 @@ void SamplerVoice::set_volume_env_release(float seconds)
     {
         _volumeEnv.set_release(max(_params.volumeEnvRelease, 128.0f / kSampleRate));
     }
+    _volumeEnv.recompute();
 
     _triggerNoteOffSample = _data.get_frames() - static_cast<uint32_t>(seconds * kSampleRate);
 }
@@ -555,6 +559,7 @@ void SamplerVoice::set_pitch_env_attack(float seconds)
     // The pitch envelope update rate is once per audio buffer, so modify the attack time
     // to take this into account.
     _pitchEnv.set_attack(seconds / float(kAudioBufferSize));
+    _pitchEnv.recompute();
 }
 
 void SamplerVoice::set_pitch_env_release(float seconds)
@@ -564,6 +569,7 @@ void SamplerVoice::set_pitch_env_release(float seconds)
     // The pitch envelope update rate is once per audio buffer, so modify the release time
     // to take this into account.
     _pitchEnv.set_release(seconds / float(kAudioBufferSize));
+    _pitchEnv.recompute();
 }
 
 void SamplerVoice::set_params(const VoiceParameters & params)

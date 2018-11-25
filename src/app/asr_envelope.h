@@ -82,15 +82,19 @@ public:
     //! the slope itself.
     void set_curve_type(EnvelopeStage stage, AudioRamp::CurveType theType);
 
+    //! @brief Recalculate all slopes.
+    void recompute();
+
     //! Sets the offset to the start of the release stage. Offset is relative to the next
     //! call to process().
     void set_release_offset(uint32_t offset);
 
-    void trigger();
-    float next();
+    //! @brief Reset envelope to beginning.
+    void reset();
 
     bool is_finished();
 
+    float next();
     virtual void process(float * samples, uint32_t count);
 
 protected:
@@ -101,7 +105,6 @@ protected:
     bool m_enableSustain;
     uint32_t m_releaseOffset;
     uint32_t m_elapsedSamples;
-    bool m_isTriggered;
 };
 
 } // namespace slab
