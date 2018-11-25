@@ -82,26 +82,39 @@ public:
         arm_fill_f32(value, m_samples, m_count);
     }
 
+    void negate()
+    {
+        arm_negate_f32(m_samples, m_samples, m_count);
+    }
+
+    void add_scalar(float value)
+    {
+        arm_offset_f32(m_samples, value, m_samples, m_count);
+    }
+
+    void add_vector(const float *vector)
+    {
+        arm_add_f32(m_samples, const_cast<float *>(vector), m_samples, m_count);
+    }
+
+    void subtract_scalar(float value)
+    {
+        arm_offset_f32(m_samples, -value, m_samples, m_count);
+    }
+
+    void subtract_vector(const float *vector)
+    {
+        arm_sub_f32(m_samples, const_cast<float *>(vector), m_samples, m_count);
+    }
+
     void multiply_scalar(float value)
     {
         arm_scale_f32(m_samples, value, m_samples, m_count);
     }
 
-    void multiply_scalar(float value, uint32_t count, uint32_t start=0)
-    {
-        assert(start + count <= m_count);
-        arm_scale_f32(&m_samples[start], value, &m_samples[start], count);
-    }
-
     void multiply_vector(const float * vector)
     {
         arm_mult_f32(m_samples, const_cast<float *>(vector), m_samples, m_count);
-    }
-
-    void multiply_vector(const float * vector, uint32_t count, uint32_t start=0)
-    {
-        assert(start + count <= m_count);
-        arm_mult_f32(&m_samples[start], const_cast<float *>(vector), &m_samples[start], count);
     }
 
     template <typename T>

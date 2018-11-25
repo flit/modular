@@ -92,7 +92,7 @@ void SamplerVoice::init(uint32_t n, int16_t * buffer)
 
     _volumeEnv.set_sample_rate(kSampleRate);
     _volumeEnv.set_curve_type(ASREnvelope::kAttack, AudioRamp::kCubic);
-    _volumeEnv.set_mode(ASREnvelope::kOneShotAR);
+    _volumeEnv.set_mode(ASREnvelope::kOneShotASR);
     _volumeEnv.set_peak(1.0f);
 
     _pitchEnv.set_sample_rate(kSampleRate);
@@ -239,6 +239,11 @@ void SamplerVoice::render(int16_t * data, uint32_t frameCount)
     float pitchModifier = _pitchEnv.next() * _params.pitchEnvDepth;
     float rate = _compute_playback_rate(pitchModifier);
 
+    // Compute volume envelope parameters.
+    bool isVolumeEnvNegative = (_params.volumeEnvDepth < 0.0f);
+    float adjustedVolumeEnvDepth = fabsf(_params.volumeEnvDepth);
+    float volumeEnvOffset = 1.0f - adjustedVolumeEnvDepth;
+
     int16_t * bufferData = voiceBuffer->data;
     float readHead = _readHead;
     uint32_t bufferFrameCount = voiceBuffer->frameCount;
@@ -294,15 +299,33 @@ void SamplerVoice::render(int16_t * data, uint32_t frameCount)
                 }
             }
 
+            // Create local work buffers for the number of output frames we need.
+            AudioBuffer localWorkBuffer(s_workBuffer, outputFrames);
+            AudioBuffer localWorkBuffer2(s_workBuffer2, outputFrames);
+
             START_ELAPSED_TIME(render);
 
             // Render sample data into the output buffer at the specified playback rate.
             readHead = voiceBuffer->read_into<SampleBuffer::InterpolationMode::kHermite>(
-                        s_workBuffer, outputFrames, readHead, rate);
-            s_workBuffer.multiply_scalar(_params.gain, outputFrames);
-            _volumeEnv.process(s_workBuffer2, outputFrames);
-            s_workBuffer.multiply_vector(s_workBuffer2, outputFrames);
-            s_workBuffer.copy_into(data, 2, outputFrames);
+                        localWorkBuffer, outputFrames, readHead, rate);
+
+            // Apply volume envelope and gain.
+            _volumeEnv.process(localWorkBuffer2, outputFrames);
+            localWorkBuffer2.multiply_scalar(adjustedVolumeEnvDepth);
+            if (isVolumeEnvNegative)
+            {
+                localWorkBuffer2.negate();
+                localWorkBuffer2.add_scalar(1.0f);
+            }
+            else
+            {
+                localWorkBuffer2.add_scalar(volumeEnvOffset);
+            }
+            localWorkBuffer.multiply_vector(s_workBuffer2);
+            localWorkBuffer.multiply_scalar(_params.gain);
+
+            // Convert from float to int16 while copying from work buffer to output buffer.
+            localWorkBuffer.copy_into(data, 2, outputFrames);
 
             END_ELAPSED_TIME(render);
 
@@ -470,15 +493,6 @@ void SamplerVoice::set_trigger_mode(TriggerMode mode)
 {
     _triggerMode = mode;
 
-    if (mode == TriggerMode::kTrigger)
-    {
-        _volumeEnv.set_mode(ASREnvelope::kOneShotAR);
-    }
-    else
-    {
-        _volumeEnv.set_mode(ASREnvelope::kOneShotASR);
-    }
-
     // Update volume env release time.
     set_volume_env_release(_params.volumeEnvRelease);
 }
@@ -489,17 +503,7 @@ void SamplerVoice::set_volume_env_mode(VoiceParameters::EnvMode mode)
     switch (mode)
     {
         case VoiceParameters::kOneShotEnv:
-            // In one shot env mode, the volume env behaviour changes based
-            // on whether the voice is in trigger or gate mode.
-            switch (_triggerMode)
-            {
-                case TriggerMode::kTrigger:
-                    _volumeEnv.set_mode(ASREnvelope::kOneShotAR);
-                    break;
-                case TriggerMode::kGate:
-                    _volumeEnv.set_mode(ASREnvelope::kOneShotASR);
-                    break;
-            }
+            _volumeEnv.set_mode(ASREnvelope::kOneShotASR);
             break;
         case VoiceParameters::kLoopEnv:
             // In looping env mode, the volume env always loops regarless
