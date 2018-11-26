@@ -130,6 +130,7 @@ protected:
     ASREnvelope _volumeEnv;
     ASREnvelope _pitchEnv;
     uint32_t _triggerNoteOffSample;
+    int32_t _voiceStatusRetriggerCounter;
 
     static float s_workBufferData[2][kAudioBufferSize];
     static AudioBuffer s_workBuffer;

@@ -82,7 +82,8 @@ SamplerVoice::SamplerVoice()
     _triggerMode(TriggerMode::kTrigger),
     _volumeEnv(),
     _pitchEnv(),
-    _triggerNoteOffSample(0)
+    _triggerNoteOffSample(0),
+    _voiceStatusRetriggerCounter(0)
 {
 }
 
@@ -172,11 +173,15 @@ void SamplerVoice::trigger()
         _doNoteOff = true;
         _doRetrigger = true;
         _noteOffSamplesRemaining = kNoteOffSamples;
+
+        UI::get().set_voice_playing(_number, false);
+        _voiceStatusRetriggerCounter = 50.0f / 1000.0f * kSampleRate; // 50 ms
     }
     else
     {
         UI::get().set_voice_playing(_number, true);
         _isPlaying = true;
+        _voiceStatusRetriggerCounter = 0;
     }
 }
 
@@ -410,11 +415,20 @@ void SamplerVoice::render(int16_t * data, uint32_t frameCount)
             if (savedRetrigger)
             {
                 _isPlaying = true;
-                UI::get().indicate_voice_retriggered(_number);
             }
         }
 
         END_ELAPSED_TIME(noteOff);
+    }
+
+    if (_voiceStatusRetriggerCounter)
+    {
+        _voiceStatusRetriggerCounter -= frameCount;
+        if (_voiceStatusRetriggerCounter <= 0)
+        {
+            UI::get().set_voice_playing(_number, true);
+            _voiceStatusRetriggerCounter = 0;
+        }
     }
 
     END_ELAPSED_TIME(total);
