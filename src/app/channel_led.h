@@ -42,6 +42,10 @@ namespace slab {
 
 /*!
  * @brief Manager for bi-color channel LEDs.
+ * 
+ * Maintains a buffer with the current LED states. Setting an LED's state only updates the
+ * buffer. The flush() method pushes the current buffer to the shift register to update
+ * the visible LED state.
  */
 class ChannelLEDManager : public Singleton<ChannelLEDManager>
 {
@@ -56,23 +60,22 @@ public:
     ChannelLEDManager();
     ~ChannelLEDManager()=default;
 
+    //! @brief Init hardware.
     void init();
 
+    //! @brief Change an LED's color and/or state in the buffer.
     void set_channel_state(uint32_t channel, ChannelLedState state)
     {
         uint32_t channelBitOffset = channel * 2;
-        _editBuffer = (_editBuffer & ~(0x3 << channelBitOffset))
+        _buffer = (_buffer & ~(0x3 << channelBitOffset))
                         | (static_cast<uint8_t>(state) << channelBitOffset);
     }
 
-    void flush();
-    bool is_transferring() const { return _isTransferring; }
-
-    void clear_is_transferring() { _isTransferring = false; }
+    //! @brief Update visible LED state to match the buffer.
+    bool flush();
 
 protected:
-    uint8_t _editBuffer;    //!< Buffer updated prior to flush.
-    bool _isTransferring;   //!< Whether a transfer is in progress.
+    uint8_t _buffer;    //!< Current LED state encoded as shift register pins.
 
 };
 

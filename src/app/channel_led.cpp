@@ -29,68 +29,68 @@
 #include "channel_led.h"
 #include "fsl_gpio.h"
 #include "board.h"
+#include "ui.h"
 
 using namespace slab;
+
+//! @brief The SPI peripheral instance used for channel LEDs.
+#define CHANNEL_LED_SPI (SPI0)
 
 //------------------------------------------------------------------------------
 // Code
 //------------------------------------------------------------------------------
 
 ChannelLEDManager::ChannelLEDManager()
-:   _editBuffer(0),
-    _isTransferring(false)
+:   _buffer(0)
 {
 }
 
 void ChannelLEDManager::init()
 {
+    // Init and configure the SPI peripheral.
     dspi_master_config_t masterConfig;
     DSPI_MasterGetDefaultConfig(&masterConfig);
-    masterConfig.ctarConfig.baudRate = 10000; // 10 kHz
+    masterConfig.ctarConfig.baudRate = 10000000; // 10 MHz
     masterConfig.ctarConfig.bitsPerFrame = 8;
     masterConfig.ctarConfig.cpol = kDSPI_ClockPolarityActiveHigh;
     masterConfig.ctarConfig.cpha = kDSPI_ClockPhaseFirstEdge;
     masterConfig.ctarConfig.direction = kDSPI_MsbFirst;
-    masterConfig.ctarConfig.pcsToSckDelayInNanoSec = 50000;
-    masterConfig.ctarConfig.lastSckToPcsDelayInNanoSec = 50000;
-    masterConfig.ctarConfig.betweenTransferDelayInNanoSec = 50000;
-    masterConfig.whichPcs = kDSPI_Pcs0;
+    masterConfig.ctarConfig.pcsToSckDelayInNanoSec = 10000;
+    masterConfig.ctarConfig.lastSckToPcsDelayInNanoSec = 20000;
+    masterConfig.ctarConfig.betweenTransferDelayInNanoSec = 0;
+    masterConfig.whichPcs = kDSPI_Pcs3;
+    masterConfig.pcsActiveHighOrLow = kDSPI_PcsActiveLow;
     masterConfig.enableModifiedTimingFormat = false;
     masterConfig.samplePoint = kDSPI_SckToSin0Clock;
-    DSPI_MasterInit(SPI0, &masterConfig, CLOCK_GetBusClkFreq());
+    DSPI_MasterInit(CHANNEL_LED_SPI, &masterConfig, CLOCK_GetBusClkFreq());
 
-    DSPI_EnableInterrupts(SPI0, kDSPI_TxCompleteInterruptEnable);
-    DSPI_SetFifoEnable(SPI0, true, false); // tx fifo enabled, rx fifo disabled
-    DSPI_Enable(SPI0, true);
-    DSPI_StartTransfer(SPI0);
-    NVIC_EnableIRQ(SPI0_IRQn);
+    DSPI_SetFifoEnable(CHANNEL_LED_SPI, true, false); // tx fifo enabled, rx fifo disabled
+    DSPI_Enable(CHANNEL_LED_SPI, true);
+    DSPI_StartTransfer(CHANNEL_LED_SPI);
 
     // Enable output.
     GPIO_PinWrite(PIN_CH_LED_OE_N_GPIO, PIN_CH_LED_OE_N_BIT, 0);
 }
 
-void ChannelLEDManager::flush()
+bool ChannelLEDManager::flush()
 {
-    _isTransferring = true;
-
-    // Reset latch.
-    GPIO_PinWrite(PIN_CH_LED_LATCH_GPIO, PIN_CH_LED_LATCH_BIT, 0);
+    // Check flags and ignore flush request if the FIFO is full.
+    uint32_t flags = DSPI_GetStatusFlags(CHANNEL_LED_SPI);
+    if ((flags & kDSPI_TxFifoFillRequestFlag) == 0)
+    {
+        return false;
+    }
 
     // Initiate transfer.
     dspi_command_data_config_t commandConfig;
     commandConfig.isPcsContinuous = false;
     commandConfig.whichCtar = kDSPI_Ctar0;
-    commandConfig.whichPcs = kDSPI_Pcs0;
+    commandConfig.whichPcs = kDSPI_Pcs3;
     commandConfig.clearTransferCount = false;
     commandConfig.isEndOfQueue = false;
-    DSPI_MasterWriteData(SPI0, &commandConfig, _editBuffer);
-}
+    DSPI_MasterWriteData(CHANNEL_LED_SPI, &commandConfig, _buffer);
 
-extern "C" void SPI0_IRQHandler(void)
-{
-    GPIO_PinWrite(PIN_CH_LED_LATCH_GPIO, PIN_CH_LED_LATCH_BIT, 1);
-    ChannelLEDManager::get().clear_is_transferring();
-    DSPI_ClearStatusFlags(SPI0, kDSPI_TxCompleteFlag);
+    return true;
 }
 
 //------------------------------------------------------------------------------

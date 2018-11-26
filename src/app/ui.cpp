@@ -765,9 +765,6 @@ void UI::handle_calibration_mode_button()
         set_all_channel_leds(false);
         update_channel_leds();
         _runloop.run(kArNoTimeout, nullptr); // Run runloop to flush leds.
-        while (ChannelLEDManager::get().is_transferring())
-        {
-        }
 
 #if DEBUG
         __BKPT(0);
@@ -1379,18 +1376,25 @@ void UI::set_all_channel_leds(bool state, bool setColor, LEDBase::LEDColor color
 
 void UI::update_channel_leds()
 {
-    if (!_isChannelLedFlushPending)
+    if (!ChannelLEDManager::get().flush())
     {
-        _isChannelLedFlushPending = true;
-        _runloop.perform(flush_channel_leds, this);
+        if (!_isChannelLedFlushPending)
+        {
+            _isChannelLedFlushPending = true;
+            _runloop.perform(flush_channel_leds, this);
+        }
     }
 }
 
 void UI::flush_channel_leds(void * param)
 {
     UI * _ui = reinterpret_cast<UI *>(param);
+    if (!ChannelLEDManager::get().flush())
+    {
+        _ui->_runloop.perform(flush_channel_leds, _ui);
+        return;
+    }
     _ui->_isChannelLedFlushPending = false;
-    ChannelLEDManager::get().flush();
 }
 
 //! @brief Helper to determine whether a float value is close to zero.
