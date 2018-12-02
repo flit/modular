@@ -392,7 +392,7 @@ void SamplerVoice::render(int16_t * data, uint32_t frameCount)
     if (_volumeEnv.is_finished() && !_doNoteOff)
     {
         _doNoteOff = true;
-        _noteOffSamplesRemaining = 0;
+        _noteOffSamplesRemaining = kNoteOffSamples;
     }
 
     // Handle end of note off and retriggering.
