@@ -222,6 +222,7 @@ void SamplerVoice::render(int16_t * data, uint32_t frameCount)
     DECLARE_ELAPSED_TIME(retire);
     DECLARE_ELAPSED_TIME(noteOff);
 
+    int16_t *initialData = data;
     uint32_t i;
 
     // Get the current buffer if playing.
@@ -385,7 +386,7 @@ void SamplerVoice::render(int16_t * data, uint32_t frameCount)
     _readHead = readHead;
 
     // If the volume env has run out, we're done playing.
-    if (_volumeEnv.is_finished())
+    if (_volumeEnv.is_finished() && !_doNoteOff)
     {
         _doNoteOff = true;
         _noteOffSamplesRemaining = 0;
@@ -397,11 +398,13 @@ void SamplerVoice::render(int16_t * data, uint32_t frameCount)
         START_ELAPSED_TIME(noteOff);
 
         // Apply fade out.
+        int16_t *fadeData = initialData;
         for (i = 0; i < min(_noteOffSamplesRemaining, frameCount); ++i)
         {
-            int32_t sample = static_cast<int32_t>(data[i]);
+            int32_t sample = static_cast<int32_t>(*fadeData);
             sample = sample * (_noteOffSamplesRemaining - i) / kNoteOffSamples;
-            data[i] = static_cast<int16_t>(sample);
+            *fadeData = static_cast<int16_t>(sample);
+            fadeData += 2;
         }
         _noteOffSamplesRemaining -= i;
 
