@@ -269,8 +269,10 @@ void SamplerVoice::render(int16_t * data, uint32_t frameCount)
     }
 
     // Set volume env release phase offset for trigger mode if the env release
-    // should start within this render buffer.
-    if (_triggerMode == TriggerMode::kTrigger)
+    // should start within this render buffer. This isn't necessary when the volume
+    // env is in looping mode since it doesn't use sustain in that case.
+    if (_triggerMode == TriggerMode::kTrigger
+        && _params.volumeEnvMode != VoiceParameters::kLoopEnv)
     {
         // Will unsigned underflow when we're past the trigger note off sample, preventing
         // us from restarting the volume env release phase.
