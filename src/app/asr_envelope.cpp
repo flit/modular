@@ -182,9 +182,9 @@ float ASREnvelope::next()
 
 bool ASREnvelope::is_finished()
 {
-    return m_attack.is_finished()
+    return (m_mode != kLoopingAR) && (m_attack.is_finished()
             && (!m_enableSustain || (m_releaseOffset != 0 && m_elapsedSamples >= m_releaseOffset))
-            && m_release.is_finished();
+            && m_release.is_finished());
 }
 
 void ASREnvelope::process(float * samples, uint32_t count)
