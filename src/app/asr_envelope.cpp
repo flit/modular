@@ -198,7 +198,7 @@ void ASREnvelope::process(float * samples, uint32_t count)
             && m_attack.get_length_in_samples() == 0
             && m_release.get_length_in_samples() == 0)
         {
-            arm_fill_f32(0.0f, samples, totalRemaining);
+            arm_fill_f32(m_peak, samples, totalRemaining);
             return;
         }
 
