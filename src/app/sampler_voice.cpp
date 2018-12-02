@@ -266,6 +266,20 @@ void SamplerVoice::render(int16_t * data, uint32_t frameCount)
         readHead = voiceBuffer->zeroSnapOffset;
     }
 
+    // Set volume env release phase offset for trigger mode if the env release
+    // should start within this render buffer.
+    if (_triggerMode == TriggerMode::kTrigger)
+    {
+        // Will unsigned underflow when we're past the trigger note off sample, preventing
+        // us from restarting the volume env release phase.
+        uint32_t triggerNoteOffRemainingSamples = _triggerNoteOffSample - (_manager.get_samples_played() + uint32_t(readHead));
+
+        if (triggerNoteOffRemainingSamples < frameCount)
+        {
+            _volumeEnv.set_release_offset(triggerNoteOffRemainingSamples);
+        }
+    }
+
     // Render into output buffer.
     while (remainingFrames)
     {
@@ -290,21 +304,6 @@ void SamplerVoice::render(int16_t * data, uint32_t frameCount)
             else
             {
                 outputFrames = remainingFrames;
-            }
-
-            // Start volume env release phase for trigger mode.
-            if (_triggerMode == TriggerMode::kTrigger)
-            {
-                // Will unsigned underflow when we're past the trigger note off sample, preventing
-                // us from restarting the volume env release phase.
-                uint32_t triggerNoteOffRemainingSamples = _triggerNoteOffSample - _manager.get_samples_played();
-
-                if (triggerNoteOffRemainingSamples < outputFrames)
-                {
-                    outputFrames = triggerNoteOffRemainingSamples;
-                    triggerNoteOffRemainingSamples = ~0UL;
-                    _volumeEnv.set_release_offset(0);
-                }
             }
 
             // Create local work buffers for the number of output frames we need.
@@ -553,7 +552,8 @@ void SamplerVoice::set_volume_env_release(float seconds)
     }
     _volumeEnv.recompute();
 
-    _triggerNoteOffSample = _data.get_frames() - static_cast<uint32_t>(seconds * kSampleRate);
+    _triggerNoteOffSample = _data.get_frames()
+                             - _volumeEnv.get_length_in_samples(ASREnvelope::kRelease);
 }
 
 void SamplerVoice::set_pitch_env_mode(VoiceParameters::EnvMode mode)
