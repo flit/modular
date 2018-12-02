@@ -62,7 +62,7 @@ const float kPotMaxSnapValue = kAdcMax - kPotExtremaSnapValue;
 const float kPotEditHysteresisPercent = 3.0f;
 
 //! Power used to apply a curve to envelope attack and release pots.
-const float kEnvCurvePower = 2.1f;
+const float kEnvCurvePower = 1.8f;
 
 //! Interval for checking SD card presence.
 const uint32_t kCardDetectInterval_ms = 500;

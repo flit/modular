@@ -92,13 +92,15 @@ void SamplerVoice::init(uint32_t n, int16_t * buffer)
     _number = n;
 
     _volumeEnv.set_sample_rate(kSampleRate);
-    _volumeEnv.set_curve_type(ASREnvelope::kAttack, AudioRamp::kCubic);
+    _volumeEnv.set_curve_type(ASREnvelope::kAttack, AudioRamp::kLinear);
+    _volumeEnv.set_curve_type(ASREnvelope::kRelease, AudioRamp::kLinear);
     _volumeEnv.set_mode(ASREnvelope::kOneShotASR);
     _volumeEnv.set_peak(1.0f);
     _volumeEnv.recompute();
 
     _pitchEnv.set_sample_rate(kSampleRate);
-    _pitchEnv.set_curve_type(ASREnvelope::kAttack, AudioRamp::kCubic);
+    _pitchEnv.set_curve_type(ASREnvelope::kAttack, AudioRamp::kLinear);
+    _pitchEnv.set_curve_type(ASREnvelope::kRelease, AudioRamp::kLinear);
     _pitchEnv.set_mode(ASREnvelope::kOneShotAR);
     _pitchEnv.set_peak(1.0f);
     _pitchEnv.recompute();
