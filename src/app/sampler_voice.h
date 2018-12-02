@@ -81,7 +81,7 @@ public:
 
     void set_trigger_mode(TriggerMode mode);
     void set_gain(float gain) { _params.gain = gain; }
-    void set_base_octave_offset(float octave) { _params.baseOctaveOffset = octave; }
+    void set_base_octave_offset(float octave);
     void set_base_cents_offset(float cents) { _params.baseCentsOffset = cents; }
     void set_pitch_octave(float pitch) { _pitchOctave = pitch; }
     void set_sample_start(float start);
@@ -140,7 +140,7 @@ protected:
 
     void _reset_voice();
 
-    float _compute_playback_rate(float pitchModifier) const;
+    float _compute_playback_rate(float pitchModifier=0.0f, bool includePitchOctave=true) const;
 
     void _trace_buffered_time();
 };

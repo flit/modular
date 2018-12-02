@@ -481,6 +481,17 @@ void SamplerVoice::render(int16_t * data, uint32_t frameCount)
 #endif
 }
 
+void SamplerVoice::set_base_octave_offset(float octave)
+{
+    _params.baseOctaveOffset = octave;
+
+    // Update all envelope stages that are affected by base pitch.
+    set_volume_env_attack(_params.volumeEnvAttack);
+    set_volume_env_release(_params.volumeEnvRelease);
+    set_pitch_env_attack(_params.pitchEnvAttack);
+    set_pitch_env_release(_params.pitchEnvRelease);
+}
+
 void SamplerVoice::set_sample_start(float start)
 {
     // Stop playing and turn off LED.
@@ -538,7 +549,9 @@ void SamplerVoice::set_volume_env_mode(VoiceParameters::EnvMode mode)
 void SamplerVoice::set_volume_env_attack(float seconds)
 {
     _params.volumeEnvAttack = seconds;
-    _volumeEnv.set_attack(seconds);
+
+    float rate = _compute_playback_rate(0.0f, false);
+    _volumeEnv.set_attack(seconds / rate);
     _volumeEnv.recompute();
 }
 
@@ -546,14 +559,8 @@ void SamplerVoice::set_volume_env_release(float seconds)
 {
     _params.volumeEnvRelease = seconds;
 
-    if (_triggerMode == TriggerMode::kTrigger)
-    {
-        _volumeEnv.set_release(_params.volumeEnvRelease);
-    }
-    else
-    {
-        _volumeEnv.set_release(max(_params.volumeEnvRelease, 128.0f / kSampleRate));
-    }
+    float rate = _compute_playback_rate(0.0f, false);
+    _volumeEnv.set_release(seconds / rate);
     _volumeEnv.recompute();
 
     _triggerNoteOffSample = _data.get_frames()
@@ -579,7 +586,8 @@ void SamplerVoice::set_pitch_env_attack(float seconds)
 
     // The pitch envelope update rate is once per audio buffer, so modify the attack time
     // to take this into account.
-    _pitchEnv.set_attack(seconds / float(kAudioBufferSize));
+    float rate = _compute_playback_rate(0.0f, false);
+    _pitchEnv.set_attack(seconds / rate / float(kAudioBufferSize));
     _pitchEnv.recompute();
 }
 
@@ -589,7 +597,8 @@ void SamplerVoice::set_pitch_env_release(float seconds)
 
     // The pitch envelope update rate is once per audio buffer, so modify the release time
     // to take this into account.
-    _pitchEnv.set_release(seconds / float(kAudioBufferSize));
+    float rate = _compute_playback_rate(0.0f, false);
+    _pitchEnv.set_release(seconds / rate / float(kAudioBufferSize));
     _pitchEnv.recompute();
 }
 
@@ -604,11 +613,8 @@ void SamplerVoice::set_params(const VoiceParameters & params)
 
     // Update params that require computation.
     set_volume_env_mode(_params.volumeEnvMode);
-    set_volume_env_attack(_params.volumeEnvAttack);
-    set_volume_env_release(_params.volumeEnvRelease);
     set_pitch_env_mode(_params.pitchEnvMode);
-    set_pitch_env_attack(_params.pitchEnvAttack);
-    set_pitch_env_release(_params.pitchEnvRelease);
+    set_base_octave_offset(_params.baseOctaveOffset); // Also recomputes all env stages.
 
     // Update playback range in SBM.
     float totalSamples = _manager.get_total_samples();
@@ -678,16 +684,16 @@ float SamplerVoice::get_sample_length_in_seconds() const
 uint32_t SamplerVoice::get_buffered_microseconds() const
 {
     float bufferedSamples = static_cast<float>(_manager.get_buffered_samples()) - _readHead;
-    float rate = _compute_playback_rate(0.0f);
+    float rate = _compute_playback_rate();
     float seconds = bufferedSamples / rate / kSampleRate;
     return static_cast<uint32_t>(seconds * 1000000.0f);
 }
 
-float SamplerVoice::_compute_playback_rate(float pitchModifier) const
+float SamplerVoice::_compute_playback_rate(float pitchModifier, bool includePitchOctave) const
 {
     float octave = _params.baseOctaveOffset
                     + (_params.baseCentsOffset / kCentsPerOctave)
-                    + _pitchOctave
+                    + (includePitchOctave ? _pitchOctave : 0.0f)
                     + pitchModifier;
     constrain(octave, -4.0f, 4.0f);
     return powf(2.0f, octave);
