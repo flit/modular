@@ -32,6 +32,7 @@
 #include "ui.h"
 #include "debug_log.h"
 #include "itm_trace.h"
+#include <algorithm>
 
 using namespace slab;
 
@@ -476,6 +477,12 @@ void ReaderThread::fill_buffer(SamplerVoice * voice)
     if (channelCount == 2)
     {
         fill_from_stereo(request->data, framesRead);
+    }
+
+    // Reverse the buffer contents if required.
+    if (voice->get_params().playbackMode == VoiceParameters::kReversePlayback)
+    {
+        std::reverse(request->data, request->data + framesRead);
     }
 
     // Set request buffer frameCount to the number of frames read. This will always be

@@ -520,6 +520,19 @@ void SamplerVoice::set_sample_end(float end)
 void SamplerVoice::set_playback_mode(VoiceParameters::PlaybackMode mode)
 {
     _params.playbackMode = mode;
+
+    _reset_voice();
+    UI::get().set_voice_playing(_number, false);
+
+    switch (mode)
+    {
+        case VoiceParameters::kForwardPlayback:
+            _manager.set_direction(SampleBufferManager::Direction::kForward);
+            break;
+        case VoiceParameters::kReversePlayback:
+            _manager.set_direction(SampleBufferManager::Direction::kReverse);
+            break;
+    }
 }
 
 void SamplerVoice::set_trigger_mode(TriggerMode mode)

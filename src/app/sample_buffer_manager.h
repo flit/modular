@@ -47,6 +47,12 @@ class SamplerVoice;
 class SampleBufferManager
 {
 public:
+    //! @brief Playback directions.
+    enum class Direction {
+        kForward,
+        kReverse,
+    };
+
     SampleBufferManager();
     ~SampleBufferManager()=default;
 
@@ -65,6 +71,9 @@ public:
     //! @param start Sample number to start playing from, or -1 to use current value.
     //! @param start Sample number at which playback will cease. Pass -1 to use current value.
     void set_start_end_sample(int32_t start, int32_t end);
+
+    //! @brief Set playback direction.
+    void set_direction(Direction dir);
 
     bool is_ready() const { return _isReady; }
     SampleBuffer * get_current_buffer();
@@ -105,8 +114,10 @@ protected:
     bool _isReady;
     bool _snapToZeroStart;
     uint32_t _preppedCount;
+    Direction _direction;
 
     void _reset_buffers();
+    void _force_reload();
 
     void _queue_buffer_for_read(SampleBuffer * buffer);
     SampleBuffer * _dequeue_next_buffer();

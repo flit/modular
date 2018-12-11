@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017 Immo Software
+ * Copyright (c) 2017-2018 Immo Software
  *
  * Redistribution and use in source and binary forms, with or without modification,
  * are permitted provided that the following conditions are met:
@@ -63,7 +63,8 @@ SampleBufferManager::SampleBufferManager()
     _waitingForFileStart(true),
     _isReady(false),
     _snapToZeroStart(false),
-    _preppedCount(0)
+    _preppedCount(0),
+    _direction(Direction::kForward)
 {
 }
 
@@ -110,6 +111,7 @@ void SampleBufferManager::set_file(uint32_t totalFrames)
     _isReady = false;
     _snapToZeroStart = false;
     _preppedCount = 0;
+    _direction = Direction::kForward;
     _reset_buffers();
 
     // Go ahead and prime.
@@ -122,8 +124,17 @@ void SampleBufferManager::prime()
     DEBUG_PRINTF(QUEUE_MASK, "V%lu: start prime\r\n", _number);
 
     // Reset state.
-    _samplesPlayed = _startSample;
-    _samplesRead = _didReadFileStart ? min(_startSample + kVoiceBufferSize, _totalSamples) : _startSample;
+    if (_direction == Direction::kForward)
+    {
+        _samplesPlayed = _startSample;
+    }
+    else
+    {
+        _samplesPlayed = _totalSamples - _endSample;
+    }
+    _samplesRead = _didReadFileStart
+                    ? min(_samplesPlayed + kVoiceBufferSize, _totalSamples)
+                    : _samplesPlayed;
     _samplesQueued = _samplesRead;
 
     // Clear buffers queues.
@@ -178,8 +189,16 @@ SampleBuffer * SampleBufferManager::get_current_buffer()
 
 void SampleBufferManager::_queue_buffer_for_read(SampleBuffer * buffer)
 {
-    buffer->startFrame = _samplesQueued;
-    buffer->frameCount = min(kVoiceBufferSize, _endSample - _samplesQueued);
+    if (_direction == Direction::kForward)
+    {
+        buffer->startFrame = _samplesQueued;
+        buffer->frameCount = min(kVoiceBufferSize, _endSample - _samplesQueued);
+    }
+    else
+    {
+        buffer->frameCount = min(kVoiceBufferSize, _totalSamples - _startSample - _samplesQueued);
+        buffer->startFrame = _totalSamples - _samplesQueued - buffer->frameCount;
+    }
     buffer->reread = false;
     buffer->state = SampleBuffer::State::kFree;
 
@@ -218,7 +237,11 @@ void SampleBufferManager::retire_buffer(SampleBuffer * buffer)
     _samplesPlayed += buffer->frameCount;
     buffer->state = (buffer->number == 0) ? SampleBuffer::State::kReady : SampleBuffer::State::kFree;
 
-    if (_samplesPlayed >= _endSample)
+    uint32_t dirEndSample = (_direction == Direction::kForward)
+                            ? _endSample
+                            : _totalSamples - _startSample;
+
+    if (_samplesPlayed >= dirEndSample)
     {
         DEBUG_PRINTF(RETIRE_MASK, "V%lu: retiring b%d; played %lu (done)\r\n", _number, buffer->number, _samplesPlayed);
 
@@ -230,7 +253,7 @@ void SampleBufferManager::retire_buffer(SampleBuffer * buffer)
 
         // Don't queue up file start buffer for reading, and don't queue more than the active
         // number of samples.
-        if (buffer->number != 0 && _samplesQueued < _endSample)
+        if (buffer->number != 0 && _samplesQueued < dirEndSample)
         {
             DEBUG_PRINTF(RETIRE_MASK|QUEUE_MASK, "V%lu: retire: queue b%d to read @ %lu\r\n", _number, buffer->number, _samplesPlayed);
             _queue_buffer_for_read(buffer);
@@ -278,7 +301,15 @@ void SampleBufferManager::enqueue_full_buffer(SampleBuffer * buffer)
 
     assert(buffer);
     bool isBuffer0 = (buffer->number == 0);
-    bool isOutOfOrder = (buffer->startFrame != _samplesRead);
+    bool isOutOfOrder;
+    if (_direction == Direction::kForward)
+    {
+        isOutOfOrder = (buffer->startFrame != _samplesRead);
+    }
+    else
+    {
+        isOutOfOrder = (buffer->startFrame != (_totalSamples - _samplesRead - buffer->frameCount));
+    }
 
     if (buffer->reread || isOutOfOrder)
     {
@@ -411,14 +442,30 @@ void SampleBufferManager::set_start_end_sample(int32_t start, int32_t end)
     // Reload start of the file if the start or end point changed.
     if (_startSample != originalStart || _endSample != originalEnd)
     {
-        _isReady = false;
-        _voice->manager_ready_did_change(false);
-        _didReadFileStart = false;
-        _waitingForFileStart = true;
-        _snapToZeroStart = (_startSample != 0);
-        _preppedCount = 0;
-        prime();
+        _force_reload();
     }
+}
+
+void SampleBufferManager::set_direction(Direction dir)
+{
+    if (dir != _direction)
+    {
+        _direction = dir;
+
+        // Reload the file.
+        _force_reload();
+    }
+}
+
+void SampleBufferManager::_force_reload()
+{
+    _isReady = false;
+    _voice->manager_ready_did_change(false);
+    _didReadFileStart = false;
+    _waitingForFileStart = true;
+    _snapToZeroStart = (_startSample != 0);
+    _preppedCount = 0;
+    prime();
 }
 
 uint32_t SampleBufferManager::get_buffered_samples() const
