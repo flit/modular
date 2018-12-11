@@ -318,6 +318,7 @@ void UI::set_ui_mode(UIMode mode)
             set_all_channel_leds(false, true, LEDBase::kRed);
             _channelLeds[_editChannel]->on();
             update_channel_leds();
+            update_edit_page_leds();
 
             _lastSampleStart = -1.0f;
             _lastSampleEnd = -1.0f;
