@@ -36,6 +36,7 @@
 #include "button.h"
 #include "pot.h"
 #include "stack_sizes.h"
+#include "sampler_voice.h"
 
 //------------------------------------------------------------------------------
 // Definitions
@@ -64,7 +65,7 @@ enum UIMode : uint32_t
 /*!
  * @brief
  */
-class UI : public Singleton<UI>
+class UI : public Singleton<UI>, public SamplerVoice::VoiceStatusListener
 {
 public:
     UI();
@@ -78,9 +79,9 @@ public:
 
     void send_event(const UIEvent& event) { _eventQueue.send(event); }
 
-    void set_voice_playing(uint32_t voice, bool state);
+    virtual void voice_did_change_playing_state(uint32_t voiceNumber, bool isPlaying) override;
     void indicate_voice_retriggered(uint32_t voice);
-    void indicate_voice_underflowed(uint32_t voice);
+    virtual void voice_did_underflow(uint32_t voice) override;
 
     void pot_did_change(Pot& pot, float value);
 

@@ -54,12 +54,26 @@ public:
         kGate,      //!< Voice plays starting with trigger until note off.
     };
 
+    //! @brief Listener for voice status updates.
+    class VoiceStatusListener
+    {
+    public:
+        //! @brief The voice started or stopped playing.
+        virtual void voice_did_change_playing_state(uint32_t voiceNumber, bool isPlaying)=0;
+
+        //! @brief The voice ran out of buffers.
+        virtual void voice_did_underflow(uint32_t voiceNumber)=0;
+    };
+
     SamplerVoice();
     ~SamplerVoice()=default;
 
     void init(uint32_t n, int16_t * buffer);
     void set_file(WaveFile & file);
     void clear_file();
+
+    void set_listener(VoiceStatusListener * listener) { _listener = listener; }
+    VoiceStatusListener * get_listener() const { return _listener; }
 
     uint32_t get_number() const { return _number; }
 
@@ -114,6 +128,7 @@ public:
 
 protected:
     uint32_t _number;
+    VoiceStatusListener * _listener;
     WaveFile _wav;
     WaveFile::AudioDataStream _data;
     SampleBufferManager _manager;

@@ -704,7 +704,7 @@ void UI::handle_card_event(const UIEvent & event)
                 for (n = 0; n < kVoiceCount; ++n)
                 {
                     g_voice[n].clear_file();
-                    set_voice_playing(n, false);
+                    voice_did_change_playing_state(n, false);
                 }
                 FileManager::get().unmount();
                 _isCardPresent = false;
@@ -918,7 +918,7 @@ void UI::load_sample_bank(uint32_t bankNumber)
     uint32_t channel;
     for (channel = 0; channel < kVoiceCount; ++channel)
     {
-        set_voice_playing(channel, false);
+        voice_did_change_playing_state(channel, false);
         int32_t mappedChannel = kBankToVoiceChannelMap[_voiceMode][channel];
         if (mappedChannel >= 0 && bank.has_sample(channel))
         {
@@ -935,16 +935,16 @@ void UI::load_sample_bank(uint32_t bankNumber)
     }
 }
 
-void UI::set_voice_playing(uint32_t voice, bool state)
+void UI::voice_did_change_playing_state(uint32_t voiceNumber, bool isPlaying)
 {
-    assert(voice < kVoiceCount);
+    assert(voiceNumber < kVoiceCount);
 
-    bool prevState = _voiceStates[voice];
-    _voiceStates[voice] = state;
+    bool prevState = _voiceStates[voiceNumber];
+    _voiceStates[voiceNumber] = isPlaying;
 
-    if (_ledMode == LedMode::kVoiceActivity && prevState != state)
+    if (_ledMode == LedMode::kVoiceActivity && prevState != isPlaying)
     {
-        _channelLeds[voice]->set(state);
+        _channelLeds[voiceNumber]->set(isPlaying);
         update_channel_leds();
     }
 }
@@ -975,7 +975,7 @@ void UI::indicate_voice_retriggered(uint32_t voice)
     }
 }
 
-void UI::indicate_voice_underflowed(uint32_t voice)
+void UI::voice_did_underflow(uint32_t voice)
 {
     assert(voice < kVoiceCount);
 
@@ -1024,7 +1024,7 @@ void UI::handle_blink_timer(Ar::Timer * timer)
             }
 
             _button1Led->set(!kEditPageBlinkStates[_editPage][_editPageBlinkCounter]);
-            
+
             // If the same voice is selected as an edit param that has its corresponding LED
             // turned on, we need to blink back and forth between the channel indicator and edit LED.
             if (pot_has_edit_page_led(_editChannel))

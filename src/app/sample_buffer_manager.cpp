@@ -29,7 +29,6 @@
 
 #include "sampler_voice.h"
 #include "reader_thread.h"
-#include "ui.h"
 #include "debug_log.h"
 #include "itm_trace.h"
 #include <algorithm>
@@ -284,7 +283,12 @@ SampleBuffer * SampleBufferManager::_dequeue_next_buffer()
         DEBUG_PRINTF(ERROR_MASK, "V%lu: *** NO READY BUFFERS ***\r\n", _number);
 //         Ar::_halt();
         _currentBuffer = nullptr;
-        UI::get().indicate_voice_underflowed(_number);
+
+        SamplerVoice::VoiceStatusListener * listener = _voice->get_listener();
+        if (listener)
+        {
+            listener->voice_did_underflow(_number);
+        }
     }
 
 #if ENABLE_TRACE

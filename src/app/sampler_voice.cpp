@@ -28,7 +28,6 @@
  */
 
 #include "sampler_voice.h"
-#include "ui.h"
 #include "debug_log.h"
 #include "itm_trace.h"
 #include <cmath>
@@ -67,7 +66,9 @@ AudioBuffer SamplerVoice::s_workBuffer2(s_workBufferData[1], kAudioBufferSize);
 //------------------------------------------------------------------------------
 
 SamplerVoice::SamplerVoice()
-:   _wav(),
+:   _number(0),
+    _listener(nullptr),
+    _wav(),
     _data(),
     _manager(),
     _isValid(false),
@@ -142,6 +143,13 @@ void SamplerVoice::clear_file()
 //! @brief Prepare voice to start playing from start sample.
 void SamplerVoice::_reset_voice()
 {
+    if (_isPlaying)
+    {
+        if (_listener)
+        {
+            _listener->voice_did_change_playing_state(_number, false);
+        }
+    }
     _isPlaying = false;
     _doNoteOff = false;
     _doRetrigger = false;
@@ -176,12 +184,19 @@ void SamplerVoice::trigger()
         _doRetrigger = true;
         _noteOffSamplesRemaining = kNoteOffSamples;
 
-        UI::get().set_voice_playing(_number, false);
+        if (_listener)
+        {
+            _listener->voice_did_change_playing_state(_number, false);
+        }
+
         _voiceStatusRetriggerCounter = 50.0f / 1000.0f * kSampleRate; // 50 ms
     }
     else
     {
-        UI::get().set_voice_playing(_number, true);
+        if (_listener)
+        {
+            _listener->voice_did_change_playing_state(_number, true);
+        }
         _isPlaying = true;
         _voiceStatusRetriggerCounter = 0;
     }
@@ -209,7 +224,7 @@ void SamplerVoice::note_off()
 
 void SamplerVoice::playing_did_finish()
 {
-    UI::get().set_voice_playing(_number, false);
+    // Prime will call _reset_voice() which will inform the listener.
     prime();
 
 #if ENABLE_TEST_LOOP_MODE
@@ -432,7 +447,10 @@ void SamplerVoice::render(int16_t * data, uint32_t frameCount)
         _voiceStatusRetriggerCounter -= frameCount;
         if (_voiceStatusRetriggerCounter <= 0)
         {
-            UI::get().set_voice_playing(_number, true);
+            if (_listener)
+            {
+                _listener->voice_did_change_playing_state(_number, true);
+            }
             _voiceStatusRetriggerCounter = 0;
         }
     }
@@ -473,7 +491,10 @@ void SamplerVoice::render(int16_t * data, uint32_t frameCount)
     // If we're no longer playing, tell the UI.
     if (!_isPlaying)
     {
-        UI::get().set_voice_playing(_number, false);
+        if (_listener)
+        {
+            _listener->voice_did_change_playing_state(_number, false);
+        }
     }
 
 #if ENABLE_BUFFERED_TIME_TRACE
@@ -496,7 +517,6 @@ void SamplerVoice::set_sample_start(float start)
 {
     // Stop playing and turn off LED.
     _reset_voice();
-    UI::get().set_voice_playing(_number, false);
 
     _params.startSample = start;
 
@@ -509,7 +529,6 @@ void SamplerVoice::set_sample_end(float end)
 {
     // Stop playing and turn off LED.
     _reset_voice();
-    UI::get().set_voice_playing(_number, false);
 
     _params.endSample = end;
 
@@ -522,7 +541,6 @@ void SamplerVoice::set_playback_mode(VoiceParameters::PlaybackMode mode)
     _params.playbackMode = mode;
 
     _reset_voice();
-    UI::get().set_voice_playing(_number, false);
 
     switch (mode)
     {
@@ -619,7 +637,6 @@ void SamplerVoice::set_params(const VoiceParameters & params)
 {
     // Stop playing and turn off LED.
     _reset_voice();
-    UI::get().set_voice_playing(_number, false);
 
     // Update params.
     _params = params;
