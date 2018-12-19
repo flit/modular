@@ -233,7 +233,6 @@ UI::UI()
     _isBankSavePending(false),
     _lastSampleStart(-1.0f),
     _lastSampleEnd(-1.0f),
-    _retriggerTimestamp{0},
     _underflowTimestamp{0},
     _editPage(0),
     _editChannel(0),
@@ -949,32 +948,6 @@ void UI::voice_did_change_playing_state(uint32_t voiceNumber, bool isPlaying)
     }
 }
 
-//! Handle turning off the channel LED briefly to indicate a retrigger. A single one-shot
-//! timer is shared between all channels by keeping track of the retrigger timestamp, to
-//! ensure that the LED is turned off for an exact time. This prevents the appearance of
-//! flickering that can occur due to variable timing.
-void UI::indicate_voice_retriggered(uint32_t voice)
-{
-    assert(voice < kVoiceCount);
-
-    if (_ledMode == LedMode::kVoiceActivity)
-    {
-        // Record the current time.
-        _retriggerTimestamp[voice] = ar_get_millisecond_count();
-
-        // Only start the one-shot timer if it hasn't already been started.
-        if (!_retriggerTimer.isActive())
-        {
-            _retriggerTimer.setDelay(kVoiceRetriggerLedBlinkTime_ms);
-            _retriggerTimer.start();
-        }
-
-        // Turn off channel LED.
-        _channelLeds[voice]->off();
-        update_channel_leds();
-    }
-}
-
 void UI::voice_did_underflow(uint32_t voice)
 {
     assert(voice < kVoiceCount);
@@ -1095,27 +1068,6 @@ void UI::handle_retrigger_timer(Ar::Timer * timer)
     uint32_t now = ar_get_millisecond_count();
     for (i = 0; i < kVoiceCount; ++i)
     {
-        if (_retriggerTimestamp[i])
-        {
-            // How long it's been since the channel LED was turned off due to retrigger.
-            delta = now - _retriggerTimestamp[i];
-
-            // If this channel's LED has been off for the blink time, turn it back on.
-            if (delta >= kVoiceRetriggerLedBlinkTime_ms - kVoiceRetriggerLedWindowTime_ms)
-            {
-                if (_ledMode == LedMode::kVoiceActivity)
-                {
-                    _channelLeds[i]->set(_voiceStates[i]);
-                }
-                _retriggerTimestamp[i] = 0;
-            }
-            // Otherwise keep track of the shortest time to the next channel LED we need
-            // to turn back on after retrigger blink.
-            else if (delta < nextDelay)
-            {
-                nextDelay = delta;
-            }
-        }
         if (_underflowTimestamp[i])
         {
             delta = now - _underflowTimestamp[i];

@@ -80,7 +80,6 @@ public:
     void send_event(const UIEvent& event) { _eventQueue.send(event); }
 
     virtual void voice_did_change_playing_state(uint32_t voiceNumber, bool isPlaying) override;
-    void indicate_voice_retriggered(uint32_t voice);
     virtual void voice_did_underflow(uint32_t voice) override;
 
     void pot_did_change(Pot& pot, float value);
@@ -135,7 +134,6 @@ protected:
     bool _isBankSavePending;
     float _lastSampleStart;
     float _lastSampleEnd;
-    uint32_t _retriggerTimestamp[kVoiceCount];
     uint32_t _underflowTimestamp[kVoiceCount];
     uint32_t _editPage; //!< Currently selected edit page.
     uint32_t _editChannel;  //!< Voice selected for editing.
