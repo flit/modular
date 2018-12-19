@@ -158,7 +158,7 @@ void FileManager::_scan_bank_directory(uint32_t bankNumber, const char * dirName
     fs::DirectoryIterator dir = _fs.open_dir(dirName);
     FILINFO info;
 
-    _banks[bankNumber].set_path(_path);
+    _banks[bankNumber].set_path(dirName);
 
     while (dir.next(&info))
     {
