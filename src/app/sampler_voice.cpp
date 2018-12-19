@@ -556,9 +556,6 @@ void SamplerVoice::set_playback_mode(VoiceParameters::PlaybackMode mode)
 void SamplerVoice::set_trigger_mode(TriggerMode mode)
 {
     _triggerMode = mode;
-
-    // Update volume env release time.
-    set_volume_env_release(_params.volumeEnvRelease);
 }
 
 void SamplerVoice::set_volume_env_mode(VoiceParameters::EnvMode mode)
@@ -677,6 +674,7 @@ void SamplerVoice::set_params(const VoiceParameters & params)
     _params = params;
 
     // Update params that require computation.
+    set_playback_mode(_params.playbackMode);
     set_volume_env_mode(_params.volumeEnvMode);
     set_pitch_env_mode(_params.pitchEnvMode);
     set_base_octave_offset(_params.baseOctaveOffset); // Also recomputes all env stages.
