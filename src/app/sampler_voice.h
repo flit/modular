@@ -105,10 +105,12 @@ public:
     void set_volume_env_release(float seconds);
     void set_volume_env_depth(float depth) { _params.volumeEnvDepth = depth; }
     void set_volume_env_mode(VoiceParameters::EnvMode mode);
+    void set_volume_env_loop_speed(float speed);
     void set_pitch_env_attack(float seconds);
     void set_pitch_env_release(float seconds);
     void set_pitch_env_depth(float depth) { _params.pitchEnvDepth = depth; }
     void set_pitch_env_mode(VoiceParameters::EnvMode mode);
+    void set_pitch_env_loop_speed(float speed);
 
     //! @brief Restore a parameter to its default value.
     void reset_parameter(VoiceParameters::ParameterName which);

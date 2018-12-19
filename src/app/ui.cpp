@@ -64,6 +64,12 @@ const float kPotEditHysteresisPercent = 3.0f;
 //! Power used to apply a curve to envelope attack and release pots.
 const float kEnvCurvePower = 1.8f;
 
+//! Pot value to switch from one-shot to looping envelope mode.
+const float kEnvLoopSwitchPoint = 0.13f;
+
+//! Maximum envelope speed multiplier.
+const float kEnvMaxLoopSpeed = 100.0f;
+
 //! Interval for checking SD card presence.
 const uint32_t kCardDetectInterval_ms = 500;
 
@@ -188,13 +194,13 @@ static const VoiceParameters::ParameterName kPotToParameterMap[kEditPageCount][k
                 [0] = VoiceParameters::kPitchEnvDepth,
                 [1] = VoiceParameters::kPitchEnvAttack,
                 [2] = VoiceParameters::kPitchEnvRelease,
-                [3] = VoiceParameters::kPitchEnvMode,
+                [3] = VoiceParameters::kPitchEnvMode, // also adjusts loop speed
             },
         [2] = {
                 [0] = VoiceParameters::kVolumeEnvDepth,
                 [1] = VoiceParameters::kVolumeEnvAttack,
                 [2] = VoiceParameters::kVolumeEnvRelease,
-                [3] = VoiceParameters::kVolumeEnvMode,
+                [3] = VoiceParameters::kVolumeEnvMode, // also adjusts loop speed
             },
     };
 
@@ -1240,7 +1246,19 @@ void UI::handle_edit_pot(uint32_t potNumber, float value)
             break;
 
         case VoiceParameters::kVolumeEnvMode:
-            g_voice[_editChannel].set_volume_env_mode(static_cast<VoiceParameters::EnvMode>(bvalue));
+            if (fvalue < kEnvLoopSwitchPoint)
+            {
+                g_voice[_editChannel].set_volume_env_mode(VoiceParameters::kOneShotEnv);
+            }
+            else
+            {
+                fvalue -= kEnvLoopSwitchPoint; // n..1 -> 0..(1-n)
+                fvalue *= 1.0f / (1.0f - kEnvLoopSwitchPoint); // 0..(1-n) -> 0..1
+                fvalue = fvalue * (kEnvMaxLoopSpeed - 1.0f) + 1.0f; // -> 1..max
+
+                g_voice[_editChannel].set_volume_env_mode(VoiceParameters::kLoopEnv);
+                g_voice[_editChannel].set_volume_env_loop_speed(fvalue);
+            }
             break;
 
         case VoiceParameters::kVolumeEnvAttack:
@@ -1264,7 +1282,19 @@ void UI::handle_edit_pot(uint32_t potNumber, float value)
             break;
 
         case VoiceParameters::kPitchEnvMode:
-            g_voice[_editChannel].set_pitch_env_mode(static_cast<VoiceParameters::EnvMode>(bvalue));
+            if (fvalue < kEnvLoopSwitchPoint)
+            {
+                g_voice[_editChannel].set_pitch_env_mode(VoiceParameters::kOneShotEnv);
+            }
+            else
+            {
+                fvalue -= kEnvLoopSwitchPoint;
+                fvalue *= 1.0f / (1.0f - kEnvLoopSwitchPoint);
+                fvalue = fvalue * (kEnvMaxLoopSpeed - 1.0f) + 1.0f; // -> 1..max
+
+                g_voice[_editChannel].set_pitch_env_mode(VoiceParameters::kLoopEnv);
+                g_voice[_editChannel].set_pitch_env_loop_speed(fvalue);
+            }
             break;
 
         case VoiceParameters::kPitchEnvAttack:

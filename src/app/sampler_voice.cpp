@@ -570,10 +570,21 @@ void SamplerVoice::set_volume_env_mode(VoiceParameters::EnvMode mode)
             _volumeEnv.set_mode(ASREnvelope::kOneShotASR);
             break;
         case VoiceParameters::kLoopEnv:
-            // In looping env mode, the volume env always loops regarless
+            // In looping env mode, the volume env always loops regardless
             // of whether in trigger or gate mode.
             _volumeEnv.set_mode(ASREnvelope::kLoopingAR);
             break;
+    }
+}
+
+void SamplerVoice::set_volume_env_loop_speed(float speed)
+{
+    _params.volumeEnvLoopSpeed = speed;
+
+    if (_params.volumeEnvMode == VoiceParameters::kLoopEnv)
+    {
+        set_volume_env_attack(_params.volumeEnvAttack);
+        set_volume_env_release(_params.volumeEnvRelease);
     }
 }
 
@@ -582,7 +593,10 @@ void SamplerVoice::set_volume_env_attack(float seconds)
     _params.volumeEnvAttack = seconds;
 
     float rate = _compute_playback_rate(0.0f, false);
-    _volumeEnv.set_attack(seconds / rate);
+    float loopCompression = (_params.volumeEnvMode == VoiceParameters::kLoopEnv)
+                            ? _params.volumeEnvLoopSpeed
+                            : 1.0f;
+    _volumeEnv.set_attack(seconds / rate / loopCompression);
     _volumeEnv.recompute();
 }
 
@@ -591,7 +605,10 @@ void SamplerVoice::set_volume_env_release(float seconds)
     _params.volumeEnvRelease = seconds;
 
     float rate = _compute_playback_rate(0.0f, false);
-    _volumeEnv.set_release(seconds / rate);
+    float loopCompression = (_params.volumeEnvMode == VoiceParameters::kLoopEnv)
+                            ? _params.volumeEnvLoopSpeed
+                            : 1.0f;
+    _volumeEnv.set_release(seconds / rate / loopCompression);
     _volumeEnv.recompute();
 
     _triggerNoteOffSample = _data.get_frames()
@@ -601,13 +618,25 @@ void SamplerVoice::set_volume_env_release(float seconds)
 void SamplerVoice::set_pitch_env_mode(VoiceParameters::EnvMode mode)
 {
     _params.pitchEnvMode = mode;
-    if (mode == VoiceParameters::kOneShotEnv)
+    switch (mode)
     {
-        _pitchEnv.set_mode(ASREnvelope::kOneShotAR);
+        case VoiceParameters::kOneShotEnv:
+            _pitchEnv.set_mode(ASREnvelope::kOneShotAR);
+            break;
+        case VoiceParameters::kLoopEnv:
+            _pitchEnv.set_mode(ASREnvelope::kLoopingAR);
+            break;
     }
-    else if (mode == VoiceParameters::kLoopEnv)
+}
+
+void SamplerVoice::set_pitch_env_loop_speed(float speed)
+{
+    _params.pitchEnvLoopSpeed = speed;
+
+    if (_params.pitchEnvMode == VoiceParameters::kLoopEnv)
     {
-        _pitchEnv.set_mode(ASREnvelope::kLoopingAR);
+        set_pitch_env_attack(_params.pitchEnvAttack);
+        set_pitch_env_release(_params.pitchEnvRelease);
     }
 }
 
@@ -615,10 +644,13 @@ void SamplerVoice::set_pitch_env_attack(float seconds)
 {
     _params.pitchEnvAttack = seconds;
 
+    float rate = _compute_playback_rate(0.0f, false);
+    float loopCompression = (_params.pitchEnvMode == VoiceParameters::kLoopEnv)
+                            ? _params.pitchEnvLoopSpeed
+                            : 1.0f;
     // The pitch envelope update rate is once per audio buffer, so modify the attack time
     // to take this into account.
-    float rate = _compute_playback_rate(0.0f, false);
-    _pitchEnv.set_attack(seconds / rate / float(kAudioBufferSize));
+    _pitchEnv.set_attack(seconds / rate / loopCompression / float(kAudioBufferSize));
     _pitchEnv.recompute();
 }
 
@@ -626,10 +658,13 @@ void SamplerVoice::set_pitch_env_release(float seconds)
 {
     _params.pitchEnvRelease = seconds;
 
+    float rate = _compute_playback_rate(0.0f, false);
+    float loopCompression = (_params.pitchEnvMode == VoiceParameters::kLoopEnv)
+                            ? _params.pitchEnvLoopSpeed
+                            : 1.0f;
     // The pitch envelope update rate is once per audio buffer, so modify the release time
     // to take this into account.
-    float rate = _compute_playback_rate(0.0f, false);
-    _pitchEnv.set_release(seconds / rate / float(kAudioBufferSize));
+    _pitchEnv.set_release(seconds / rate / loopCompression / float(kAudioBufferSize));
     _pitchEnv.recompute();
 }
 
@@ -687,6 +722,10 @@ void SamplerVoice::reset_parameter(VoiceParameters::ParameterName which)
             break;
         case VoiceParameters::kVolumeEnvMode:
             set_volume_env_mode(VoiceParameters::kOneShotEnv);
+            set_volume_env_loop_speed(1.0f);
+            break;
+        case VoiceParameters::kVolumeEnvLoopSpeed:
+            set_volume_env_loop_speed(1.0f);
             break;
         case VoiceParameters::kPitchEnvAttack:
             set_pitch_env_attack(0.0f);
@@ -699,6 +738,10 @@ void SamplerVoice::reset_parameter(VoiceParameters::ParameterName which)
             break;
         case VoiceParameters::kPitchEnvMode:
             set_pitch_env_mode(VoiceParameters::kOneShotEnv);
+            set_pitch_env_loop_speed(1.0f);
+            break;
+        case VoiceParameters::kPitchEnvLoopSpeed:
+            set_pitch_env_loop_speed(1.0f);
             break;
         case VoiceParameters::kUnused:
         default:

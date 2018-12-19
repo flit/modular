@@ -55,10 +55,12 @@ struct VoiceParameters
         kVolumeEnvRelease,
         kVolumeEnvDepth,
         kVolumeEnvMode,
+        kVolumeEnvLoopSpeed,
         kPitchEnvAttack,
         kPitchEnvRelease,
         kPitchEnvDepth,
         kPitchEnvMode,
+        kPitchEnvLoopSpeed,
         kGain,
     };
 
@@ -83,10 +85,12 @@ struct VoiceParameters
     float endSample;        //!< Range 0..1.
     PlaybackMode playbackMode; //!< Forward or reverse setting.
     EnvMode volumeEnvMode;  //!< One-shot or loop mode for volume envelope.
+    float volumeEnvLoopSpeed;   //!< Divisor to compress the a+r time when looping, range 1..n
     float volumeEnvAttack;  //!< Attack time in seconds, nominal range 0..(sample length in seconds).
     float volumeEnvRelease; //!< Release time in seconds, nominal range 0..(sample length in seconds).
     float volumeEnvDepth;    //!< +/- gain env depth, nominal range -1..+1.
     EnvMode pitchEnvMode;   //!< One-shot or loop mode for pitch envelope.
+    float pitchEnvLoopSpeed;   //!< Divisor to compress the a+r time when looping, range 1..n
     float pitchEnvAttack;   //!< Attack time in seconds, nominal range 0..(sample length in seconds).
     float pitchEnvRelease;  //!< Release time in seconds, nominal range 0..(sample length in seconds).
     float pitchEnvDepth;    //!< +/- octave env depth, nominal range -2..+2 octaves.
@@ -99,10 +103,12 @@ struct VoiceParameters
         endSample(1.0f),
         playbackMode(kForwardPlayback),
         volumeEnvMode(kOneShotEnv),
+        volumeEnvLoopSpeed(1.0f),
         volumeEnvAttack(0.0f),
         volumeEnvRelease(0.0f),
         volumeEnvDepth(0.0f),
         pitchEnvMode(kOneShotEnv),
+        pitchEnvLoopSpeed(1.0f),
         pitchEnvAttack(0.0f),
         pitchEnvRelease(0.0f),
         pitchEnvDepth(0.0f)
@@ -122,10 +128,12 @@ struct VoiceParameters
         endSample = other.endSample;
         playbackMode = other.playbackMode;
         volumeEnvMode = other.volumeEnvMode;
+        volumeEnvLoopSpeed = other.volumeEnvLoopSpeed;
         volumeEnvAttack = other.volumeEnvAttack;
         volumeEnvRelease = other.volumeEnvRelease;
         volumeEnvDepth = other.volumeEnvDepth;
         pitchEnvMode = other.pitchEnvMode;
+        pitchEnvLoopSpeed = other.pitchEnvLoopSpeed;
         pitchEnvAttack = other.pitchEnvAttack;
         pitchEnvRelease = other.pitchEnvRelease;
         pitchEnvDepth = other.pitchEnvDepth;
@@ -145,10 +153,12 @@ struct VoiceParameters
             && settings.read("end_sample", &endSample)
             && settings.read("playback_mode", &playbackMode)
             && settings.read("volume_env_mode", &volumeEnvMode)
+            && settings.read("volume_env_loop_speed", &volumeEnvLoopSpeed)
             && settings.read("volume_env_attack", &volumeEnvAttack)
             && settings.read("volume_env_release", &volumeEnvRelease)
             && settings.read("volume_env_depth", &volumeEnvDepth)
             && settings.read("pitch_env_mode", &pitchEnvMode)
+            && settings.read("pitch_env_loop_speed", &pitchEnvLoopSpeed)
             && settings.read("pitch_env_attack", &pitchEnvAttack)
             && settings.read("pitch_env_release", &pitchEnvRelease)
             && settings.read("pitch_env_depth", &pitchEnvDepth);
@@ -161,11 +171,13 @@ struct VoiceParameters
             && settings.write("start_sample", startSample)
             && settings.write("end_sample", endSample)
             && settings.write("playback_mode", playbackMode)
-            && settings.write("volume_env_mode", &volumeEnvMode)
+            && settings.write("volume_env_mode", volumeEnvMode)
+            && settings.write("volume_env_loop_speed", volumeEnvLoopSpeed)
             && settings.write("volume_env_attack", volumeEnvAttack)
             && settings.write("volume_env_release", volumeEnvRelease)
             && settings.write("volume_env_depth", volumeEnvDepth)
             && settings.write("pitch_env_mode", pitchEnvMode)
+            && settings.write("pitch_env_loop_speed", pitchEnvLoopSpeed)
             && settings.write("pitch_env_attack", pitchEnvAttack)
             && settings.write("pitch_env_release", pitchEnvRelease)
             && settings.write("pitch_env_depth", pitchEnvDepth);
