@@ -251,6 +251,13 @@ UI::UI()
 
 void UI::init()
 {
+    // Set listener on all voices.
+    uint32_t i;
+    for (i = 0; i < kVoiceCount; ++i)
+    {
+        g_voice[i].set_listener(this);
+    }
+
     // Create UI thread and its runloop.
     _thread.init("ui", this, &UI::ui_thread, kUIThreadPriority, kArSuspendThread);
     _runloop.init("ui");
