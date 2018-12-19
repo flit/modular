@@ -74,7 +74,7 @@ public:
      *  |                       |
      *  |        header         |
      *  |                       |
-     *  |-----------------------|  <-- get_length()
+     *  |-----------------------|  <-- get_header_length()
      *  |                       |
      *  |                       |
      *  |        data           |
@@ -85,34 +85,55 @@ public:
      *  |-----------------------|  <-- compute_field_length()
      *
      * The actual size of each field region is rounded up to the flash minimum write size,
-     * the #kWriteAlignment constant
+     * the #kWriteAlignment constant. There are static members to compute the sizes of each
+     * region.
      */
     struct FieldHeader
     {
-        uint32_t key;
-        uint16_t dataLength;
-        uint16_t fieldLength;
-        uint16_t fieldVersion;
+        uint32_t key;           //!< Unique identifier for this value.
+        uint16_t dataLength;    //!< Actual data length, not rounded up.
+        uint16_t fieldLength;   //!< Total size of the field starting from _key_ and including CRC.
+        uint16_t fieldVersion;  //!< Version number for this instance of the field within the page.
+        uint16_t _padding;      //!< (padding to make the struct word aligned)
 
+        //! @brief Constructor to zero all fields.
+        FieldHeader()
+        :   key(0),
+            dataLength(0),
+            fieldLength(0),
+            fieldVersion(0),
+            _padding(0)
+        {
+        }
+
+        //! @name Size and offset
+        //@{
         //! @brief Size of the header rounded up to minimum write size.
-        static constexpr uint32_t get_length() { return align_up<kWriteAlignment>(sizeof(FieldHeader)); }
+        static constexpr uint32_t get_header_length() { return align_up<kWriteAlignment>(sizeof(FieldHeader)); }
+
+        //! @brief Size of data on media.
+        static constexpr uint32_t get_data_length(uint32_t length) { return align_up<kWriteAlignment>(length); }
+
+        //! @brief Size of the CRC32 on media.
+        static constexpr uint32_t get_crc_length() { return align_up<kWriteAlignment>(sizeof(uint32_t)); }
 
         //! @brief Offset from the start of the field to the CRC32.
         static uint32_t compute_crc_offset(uint32_t dataLen)
         {
-            return get_length() + align_up<kWriteAlignment>(dataLen);
+            return get_header_length() + get_data_length(dataLen);
         }
 
         //! @brief Computes the total length of the field on media.
         static uint32_t compute_field_length(uint32_t dataLen)
         {
-            return compute_crc_offset(dataLen) + align_up<kWriteAlignment>(sizeof(uint32_t));
+            return compute_crc_offset(dataLen) + get_crc_length();
         }
+        //@}
 
         //! @brief Get a pointer to data from the start of the field.
         uint8_t * get_data()
         {
-            return reinterpret_cast<uint8_t *>(reinterpret_cast<uint32_t>(this) + get_length());
+            return reinterpret_cast<uint8_t *>(reinterpret_cast<uint32_t>(this) + get_header_length());
         }
 
         //! @brief Get a pointer to the CRC from the start of the field.

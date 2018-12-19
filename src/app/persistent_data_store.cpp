@@ -38,7 +38,8 @@ using namespace slab;
 
 const uint32_t kErasedWord = 0xffffffff;
 
-const uint32_t PersistentDataStore::Page::kMaxDataOffset = DATA_STORE_PAGE_SIZE - PersistentDataStore::FieldHeader::get_length();
+const uint32_t PersistentDataStore::Page::kMaxDataOffset =
+                DATA_STORE_PAGE_SIZE -  PersistentDataStore::FieldHeader::get_header_length();
 
 //------------------------------------------------------------------------------
 // Code
@@ -119,7 +120,7 @@ bool PersistentDataStore::write_key(KeyInfo * info, const uint8_t * data, uint32
     }
 
     // Check if this write will fit in the active page.
-    uint32_t fieldLength = align_up<kWriteAlignment>(FieldHeader::get_length() + length);
+    uint32_t fieldLength = FieldHeader::compute_field_length(length);
     if (!_activePage->can_write_field(fieldLength))
     {
         // We need to merge fields into a new page.
@@ -130,12 +131,14 @@ bool PersistentDataStore::write_key(KeyInfo * info, const uint8_t * data, uint32
     }
 
     // Construct the field's header.
-    uint32_t nextVersion = (info->newest != nullptr) ? (info->newest->fieldVersion + 1) : 1;
+    uint32_t nextVersion = (info->newest != nullptr)
+                            ? (info->newest->fieldVersion + 1)
+                            : 1;
 
     FieldHeader newHeader;
     newHeader.key = info->key;
     newHeader.dataLength = length;
-    newHeader.fieldLength = FieldHeader::compute_field_length(length);
+    newHeader.fieldLength = fieldLength;
     newHeader.fieldVersion = nextVersion;
 
     // Write to the active page.
@@ -195,7 +198,7 @@ bool PersistentDataStore::_merge_fields()
         key = key->next;
     }
 
-    // Complete the merge. This writes the page header and sets the page state to kActive.
+    // Complete the merge. This writes the page header.
     if (!page.finish_merge())
     {
         return false;
@@ -204,8 +207,9 @@ bool PersistentDataStore::_merge_fields()
     // Erase previous active page.
     _activePage->erase();
 
-    // Update active page pointer.
+    // Update active page pointer and set the page state to kActive.
     _activePage = &_pages[nextPage];
+    _activePage->set_state(Page::kActive);
 
     return true;
 }
@@ -483,8 +487,6 @@ bool PersistentDataStore::Page::finish_merge()
         return false;
     }
 
-    _state = kActive;
-
     return true;
 }
 
@@ -542,20 +544,21 @@ PersistentDataStore::FieldHeader * PersistentDataStore::Page::write_field(const 
 
     // Write header.
     uint32_t writeAddress = _address + _nextWriteOffset;
+    FieldHeader * writtenHeader = reinterpret_cast<FieldHeader *>(writeAddress);
     if (!store._write_data(writeAddress, header, sizeof(FieldHeader)))
     {
         return nullptr;
     }
 
     // Write data.
-    writeAddress += FieldHeader::get_length();
+    writeAddress += FieldHeader::get_header_length();
     if (!store._write_data(writeAddress, data, header->dataLength))
     {
         return nullptr;
     }
 
     // Write CRC32.
-    writeAddress += align_up<kWriteAlignment>(header->dataLength);
+    writeAddress += FieldHeader::get_data_length(header->dataLength);
     uint32_t crc = header->compute_crc(data);
     if (!store._write_data(writeAddress, &crc, sizeof(crc)))
     {
@@ -564,7 +567,7 @@ PersistentDataStore::FieldHeader * PersistentDataStore::Page::write_field(const 
 
     _nextWriteOffset += header->fieldLength;
 
-    return reinterpret_cast<FieldHeader *>(writeAddress);
+    return writtenHeader;
 }
 
 //------------------------------------------------------------------------------
