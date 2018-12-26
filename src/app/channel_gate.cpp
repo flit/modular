@@ -42,7 +42,7 @@ const uint32_t kThresholdAmount = kThresholdPercent * kAdcMax;
 const uint32_t kRisingThreshold = kAdcMax - kThresholdAmount;
 const uint32_t kFallingThreshold = kThresholdAmount;
 
-const uint32_t kMinTransitionCounts = 3;
+const uint32_t kMinTransitionCounts = 2;
 
 //------------------------------------------------------------------------------
 // Code
