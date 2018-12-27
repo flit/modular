@@ -142,7 +142,7 @@ protected:
     int32_t _button1LedDutyCycleDelta;
     uint32_t _button1LedFlashes;
     uint32_t _ledTimeoutCount;
-    uint32_t _potReleaseSaveGainChannel;
+    bool _potReleaseSaveGainChannels[kVoiceCount];
     uint32_t _editPageBlinkCounter;
     uint32_t _editPageChannelLedBlinkCounter;
     bool _editPageChannelLedState; //!< True means show param state, false show selected channel.

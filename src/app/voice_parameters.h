@@ -147,7 +147,8 @@ struct VoiceParameters
 
     bool load(Archive & settings)
     {
-        return settings.read("base_octave_offset", &baseOctaveOffset)
+        return settings.read("gain", &gain)
+            && settings.read("base_octave_offset", &baseOctaveOffset)
             && settings.read("base_cents_offset", &baseCentsOffset)
             && settings.read("start_sample", &startSample)
             && settings.read("end_sample", &endSample)
@@ -166,7 +167,8 @@ struct VoiceParameters
 
     bool save(Archive & settings)
     {
-        return settings.write("base_octave_offset", baseOctaveOffset)
+        return settings.write("gain", gain)
+            && settings.write("base_octave_offset", baseOctaveOffset)
             && settings.write("base_cents_offset", baseCentsOffset)
             && settings.write("start_sample", startSample)
             && settings.write("end_sample", endSample)

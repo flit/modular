@@ -247,11 +247,11 @@ UI::UI()
     _button1LedDutyCycleDelta(kButton1LedDutyCycleDelta),
     _button1LedFlashes(0),
     _ledTimeoutCount(0),
-    _potReleaseSaveGainChannel(0),
+    _potReleaseSaveGainChannels{false},
     _editPageBlinkCounter(0),
     _editPageChannelLedBlinkCounter(0),
     _editPageChannelLedState(false),
-    _options{false}
+    _options{true}
 {
 }
 
@@ -1132,7 +1132,15 @@ void UI::handle_pot_release_timer(Ar::Timer * timer)
     }
     if (_potReleaseSaveGain)
     {
-        save_voice_params(_potReleaseSaveGainChannel);
+        uint32_t i;
+        for (i = 0; i < kVoiceCount; ++i)
+        {
+            if (_potReleaseSaveGainChannels[i])
+            {
+                save_voice_params(i);
+                _potReleaseSaveGainChannels[i] = false;
+            }
+        }
         _potReleaseSaveGain = false;
     }
 }
@@ -1193,8 +1201,8 @@ void UI::handle_gain_pot(uint32_t potNumber, float value)
     if (_options.saveGainInBank)
     {
         // Set flag and start timer to save the voice after gain is edited.
+        _potReleaseSaveGainChannels[potNumber] = true;
         _potReleaseSaveGain = true;
-        _potReleaseSaveGainChannel = potNumber;
         _potReleaseTimer.start();
     }
 }
