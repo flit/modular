@@ -66,7 +66,7 @@ void Button::init()
 
 bool Button::read()
 {
-    uint32_t value = GPIO_ReadPinInput(_gpio, _pin);
+    uint32_t value = GPIO_PinRead(_gpio, _pin);
     return (value == 0) ^ _isInverted;
 }
 

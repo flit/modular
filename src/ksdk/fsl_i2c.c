@@ -1,37 +1,20 @@
 /*
  * Copyright (c) 2015, Freescale Semiconductor, Inc.
+ * Copyright 2016-2017 NXP
  * All rights reserved.
  *
- * Redistribution and use in source and binary forms, with or without modification,
- * are permitted provided that the following conditions are met:
- *
- * o Redistributions of source code must retain the above copyright notice, this list
- *   of conditions and the following disclaimer.
- *
- * o Redistributions in binary form must reproduce the above copyright notice, this
- *   list of conditions and the following disclaimer in the documentation and/or
- *   other materials provided with the distribution.
- *
- * o Neither the name of Freescale Semiconductor, Inc. nor the names of its
- *   contributors may be used to endorse or promote products derived from this
- *   software without specific prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
- * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
- * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
- * ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
- * ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * SPDX-License-Identifier: BSD-3-Clause
  */
 #include "fsl_i2c.h"
 
 /*******************************************************************************
  * Definitions
  ******************************************************************************/
+
+/* Component ID definition, used by tools. */
+#ifndef FSL_COMPONENT_ID
+#define FSL_COMPONENT_ID "platform.drivers.i2c"
+#endif
 
 /*! @brief i2c transfer state. */
 enum _i2c_transfer_states
@@ -69,11 +52,17 @@ typedef void (*i2c_isr_t)(I2C_Type *base, void *i2cHandle);
  ******************************************************************************/
 
 /*!
- * @brief Get instance number for I2C module.
- *
- * @param base I2C peripheral base address.
- */
-uint32_t I2C_GetInstance(I2C_Type *base);
+* @brief Set SCL/SDA hold time, this API receives SCL stop hold time, calculate the
+* closest SCL divider and MULT value for the SDA hold time, SCL start and SCL stop
+* hold time. To reduce the ROM size, SDA/SCL hold value mapping table is not provided,
+* assume SCL divider = SCL stop hold value *2 to get the closest SCL divider value and MULT
+* value, then the related SDA hold time, SCL start and SCL stop hold time is used.
+*
+* @param base I2C peripheral base address.
+* @param sourceClock_Hz I2C functional clock frequency in Hertz.
+* @param sclStopHoldTime_ns SCL stop hold time in ns.
+*/
+static void I2C_SetHoldTime(I2C_Type *base, uint32_t sclStopHoldTime_ns, uint32_t sourceClock_Hz);
 
 /*!
  * @brief Set up master transfer, send slave address and decide the initial
@@ -121,24 +110,26 @@ static void I2C_TransferCommonIRQHandler(I2C_Type *base, void *handle);
  * Variables
  ******************************************************************************/
 
+/*! @brief Pointers to i2c bases for each instance. */
+I2C_Type *const s_i2cBases[] = I2C_BASE_PTRS;
+
 /*! @brief Pointers to i2c handles for each instance. */
 static void *s_i2cHandle[FSL_FEATURE_SOC_I2C_COUNT] = {NULL};
 
 /*! @brief SCL clock divider used to calculate baudrate. */
-const uint16_t s_i2cDividerTable[] = {20,   22,   24,   26,   28,   30,   34,   40,   28,   32,   36,   40,  44,
-                                      48,   56,   68,   48,   56,   64,   72,   80,   88,   104,  128,  80,  96,
-                                      112,  128,  144,  160,  192,  240,  160,  192,  224,  256,  288,  320, 384,
-                                      480,  320,  384,  448,  512,  576,  640,  768,  960,  640,  768,  896, 1024,
-                                      1152, 1280, 1536, 1920, 1280, 1536, 1792, 2048, 2304, 2560, 3072, 3840};
-
-/*! @brief Pointers to i2c bases for each instance. */
-static I2C_Type *const s_i2cBases[] = I2C_BASE_PTRS;
+static const uint16_t s_i2cDividerTable[] = {
+    20,  22,  24,  26,   28,   30,   34,   40,   28,   32,   36,   40,   44,   48,   56,   68,
+    48,  56,  64,  72,   80,   88,   104,  128,  80,   96,   112,  128,  144,  160,  192,  240,
+    160, 192, 224, 256,  288,  320,  384,  480,  320,  384,  448,  512,  576,  640,  768,  960,
+    640, 768, 896, 1024, 1152, 1280, 1536, 1920, 1280, 1536, 1792, 2048, 2304, 2560, 3072, 3840};
 
 /*! @brief Pointers to i2c IRQ number for each instance. */
-const IRQn_Type s_i2cIrqs[] = I2C_IRQS;
+static const IRQn_Type s_i2cIrqs[] = I2C_IRQS;
 
+#if !(defined(FSL_SDK_DISABLE_DRIVER_CLOCK_CONTROL) && FSL_SDK_DISABLE_DRIVER_CLOCK_CONTROL)
 /*! @brief Pointers to i2c clocks for each instance. */
-const clock_ip_name_t s_i2cClocks[] = I2C_CLOCKS;
+static const clock_ip_name_t s_i2cClocks[] = I2C_CLOCKS;
+#endif /* FSL_SDK_DISABLE_DRIVER_CLOCK_CONTROL */
 
 /*! @brief Pointer to master IRQ handler for each instance. */
 static i2c_isr_t s_i2cMasterIsr;
@@ -150,12 +141,17 @@ static i2c_isr_t s_i2cSlaveIsr;
  * Codes
  ******************************************************************************/
 
+/*!
+ * brief Get instance number for I2C module.
+ *
+ * param base I2C peripheral base address.
+ */
 uint32_t I2C_GetInstance(I2C_Type *base)
 {
     uint32_t instance;
 
     /* Find the instance index from base address mappings. */
-    for (instance = 0; instance < FSL_FEATURE_SOC_I2C_COUNT; instance++)
+    for (instance = 0; instance < ARRAY_SIZE(s_i2cBases); instance++)
     {
         if (s_i2cBases[instance] == base)
         {
@@ -163,16 +159,63 @@ uint32_t I2C_GetInstance(I2C_Type *base)
         }
     }
 
-    assert(instance < FSL_FEATURE_SOC_I2C_COUNT);
+    assert(instance < ARRAY_SIZE(s_i2cBases));
 
     return instance;
+}
+
+static void I2C_SetHoldTime(I2C_Type *base, uint32_t sclStopHoldTime_ns, uint32_t sourceClock_Hz)
+{
+    uint32_t multiplier;
+    uint32_t computedSclHoldTime;
+    uint32_t absError;
+    uint32_t bestError = UINT32_MAX;
+    uint32_t bestMult = 0u;
+    uint32_t bestIcr = 0u;
+    uint8_t mult;
+    uint8_t i;
+
+    /* Search for the settings with the lowest error. Mult is the MULT field of the I2C_F register,
+     * and ranges from 0-2. It selects the multiplier factor for the divider. */
+    /* SDA hold time = bus period (s) * mul * SDA hold value. */
+    /* SCL start hold time = bus period (s) * mul * SCL start hold value. */
+    /* SCL stop hold time = bus period (s) * mul * SCL stop hold value. */
+
+    for (mult = 0u; (mult <= 2u) && (bestError != 0); ++mult)
+    {
+        multiplier = 1u << mult;
+
+        /* Scan table to find best match. */
+        for (i = 0u; i < sizeof(s_i2cDividerTable) / sizeof(s_i2cDividerTable[0]); ++i)
+        {
+            /* Assume SCL hold(stop) value = s_i2cDividerTable[i]/2. */
+            computedSclHoldTime = ((multiplier * s_i2cDividerTable[i]) * 500000U) / (sourceClock_Hz / 1000U);
+            absError = sclStopHoldTime_ns > computedSclHoldTime ? (sclStopHoldTime_ns - computedSclHoldTime) :
+                                                                  (computedSclHoldTime - sclStopHoldTime_ns);
+
+            if (absError < bestError)
+            {
+                bestMult = mult;
+                bestIcr = i;
+                bestError = absError;
+
+                /* If the error is 0, then we can stop searching because we won't find a better match. */
+                if (absError == 0)
+                {
+                    break;
+                }
+            }
+        }
+    }
+
+    /* Set frequency register based on best settings. */
+    base->F = I2C_F_MULT(bestMult) | I2C_F_ICR(bestIcr);
 }
 
 static status_t I2C_InitTransferStateMachine(I2C_Type *base, i2c_master_handle_t *handle, i2c_master_transfer_t *xfer)
 {
     status_t result = kStatus_Success;
     i2c_direction_t direction = xfer->direction;
-    uint16_t timeout = UINT16_MAX;
 
     /* Initialize the handle transfer information. */
     handle->transfer = *xfer;
@@ -183,33 +226,47 @@ static status_t I2C_InitTransferStateMachine(I2C_Type *base, i2c_master_handle_t
     /* Initial transfer state. */
     if (handle->transfer.subaddressSize > 0)
     {
-        handle->state = kSendCommandState;
         if (xfer->direction == kI2C_Read)
         {
             direction = kI2C_Write;
         }
     }
-    else
-    {
-        handle->state = kCheckAddressState;
-    }
 
-    /* Wait until the data register is ready for transmit. */
-    while ((!(base->S & kI2C_TransferCompleteFlag)) && (--timeout))
-    {
-    }
-
-    /* Failed to start the transfer. */
-    if (timeout == 0)
-    {
-        return kStatus_I2C_Timeout;
-    }
+    handle->state = kCheckAddressState;
 
     /* Clear all status before transfer. */
     I2C_MasterClearStatusFlags(base, kClearFlags);
 
+    /* Handle no start option. */
+    if (handle->transfer.flags & kI2C_TransferNoStartFlag)
+    {
+        /* No need to send start flag, directly go to send command or data */
+        if (handle->transfer.subaddressSize > 0)
+        {
+            handle->state = kSendCommandState;
+        }
+        else
+        {
+            if (direction == kI2C_Write)
+            {
+                /* Next state, send data. */
+                handle->state = kSendDataState;
+            }
+            else
+            {
+                /* Only support write with no stop signal. */
+                return kStatus_InvalidArgument;
+            }
+        }
+
+        /* Wait for TCF bit and manually trigger tx interrupt. */
+        while (!(base->S & kI2C_TransferCompleteFlag))
+        {
+        }
+        I2C_MasterTransferHandleIRQ(base, handle);
+    }
     /* If repeated start is requested, send repeated start. */
-    if (handle->transfer.flags & kI2C_TransferRepeatedStartFlag)
+    else if (handle->transfer.flags & kI2C_TransferRepeatedStartFlag)
     {
         result = I2C_MasterRepeatedStart(base, handle->transfer.slaveAddress, direction);
     }
@@ -265,32 +322,39 @@ static status_t I2C_MasterTransferRunStateMachine(I2C_Type *base, i2c_master_han
         result = kStatus_Success;
     }
 
-    if (result)
-    {
-        return result;
-    }
-
     /* Handle Check address state to check the slave address is Acked in slave
        probe application. */
     if (handle->state == kCheckAddressState)
     {
         if (statusFlags & kI2C_ReceiveNakFlag)
         {
-            return kStatus_I2C_Nak;
+            result = kStatus_I2C_Addr_Nak;
         }
         else
         {
-            if (handle->transfer.direction == kI2C_Write)
+            if (handle->transfer.subaddressSize > 0)
             {
-                /* Next state, send data. */
-                handle->state = kSendDataState;
+                handle->state = kSendCommandState;
             }
             else
             {
-                /* Next state, receive data begin. */
-                handle->state = kReceiveDataBeginState;
+                if (handle->transfer.direction == kI2C_Write)
+                {
+                    /* Next state, send data. */
+                    handle->state = kSendDataState;
+                }
+                else
+                {
+                    /* Next state, receive data begin. */
+                    handle->state = kReceiveDataBeginState;
+                }
             }
         }
+    }
+
+    if (result)
+    {
+        return result;
     }
 
     /* Run state machine. */
@@ -307,15 +371,18 @@ static status_t I2C_MasterTransferRunStateMachine(I2C_Type *base, i2c_master_han
             {
                 if (handle->transfer.direction == kI2C_Write)
                 {
-                    /* Next state, send data. */
-                    handle->state = kSendDataState;
-
                     /* Send first byte of data. */
                     if (handle->transfer.dataSize > 0)
                     {
+                        /* Next state, send data. */
+                        handle->state = kSendDataState;
                         base->D = *handle->transfer.data;
                         handle->transfer.data++;
                         handle->transfer.dataSize--;
+                    }
+                    else
+                    {
+                        *isDone = true;
                     }
                 }
                 else
@@ -375,6 +442,10 @@ static status_t I2C_MasterTransferRunStateMachine(I2C_Type *base, i2c_master_han
                     {
                         result = I2C_MasterStop(base);
                     }
+                    else
+                    {
+                        base->C1 |= I2C_C1_TX_MASK;
+                    }
                 }
 
                 /* Send NAK at the last receive byte. */
@@ -407,20 +478,60 @@ static void I2C_TransferCommonIRQHandler(I2C_Type *base, void *handle)
     {
         s_i2cSlaveIsr(base, handle);
     }
+    __DSB();
 }
 
+/*!
+ * brief Initializes the I2C peripheral. Call this API to ungate the I2C clock
+ * and configure the I2C with master configuration.
+ *
+ * note This API should be called at the beginning of the application.
+ * Otherwise, any operation to the I2C module can cause a hard fault
+ * because the clock is not enabled. The configuration structure can be custom filled
+ * or it can be set with default values by using the I2C_MasterGetDefaultConfig().
+ * After calling this API, the master is ready to transfer.
+ * This is an example.
+ * code
+ * i2c_master_config_t config = {
+ * .enableMaster = true,
+ * .enableStopHold = false,
+ * .highDrive = false,
+ * .baudRate_Bps = 100000,
+ * .glitchFilterWidth = 0
+ * };
+ * I2C_MasterInit(I2C0, &config, 12000000U);
+ * endcode
+ *
+ * param base I2C base pointer
+ * param masterConfig A pointer to the master configuration structure
+ * param srcClock_Hz I2C peripheral clock frequency in Hz
+ */
 void I2C_MasterInit(I2C_Type *base, const i2c_master_config_t *masterConfig, uint32_t srcClock_Hz)
 {
     assert(masterConfig && srcClock_Hz);
 
     /* Temporary register for filter read. */
     uint8_t fltReg;
-#if defined(FSL_FEATURE_I2C_HAS_HIGH_DRIVE_SELECTION) && FSL_FEATURE_I2C_HAS_HIGH_DRIVE_SELECTION
-    uint8_t c2Reg;
+#if defined(FSL_FEATURE_I2C_HAS_DOUBLE_BUFFER_ENABLE) && FSL_FEATURE_I2C_HAS_DOUBLE_BUFFER_ENABLE
+    uint8_t s2Reg;
 #endif
-
+#if !(defined(FSL_SDK_DISABLE_DRIVER_CLOCK_CONTROL) && FSL_SDK_DISABLE_DRIVER_CLOCK_CONTROL)
     /* Enable I2C clock. */
     CLOCK_EnableClock(s_i2cClocks[I2C_GetInstance(base)]);
+#endif /* FSL_SDK_DISABLE_DRIVER_CLOCK_CONTROL */
+
+    /* Reset the module. */
+    base->A1 = 0;
+    base->F = 0;
+    base->C1 = 0;
+    base->S = 0xFFU;
+    base->C2 = 0;
+#if defined(FSL_FEATURE_I2C_HAS_START_STOP_DETECT) && FSL_FEATURE_I2C_HAS_START_STOP_DETECT
+    base->FLT = 0x50U;
+#elif defined(FSL_FEATURE_I2C_HAS_STOP_DETECT) && FSL_FEATURE_I2C_HAS_STOP_DETECT
+    base->FLT = 0x40U;
+#endif
+    base->RA = 0;
 
     /* Disable I2C prior to configuring it. */
     base->C1 &= ~(I2C_C1_IICEN_MASK);
@@ -430,14 +541,6 @@ void I2C_MasterInit(I2C_Type *base, const i2c_master_config_t *masterConfig, uin
 
     /* Configure baud rate. */
     I2C_MasterSetBaudRate(base, masterConfig->baudRate_Bps, srcClock_Hz);
-
-#if defined(FSL_FEATURE_I2C_HAS_HIGH_DRIVE_SELECTION) && FSL_FEATURE_I2C_HAS_HIGH_DRIVE_SELECTION
-    /* Configure high drive feature. */
-    c2Reg = base->C2;
-    c2Reg &= ~(I2C_C2_HDRS_MASK);
-    c2Reg |= I2C_C2_HDRS(masterConfig->enableHighDrive);
-    base->C2 = c2Reg;
-#endif
 
     /* Read out the FLT register. */
     fltReg = base->FLT;
@@ -455,30 +558,54 @@ void I2C_MasterInit(I2C_Type *base, const i2c_master_config_t *masterConfig, uin
     /* Write the register value back to the filter register. */
     base->FLT = fltReg;
 
+/* Enable/Disable double buffering. */
+#if defined(FSL_FEATURE_I2C_HAS_DOUBLE_BUFFER_ENABLE) && FSL_FEATURE_I2C_HAS_DOUBLE_BUFFER_ENABLE
+    s2Reg = base->S2 & (~I2C_S2_DFEN_MASK);
+    base->S2 = s2Reg | I2C_S2_DFEN(masterConfig->enableDoubleBuffering);
+#endif
+
     /* Enable the I2C peripheral based on the configuration. */
     base->C1 = I2C_C1_IICEN(masterConfig->enableMaster);
 }
 
+/*!
+ * brief De-initializes the I2C master peripheral. Call this API to gate the I2C clock.
+ * The I2C master module can't work unless the I2C_MasterInit is called.
+ * param base I2C base pointer
+ */
 void I2C_MasterDeinit(I2C_Type *base)
 {
     /* Disable I2C module. */
     I2C_Enable(base, false);
 
+#if !(defined(FSL_SDK_DISABLE_DRIVER_CLOCK_CONTROL) && FSL_SDK_DISABLE_DRIVER_CLOCK_CONTROL)
     /* Disable I2C clock. */
     CLOCK_DisableClock(s_i2cClocks[I2C_GetInstance(base)]);
+#endif /* FSL_SDK_DISABLE_DRIVER_CLOCK_CONTROL */
 }
 
+/*!
+ * brief  Sets the I2C master configuration structure to default values.
+ *
+ * The purpose of this API is to get the configuration structure initialized for use in the I2C_MasterConfigure().
+ * Use the initialized structure unchanged in the I2C_MasterConfigure() or modify
+ * the structure before calling the I2C_MasterConfigure().
+ * This is an example.
+ * code
+ * i2c_master_config_t config;
+ * I2C_MasterGetDefaultConfig(&config);
+ * endcode
+ * param masterConfig A pointer to the master configuration structure.
+*/
 void I2C_MasterGetDefaultConfig(i2c_master_config_t *masterConfig)
 {
     assert(masterConfig);
 
+    /* Initializes the configure structure to zero. */
+    memset(masterConfig, 0, sizeof(*masterConfig));
+
     /* Default baud rate at 100kbps. */
     masterConfig->baudRate_Bps = 100000U;
-
-/* Default pin high drive is disabled. */
-#if defined(FSL_FEATURE_I2C_HAS_HIGH_DRIVE_SELECTION) && FSL_FEATURE_I2C_HAS_HIGH_DRIVE_SELECTION
-    masterConfig->enableHighDrive = false;
-#endif
 
 /* Default stop hold enable is disabled. */
 #if defined(FSL_FEATURE_I2C_HAS_STOP_HOLD_OFF) && FSL_FEATURE_I2C_HAS_STOP_HOLD_OFF
@@ -488,12 +615,31 @@ void I2C_MasterGetDefaultConfig(i2c_master_config_t *masterConfig)
     /* Default glitch filter value is no filter. */
     masterConfig->glitchFilterWidth = 0U;
 
+/* Default enable double buffering. */
+#if defined(FSL_FEATURE_I2C_HAS_DOUBLE_BUFFER_ENABLE) && FSL_FEATURE_I2C_HAS_DOUBLE_BUFFER_ENABLE
+    masterConfig->enableDoubleBuffering = true;
+#endif
+
     /* Enable the I2C peripheral. */
     masterConfig->enableMaster = true;
 }
 
+/*!
+ * brief Enables I2C interrupt requests.
+ *
+ * param base I2C base pointer
+ * param mask interrupt source
+ *     The parameter can be combination of the following source if defined:
+ *     arg kI2C_GlobalInterruptEnable
+ *     arg kI2C_StopDetectInterruptEnable/kI2C_StartDetectInterruptEnable
+ *     arg kI2C_SdaTimeoutInterruptEnable
+ */
 void I2C_EnableInterrupts(I2C_Type *base, uint32_t mask)
 {
+#ifdef I2C_HAS_STOP_DETECT
+    uint8_t fltReg;
+#endif
+
     if (mask & kI2C_GlobalInterruptEnable)
     {
         base->C1 |= I2C_C1_IICIE_MASK;
@@ -502,18 +648,42 @@ void I2C_EnableInterrupts(I2C_Type *base, uint32_t mask)
 #if defined(FSL_FEATURE_I2C_HAS_STOP_DETECT) && FSL_FEATURE_I2C_HAS_STOP_DETECT
     if (mask & kI2C_StopDetectInterruptEnable)
     {
-        base->FLT |= I2C_FLT_STOPIE_MASK;
+        fltReg = base->FLT;
+
+        /* Keep STOPF flag. */
+        fltReg &= ~I2C_FLT_STOPF_MASK;
+
+        /* Stop detect enable. */
+        fltReg |= I2C_FLT_STOPIE_MASK;
+        base->FLT = fltReg;
     }
 #endif /* FSL_FEATURE_I2C_HAS_STOP_DETECT */
 
 #if defined(FSL_FEATURE_I2C_HAS_START_STOP_DETECT) && FSL_FEATURE_I2C_HAS_START_STOP_DETECT
     if (mask & kI2C_StartStopDetectInterruptEnable)
     {
-        base->FLT |= I2C_FLT_SSIE_MASK;
+        fltReg = base->FLT;
+
+        /* Keep STARTF and STOPF flags. */
+        fltReg &= ~(I2C_FLT_STOPF_MASK | I2C_FLT_STARTF_MASK);
+
+        /* Start and stop detect enable. */
+        fltReg |= I2C_FLT_SSIE_MASK;
+        base->FLT = fltReg;
     }
 #endif /* FSL_FEATURE_I2C_HAS_START_STOP_DETECT */
 }
 
+/*!
+ * brief Disables I2C interrupt requests.
+ *
+ * param base I2C base pointer
+ * param mask interrupt source
+ *     The parameter can be combination of the following source if defined:
+ *     arg kI2C_GlobalInterruptEnable
+ *     arg kI2C_StopDetectInterruptEnable/kI2C_StartDetectInterruptEnable
+ *     arg kI2C_SdaTimeoutInterruptEnable
+ */
 void I2C_DisableInterrupts(I2C_Type *base, uint32_t mask)
 {
     if (mask & kI2C_GlobalInterruptEnable)
@@ -524,18 +694,25 @@ void I2C_DisableInterrupts(I2C_Type *base, uint32_t mask)
 #if defined(FSL_FEATURE_I2C_HAS_STOP_DETECT) && FSL_FEATURE_I2C_HAS_STOP_DETECT
     if (mask & kI2C_StopDetectInterruptEnable)
     {
-        base->FLT &= ~I2C_FLT_STOPIE_MASK;
+        base->FLT &= ~(I2C_FLT_STOPIE_MASK | I2C_FLT_STOPF_MASK);
     }
 #endif /* FSL_FEATURE_I2C_HAS_STOP_DETECT */
 
 #if defined(FSL_FEATURE_I2C_HAS_START_STOP_DETECT) && FSL_FEATURE_I2C_HAS_START_STOP_DETECT
     if (mask & kI2C_StartStopDetectInterruptEnable)
     {
-        base->FLT &= ~I2C_FLT_SSIE_MASK;
+        base->FLT &= ~(I2C_FLT_SSIE_MASK | I2C_FLT_STOPF_MASK | I2C_FLT_STARTF_MASK);
     }
 #endif /* FSL_FEATURE_I2C_HAS_START_STOP_DETECT */
 }
 
+/*!
+ * brief Sets the I2C master transfer baud rate.
+ *
+ * param base I2C base pointer
+ * param baudRate_Bps the baud rate value in bps
+ * param srcClock_Hz Source clock
+ */
 void I2C_MasterSetBaudRate(I2C_Type *base, uint32_t baudRate_Bps, uint32_t srcClock_Hz)
 {
     uint32_t multiplier;
@@ -578,6 +755,18 @@ void I2C_MasterSetBaudRate(I2C_Type *base, uint32_t baudRate_Bps, uint32_t srcCl
     base->F = I2C_F_MULT(bestMult) | I2C_F_ICR(bestIcr);
 }
 
+/*!
+ * brief Sends a START on the I2C bus.
+ *
+ * This function is used to initiate a new master mode transfer by sending the START signal.
+ * The slave address is sent following the I2C START signal.
+ *
+ * param base I2C peripheral base pointer
+ * param address 7-bit slave device address.
+ * param direction Master transfer directions(transmit/receive).
+ * retval kStatus_Success Successfully send the start signal.
+ * retval kStatus_I2C_Busy Current bus is busy.
+ */
 status_t I2C_MasterStart(I2C_Type *base, uint8_t address, i2c_direction_t direction)
 {
     status_t result = kStatus_Success;
@@ -594,9 +783,20 @@ status_t I2C_MasterStart(I2C_Type *base, uint8_t address, i2c_direction_t direct
         base->C1 |= I2C_C1_MST_MASK | I2C_C1_TX_MASK;
 
 #if defined(FSL_FEATURE_I2C_HAS_DOUBLE_BUFFERING) && FSL_FEATURE_I2C_HAS_DOUBLE_BUFFERING
+#if I2C_WAIT_TIMEOUT
+        uint32_t waitTimes = I2C_WAIT_TIMEOUT;
+        while ((!(base->S2 & I2C_S2_EMPTY_MASK)) && (--waitTimes))
+        {
+        }
+        if (waitTimes == 0)
+        {
+            return kStatus_I2C_Timeout;
+        }
+#else
         while (!(base->S2 & I2C_S2_EMPTY_MASK))
         {
         }
+#endif
 #endif /* FSL_FEATURE_I2C_HAS_DOUBLE_BUFFERING */
 
         base->D = (((uint32_t)address) << 1U | ((direction == kI2C_Read) ? 1U : 0U));
@@ -605,6 +805,15 @@ status_t I2C_MasterStart(I2C_Type *base, uint8_t address, i2c_direction_t direct
     return result;
 }
 
+/*!
+ * brief Sends a REPEATED START on the I2C bus.
+ *
+ * param base I2C peripheral base pointer
+ * param address 7-bit slave device address.
+ * param direction Master transfer directions(transmit/receive).
+ * retval kStatus_Success Successfully send the start signal.
+ * retval kStatus_I2C_Busy Current bus is busy but not occupied by current I2C master.
+ */
 status_t I2C_MasterRepeatedStart(I2C_Type *base, uint8_t address, i2c_direction_t direction)
 {
     status_t result = kStatus_Success;
@@ -623,7 +832,7 @@ status_t I2C_MasterRepeatedStart(I2C_Type *base, uint8_t address, i2c_direction_
         base->F = savedMult & (~I2C_F_MULT_MASK);
 
         /* We are already in a transfer, so send a repeated start. */
-        base->C1 |= I2C_C1_RSTA_MASK;
+        base->C1 |= I2C_C1_RSTA_MASK | I2C_C1_TX_MASK;
 
         /* Restore the multiplier factor. */
         base->F = savedMult;
@@ -635,9 +844,20 @@ status_t I2C_MasterRepeatedStart(I2C_Type *base, uint8_t address, i2c_direction_
         }
 
 #if defined(FSL_FEATURE_I2C_HAS_DOUBLE_BUFFERING) && FSL_FEATURE_I2C_HAS_DOUBLE_BUFFERING
+#if I2C_WAIT_TIMEOUT
+        uint32_t waitTimes = I2C_WAIT_TIMEOUT;
+        while ((!(base->S2 & I2C_S2_EMPTY_MASK)) && (--waitTimes))
+        {
+        }
+        if (waitTimes == 0)
+        {
+            return kStatus_I2C_Timeout;
+        }
+#else
         while (!(base->S2 & I2C_S2_EMPTY_MASK))
         {
         }
+#endif
 #endif /* FSL_FEATURE_I2C_HAS_DOUBLE_BUFFERING */
 
         base->D = (((uint32_t)address) << 1U | ((direction == kI2C_Read) ? 1U : 0U));
@@ -646,27 +866,46 @@ status_t I2C_MasterRepeatedStart(I2C_Type *base, uint8_t address, i2c_direction_
     return result;
 }
 
+/*!
+ * brief Sends a STOP signal on the I2C bus.
+ *
+ * retval kStatus_Success Successfully send the stop signal.
+ * retval kStatus_I2C_Timeout Send stop signal failed, timeout.
+ */
 status_t I2C_MasterStop(I2C_Type *base)
 {
     status_t result = kStatus_Success;
-    uint16_t timeout = UINT16_MAX;
 
     /* Issue the STOP command on the bus. */
     base->C1 &= ~(I2C_C1_MST_MASK | I2C_C1_TX_MASK | I2C_C1_TXAK_MASK);
 
-    /* Wait until data transfer complete. */
-    while ((base->S & kI2C_BusBusyFlag) && (--timeout))
+#if I2C_WAIT_TIMEOUT
+    uint32_t waitTimes = I2C_WAIT_TIMEOUT;
+    /* Wait until bus not busy. */
+    while ((base->S & kI2C_BusBusyFlag) && (--waitTimes))
     {
     }
 
-    if (timeout == 0)
+    if (waitTimes == 0)
     {
         result = kStatus_I2C_Timeout;
     }
+#else
+    /* Wait until data transfer complete. */
+    while (base->S & kI2C_BusBusyFlag)
+    {
+    }
+#endif
 
     return result;
 }
 
+/*!
+ * brief Gets the I2C status flags.
+ *
+ * param base I2C base pointer
+ * return status flag, use status flag to AND #_i2c_flags to get the related status.
+ */
 uint32_t I2C_MasterGetStatusFlags(I2C_Type *base)
 {
     uint32_t statusFlags = base->S;
@@ -690,15 +929,39 @@ uint32_t I2C_MasterGetStatusFlags(I2C_Type *base)
     return statusFlags;
 }
 
-status_t I2C_MasterWriteBlocking(I2C_Type *base, const uint8_t *txBuff, size_t txSize)
+/*!
+ * brief Performs a polling send transaction on the I2C bus.
+ *
+ * param base  The I2C peripheral base pointer.
+ * param txBuff The pointer to the data to be transferred.
+ * param txSize The length in bytes of the data to be transferred.
+ * param flags Transfer control flag to decide whether need to send a stop, use kI2C_TransferDefaultFlag
+*  to issue a stop and kI2C_TransferNoStop to not send a stop.
+ * retval kStatus_Success Successfully complete the data transmission.
+ * retval kStatus_I2C_ArbitrationLost Transfer error, arbitration lost.
+ * retval kStataus_I2C_Nak Transfer error, receive NAK during transfer.
+ */
+status_t I2C_MasterWriteBlocking(I2C_Type *base, const uint8_t *txBuff, size_t txSize, uint32_t flags)
 {
     status_t result = kStatus_Success;
     uint8_t statusFlags = 0;
 
+#if I2C_WAIT_TIMEOUT
+    uint32_t waitTimes = I2C_WAIT_TIMEOUT;
+    /* Wait until the data register is ready for transmit. */
+    while ((!(base->S & kI2C_TransferCompleteFlag)) && (--waitTimes))
+    {
+    }
+    if (waitTimes == 0)
+    {
+        return kStatus_I2C_Timeout;
+    }
+#else
     /* Wait until the data register is ready for transmit. */
     while (!(base->S & kI2C_TransferCompleteFlag))
     {
     }
+#endif
 
     /* Clear the IICIF flag. */
     base->S = kI2C_IntPendingFlag;
@@ -711,11 +974,22 @@ status_t I2C_MasterWriteBlocking(I2C_Type *base, const uint8_t *txBuff, size_t t
         /* Send a byte of data. */
         base->D = *txBuff++;
 
+#if I2C_WAIT_TIMEOUT
+        waitTimes = I2C_WAIT_TIMEOUT;
+        /* Wait until data transfer complete. */
+        while ((!(base->S & kI2C_IntPendingFlag)) && (--waitTimes))
+        {
+        }
+        if (waitTimes == 0)
+        {
+            return kStatus_I2C_Timeout;
+        }
+#else
         /* Wait until data transfer complete. */
         while (!(base->S & kI2C_IntPendingFlag))
         {
         }
-
+#endif
         statusFlags = base->S;
 
         /* Clear the IICIF flag. */
@@ -728,7 +1002,7 @@ status_t I2C_MasterWriteBlocking(I2C_Type *base, const uint8_t *txBuff, size_t t
             result = kStatus_I2C_ArbitrationLost;
         }
 
-        if (statusFlags & kI2C_ReceiveNakFlag)
+        if ((statusFlags & kI2C_ReceiveNakFlag) && txSize)
         {
             base->S = kI2C_ReceiveNakFlag;
             result = kStatus_I2C_Nak;
@@ -741,10 +1015,34 @@ status_t I2C_MasterWriteBlocking(I2C_Type *base, const uint8_t *txBuff, size_t t
         }
     }
 
+    if (((result == kStatus_Success) && (!(flags & kI2C_TransferNoStopFlag))) || (result == kStatus_I2C_Nak))
+    {
+        /* Clear the IICIF flag. */
+        base->S = kI2C_IntPendingFlag;
+
+        /* Send stop. */
+        result = I2C_MasterStop(base);
+    }
+
     return result;
 }
 
-status_t I2C_MasterReadBlocking(I2C_Type *base, uint8_t *rxBuff, size_t rxSize)
+/*!
+ * brief Performs a polling receive transaction on the I2C bus.
+ *
+ * note The I2C_MasterReadBlocking function stops the bus before reading the final byte.
+ * Without stopping the bus prior for the final read, the bus issues another read, resulting
+ * in garbage data being read into the data register.
+ *
+ * param base I2C peripheral base pointer.
+ * param rxBuff The pointer to the data to store the received data.
+ * param rxSize The length in bytes of the data to be received.
+ * param flags Transfer control flag to decide whether need to send a stop, use kI2C_TransferDefaultFlag
+*  to issue a stop and kI2C_TransferNoStop to not send a stop.
+ * retval kStatus_Success Successfully complete the data transmission.
+ * retval kStatus_I2C_Timeout Send stop signal failed, timeout.
+ */
+status_t I2C_MasterReadBlocking(I2C_Type *base, uint8_t *rxBuff, size_t rxSize, uint32_t flags)
 {
     status_t result = kStatus_Success;
     volatile uint8_t dummy = 0;
@@ -752,10 +1050,22 @@ status_t I2C_MasterReadBlocking(I2C_Type *base, uint8_t *rxBuff, size_t rxSize)
     /* Add this to avoid build warning. */
     dummy++;
 
+#if I2C_WAIT_TIMEOUT
+    uint32_t waitTimes = I2C_WAIT_TIMEOUT;
+    /* Wait until the data register is ready for transmit. */
+    while ((!(base->S & kI2C_TransferCompleteFlag)) && (--waitTimes))
+    {
+    }
+    if (waitTimes == 0)
+    {
+        return kStatus_I2C_Timeout;
+    }
+#else
     /* Wait until the data register is ready for transmit. */
     while (!(base->S & kI2C_TransferCompleteFlag))
     {
     }
+#endif
 
     /* Clear the IICIF flag. */
     base->S = kI2C_IntPendingFlag;
@@ -775,19 +1085,38 @@ status_t I2C_MasterReadBlocking(I2C_Type *base, uint8_t *rxBuff, size_t rxSize)
 
     while ((rxSize--))
     {
+#if I2C_WAIT_TIMEOUT
+        waitTimes = I2C_WAIT_TIMEOUT;
+        /* Wait until data transfer complete. */
+        while ((!(base->S & kI2C_IntPendingFlag)) && (--waitTimes))
+        {
+        }
+        if (waitTimes == 0)
+        {
+            return kStatus_I2C_Timeout;
+        }
+#else
         /* Wait until data transfer complete. */
         while (!(base->S & kI2C_IntPendingFlag))
         {
         }
-
+#endif
         /* Clear the IICIF flag. */
         base->S = kI2C_IntPendingFlag;
 
         /* Single byte use case. */
         if (rxSize == 0)
         {
-            /* Read the final byte. */
-            result = I2C_MasterStop(base);
+            if (!(flags & kI2C_TransferNoStopFlag))
+            {
+                /* Issue STOP command before reading last byte. */
+                result = I2C_MasterStop(base);
+            }
+            else
+            {
+                /* Change direction to Tx to avoid extra clocks. */
+                base->C1 |= I2C_C1_TX_MASK;
+            }
         }
 
         if (rxSize == 1)
@@ -803,6 +1132,20 @@ status_t I2C_MasterReadBlocking(I2C_Type *base, uint8_t *rxBuff, size_t rxSize)
     return result;
 }
 
+/*!
+ * brief Performs a master polling transfer on the I2C bus.
+ *
+ * note The API does not return until the transfer succeeds or fails due
+ * to arbitration lost or receiving a NAK.
+ *
+ * param base I2C peripheral base address.
+ * param xfer Pointer to the transfer structure.
+ * retval kStatus_Success Successfully complete the data transmission.
+ * retval kStatus_I2C_Busy Previous transmission still not finished.
+ * retval kStatus_I2C_Timeout Transfer error, wait signal timeout.
+ * retval kStatus_I2C_ArbitrationLost Transfer error, arbitration lost.
+ * retval kStataus_I2C_Nak Transfer error, receive NAK during transfer.
+ */
 status_t I2C_MasterTransferBlocking(I2C_Type *base, i2c_master_transfer_t *xfer)
 {
     assert(xfer);
@@ -813,10 +1156,22 @@ status_t I2C_MasterTransferBlocking(I2C_Type *base, i2c_master_transfer_t *xfer)
     /* Clear all status before transfer. */
     I2C_MasterClearStatusFlags(base, kClearFlags);
 
-    /* Wait until ready to complete. */
+#if I2C_WAIT_TIMEOUT
+    uint32_t waitTimes = I2C_WAIT_TIMEOUT;
+    /* Wait until the data register is ready for transmit. */
+    while ((!(base->S & kI2C_TransferCompleteFlag)) && (--waitTimes))
+    {
+    }
+    if (waitTimes == 0)
+    {
+        return kStatus_I2C_Timeout;
+    }
+#else
+    /* Wait until the data register is ready for transmit. */
     while (!(base->S & kI2C_TransferCompleteFlag))
     {
     }
+#endif
 
     /* Change to send write address when it's a read operation with command. */
     if ((xfer->subaddressSize > 0) && (xfer->direction == kI2C_Read))
@@ -824,8 +1179,16 @@ status_t I2C_MasterTransferBlocking(I2C_Type *base, i2c_master_transfer_t *xfer)
         direction = kI2C_Write;
     }
 
+    /* Handle no start option, only support write with no start signal. */
+    if (xfer->flags & kI2C_TransferNoStartFlag)
+    {
+        if (direction == kI2C_Read)
+        {
+            return kStatus_InvalidArgument;
+        }
+    }
     /* If repeated start is requested, send repeated start. */
-    if (xfer->flags & kI2C_TransferRepeatedStartFlag)
+    else if (xfer->flags & kI2C_TransferRepeatedStartFlag)
     {
         result = I2C_MasterRepeatedStart(base, xfer->slaveAddress, direction);
     }
@@ -834,10 +1197,45 @@ status_t I2C_MasterTransferBlocking(I2C_Type *base, i2c_master_transfer_t *xfer)
         result = I2C_MasterStart(base, xfer->slaveAddress, direction);
     }
 
-    /* Return if error. */
-    if (result)
+    if (!(xfer->flags & kI2C_TransferNoStartFlag))
     {
-        return result;
+        /* Return if error. */
+        if (result)
+        {
+            return result;
+        }
+
+#if I2C_WAIT_TIMEOUT
+        waitTimes = I2C_WAIT_TIMEOUT;
+        /* Wait until data transfer complete. */
+        while ((!(base->S & kI2C_IntPendingFlag)) && (--waitTimes))
+        {
+        }
+        if (waitTimes == 0)
+        {
+            return kStatus_I2C_Timeout;
+        }
+#else
+        /* Wait until data transfer complete. */
+        while (!(base->S & kI2C_IntPendingFlag))
+        {
+        }
+#endif
+        /* Check if there's transfer error. */
+        result = I2C_CheckAndClearError(base, base->S);
+
+        /* Return if error. */
+        if (result)
+        {
+            if (result == kStatus_I2C_Nak)
+            {
+                result = kStatus_I2C_Addr_Nak;
+
+                I2C_MasterStop(base);
+            }
+
+            return result;
+        }
     }
 
     /* Send subaddress. */
@@ -845,41 +1243,28 @@ status_t I2C_MasterTransferBlocking(I2C_Type *base, i2c_master_transfer_t *xfer)
     {
         do
         {
-            /* Wait until data transfer complete. */
-            while (!(base->S & kI2C_IntPendingFlag))
-            {
-            }
-
             /* Clear interrupt pending flag. */
             base->S = kI2C_IntPendingFlag;
-
-            /* Check if there's transfer error. */
-            result = I2C_CheckAndClearError(base, base->S);
-
-            if (result)
-            {
-                if (result == kStatus_I2C_Nak)
-                {
-                    I2C_MasterStop(base);
-                }
-
-                return result;
-            }
 
             xfer->subaddressSize--;
             base->D = ((xfer->subaddress) >> (8 * xfer->subaddressSize));
 
-        } while ((xfer->subaddressSize > 0) && (result == kStatus_Success));
-
-        if (xfer->direction == kI2C_Read)
-        {
+#if I2C_WAIT_TIMEOUT
+            waitTimes = I2C_WAIT_TIMEOUT;
+            /* Wait until data transfer complete. */
+            while ((!(base->S & kI2C_IntPendingFlag)) && (--waitTimes))
+            {
+            }
+            if (waitTimes == 0)
+            {
+                return kStatus_I2C_Timeout;
+            }
+#else
             /* Wait until data transfer complete. */
             while (!(base->S & kI2C_IntPendingFlag))
             {
             }
-
-            /* Clear pending flag. */
-            base->S = kI2C_IntPendingFlag;
+#endif
 
             /* Check if there's transfer error. */
             result = I2C_CheckAndClearError(base, base->S);
@@ -893,6 +1278,13 @@ status_t I2C_MasterTransferBlocking(I2C_Type *base, i2c_master_transfer_t *xfer)
 
                 return result;
             }
+
+        } while (xfer->subaddressSize > 0);
+
+        if (xfer->direction == kI2C_Read)
+        {
+            /* Clear pending flag. */
+            base->S = kI2C_IntPendingFlag;
 
             /* Send repeated start and slave address. */
             result = I2C_MasterRepeatedStart(base, xfer->slaveAddress, kI2C_Read);
@@ -902,53 +1294,76 @@ status_t I2C_MasterTransferBlocking(I2C_Type *base, i2c_master_transfer_t *xfer)
             {
                 return result;
             }
+
+#if I2C_WAIT_TIMEOUT
+            waitTimes = I2C_WAIT_TIMEOUT;
+            /* Wait until data transfer complete. */
+            while ((!(base->S & kI2C_IntPendingFlag)) && (--waitTimes))
+            {
+            }
+            if (waitTimes == 0)
+            {
+                return kStatus_I2C_Timeout;
+            }
+#else
+            /* Wait until data transfer complete. */
+            while (!(base->S & kI2C_IntPendingFlag))
+            {
+            }
+#endif
+
+            /* Check if there's transfer error. */
+            result = I2C_CheckAndClearError(base, base->S);
+
+            if (result)
+            {
+                if (result == kStatus_I2C_Nak)
+                {
+                    result = kStatus_I2C_Addr_Nak;
+
+                    I2C_MasterStop(base);
+                }
+
+                return result;
+            }
         }
-    }
-
-    /* Wait until address + command transfer complete. */
-    while (!(base->S & kI2C_IntPendingFlag))
-    {
-    }
-
-    /* Check if there's transfer error. */
-    result = I2C_CheckAndClearError(base, base->S);
-
-    /* Return if error. */
-    if (result)
-    {
-        if (result == kStatus_I2C_Nak)
-        {
-            I2C_MasterStop(base);
-        }
-
-        return result;
     }
 
     /* Transmit data. */
-    if ((xfer->direction == kI2C_Write) && (xfer->dataSize > 0))
+    if (xfer->direction == kI2C_Write)
     {
-        /* Send Data. */
-        result = I2C_MasterWriteBlocking(base, xfer->data, xfer->dataSize);
-
-        if (((result == kStatus_Success) && (!(xfer->flags & kI2C_TransferNoStopFlag))) || (result == kStatus_I2C_Nak))
+        if (xfer->dataSize > 0)
         {
-            /* Clear the IICIF flag. */
-            base->S = kI2C_IntPendingFlag;
-
+            /* Send Data. */
+            result = I2C_MasterWriteBlocking(base, xfer->data, xfer->dataSize, xfer->flags);
+        }
+        else if (!(xfer->flags & kI2C_TransferNoStopFlag))
+        {
             /* Send stop. */
             result = I2C_MasterStop(base);
+        }
+        else
+        {
         }
     }
 
     /* Receive Data. */
     if ((xfer->direction == kI2C_Read) && (xfer->dataSize > 0))
     {
-        result = I2C_MasterReadBlocking(base, xfer->data, xfer->dataSize);
+        result = I2C_MasterReadBlocking(base, xfer->data, xfer->dataSize, xfer->flags);
     }
 
     return result;
 }
 
+/*!
+ * brief Initializes the I2C handle which is used in transactional functions.
+ *
+ * param base I2C base pointer.
+ * param handle pointer to i2c_master_handle_t structure to store the transfer state.
+ * param callback pointer to user callback function.
+ * param userData user parameter passed to the callback function.
+ */
 void I2C_MasterTransferCreateHandle(I2C_Type *base,
                                     i2c_master_handle_t *handle,
                                     i2c_master_transfer_callback_t callback,
@@ -975,6 +1390,21 @@ void I2C_MasterTransferCreateHandle(I2C_Type *base,
     EnableIRQ(s_i2cIrqs[instance]);
 }
 
+/*!
+ * brief Performs a master interrupt non-blocking transfer on the I2C bus.
+ *
+ * note Calling the API returns immediately after transfer initiates. The user needs
+ * to call I2C_MasterGetTransferCount to poll the transfer status to check whether
+ * the transfer is finished. If the return status is not kStatus_I2C_Busy, the transfer
+ * is finished.
+ *
+ * param base I2C base pointer.
+ * param handle pointer to i2c_master_handle_t structure which stores the transfer state.
+ * param xfer pointer to i2c_master_transfer_t structure.
+ * retval kStatus_Success Successfully start the data transmission.
+ * retval kStatus_I2C_Busy Previous transmission still not finished.
+ * retval kStatus_I2C_Timeout Transfer error, wait signal timeout.
+ */
 status_t I2C_MasterTransferNonBlocking(I2C_Type *base, i2c_master_handle_t *handle, i2c_master_transfer_t *xfer)
 {
     assert(handle);
@@ -1002,17 +1432,99 @@ status_t I2C_MasterTransferNonBlocking(I2C_Type *base, i2c_master_handle_t *hand
     return result;
 }
 
-void I2C_MasterTransferAbort(I2C_Type *base, i2c_master_handle_t *handle)
+/*!
+ * brief Aborts an interrupt non-blocking transfer early.
+ *
+ * note This API can be called at any time when an interrupt non-blocking transfer initiates
+ * to abort the transfer early.
+ *
+ * param base I2C base pointer.
+ * param handle pointer to i2c_master_handle_t structure which stores the transfer state
+ * retval kStatus_I2C_Timeout Timeout during polling flag.
+ * retval kStatus_Success Successfully abort the transfer.
+ */
+status_t I2C_MasterTransferAbort(I2C_Type *base, i2c_master_handle_t *handle)
 {
     assert(handle);
+
+    volatile uint8_t dummy = 0;
+#if I2C_WAIT_TIMEOUT
+    uint32_t waitTimes = I2C_WAIT_TIMEOUT;
+#endif
+
+    /* Add this to avoid build warning. */
+    dummy++;
 
     /* Disable interrupt. */
     I2C_DisableInterrupts(base, kI2C_GlobalInterruptEnable);
 
     /* Reset the state to idle. */
     handle->state = kIdleState;
+
+    /* If the bus is already in use, but not by us */
+    if (!(base->C1 & I2C_C1_MST_MASK))
+    {
+        return kStatus_I2C_Busy;
+    }
+
+    /* Send STOP signal. */
+    if (handle->transfer.direction == kI2C_Read)
+    {
+        base->C1 |= I2C_C1_TXAK_MASK;
+
+#if I2C_WAIT_TIMEOUT
+        /* Wait until data transfer complete. */
+        while ((!(base->S & kI2C_IntPendingFlag)) && (--waitTimes))
+        {
+        }
+        if (waitTimes == 0)
+        {
+            return kStatus_I2C_Timeout;
+        }
+#else
+        /* Wait until data transfer complete. */
+        while (!(base->S & kI2C_IntPendingFlag))
+        {
+        }
+#endif
+        base->S = kI2C_IntPendingFlag;
+
+        base->C1 &= ~(I2C_C1_MST_MASK | I2C_C1_TX_MASK | I2C_C1_TXAK_MASK);
+        dummy = base->D;
+    }
+    else
+    {
+#if I2C_WAIT_TIMEOUT
+        /* Wait until data transfer complete. */
+        while ((!(base->S & kI2C_IntPendingFlag)) && (--waitTimes))
+        {
+        }
+        if (waitTimes == 0)
+        {
+            return kStatus_I2C_Timeout;
+        }
+#else
+        /* Wait until data transfer complete. */
+        while (!(base->S & kI2C_IntPendingFlag))
+        {
+        }
+#endif
+        base->S = kI2C_IntPendingFlag;
+        base->C1 &= ~(I2C_C1_MST_MASK | I2C_C1_TX_MASK | I2C_C1_TXAK_MASK);
+    }
+
+    return kStatus_Success;
 }
 
+/*!
+ * brief Gets the master transfer status during a interrupt non-blocking transfer.
+ *
+ * param base I2C base pointer.
+ * param handle pointer to i2c_master_handle_t structure which stores the transfer state.
+ * param count Number of bytes transferred so far by the non-blocking transaction.
+ * retval kStatus_InvalidArgument count is Invalid.
+ * retval kStatus_Success Successfully return the count.
+ */
 status_t I2C_MasterTransferGetCount(I2C_Type *base, i2c_master_handle_t *handle, size_t *count)
 {
     assert(handle);
@@ -1027,6 +1539,12 @@ status_t I2C_MasterTransferGetCount(I2C_Type *base, i2c_master_handle_t *handle,
     return kStatus_Success;
 }
 
+/*!
+ * brief Master interrupt handler.
+ *
+ * param base I2C base pointer.
+ * param i2cHandle pointer to i2c_master_handle_t structure.
+ */
 void I2C_MasterTransferHandleIRQ(I2C_Type *base, void *i2cHandle)
 {
     assert(i2cHandle);
@@ -1044,7 +1562,8 @@ void I2C_MasterTransferHandleIRQ(I2C_Type *base, void *i2cHandle)
     if (isDone || result)
     {
         /* Send stop command if transfer done or received Nak. */
-        if ((!(handle->transfer.flags & kI2C_TransferNoStopFlag)) || (result == kStatus_I2C_Nak))
+        if ((!(handle->transfer.flags & kI2C_TransferNoStopFlag)) || (result == kStatus_I2C_Nak) ||
+            (result == kStatus_I2C_Addr_Nak))
         {
             /* Ensure stop command is a need. */
             if ((base->C1 & I2C_C1_MST_MASK))
@@ -1070,13 +1589,55 @@ void I2C_MasterTransferHandleIRQ(I2C_Type *base, void *i2cHandle)
     }
 }
 
-void I2C_SlaveInit(I2C_Type *base, const i2c_slave_config_t *slaveConfig)
+/*!
+ * brief Initializes the I2C peripheral. Call this API to ungate the I2C clock
+ * and initialize the I2C with the slave configuration.
+ *
+ * note This API should be called at the beginning of the application.
+ * Otherwise, any operation to the I2C module can cause a hard fault
+ * because the clock is not enabled. The configuration structure can partly be set
+ * with default values by I2C_SlaveGetDefaultConfig() or it can be custom filled by the user.
+ * This is an example.
+ * code
+ * i2c_slave_config_t config = {
+ * .enableSlave = true,
+ * .enableGeneralCall = false,
+ * .addressingMode = kI2C_Address7bit,
+ * .slaveAddress = 0x1DU,
+ * .enableWakeUp = false,
+ * .enablehighDrive = false,
+ * .enableBaudRateCtl = false,
+ * .sclStopHoldTime_ns = 4000
+ * };
+ * I2C_SlaveInit(I2C0, &config, 12000000U);
+ * endcode
+ *
+ * param base I2C base pointer
+ * param slaveConfig A pointer to the slave configuration structure
+ * param srcClock_Hz I2C peripheral clock frequency in Hz
+ */
+void I2C_SlaveInit(I2C_Type *base, const i2c_slave_config_t *slaveConfig, uint32_t srcClock_Hz)
 {
     assert(slaveConfig);
 
     uint8_t tmpReg;
 
+#if !(defined(FSL_SDK_DISABLE_DRIVER_CLOCK_CONTROL) && FSL_SDK_DISABLE_DRIVER_CLOCK_CONTROL)
     CLOCK_EnableClock(s_i2cClocks[I2C_GetInstance(base)]);
+#endif /* FSL_SDK_DISABLE_DRIVER_CLOCK_CONTROL */
+
+    /* Reset the module. */
+    base->A1 = 0;
+    base->F = 0;
+    base->C1 = 0;
+    base->S = 0xFFU;
+    base->C2 = 0;
+#if defined(FSL_FEATURE_I2C_HAS_START_STOP_DETECT) && FSL_FEATURE_I2C_HAS_START_STOP_DETECT
+    base->FLT = 0x50U;
+#elif defined(FSL_FEATURE_I2C_HAS_STOP_DETECT) && FSL_FEATURE_I2C_HAS_STOP_DETECT
+    base->FLT = 0x40U;
+#endif
+    base->RA = 0;
 
     /* Configure addressing mode. */
     switch (slaveConfig->addressingMode)
@@ -1101,29 +1662,56 @@ void I2C_SlaveInit(I2C_Type *base, const i2c_slave_config_t *slaveConfig)
     tmpReg &= ~I2C_C1_WUEN_MASK;
     base->C1 = tmpReg | I2C_C1_WUEN(slaveConfig->enableWakeUp) | I2C_C1_IICEN(slaveConfig->enableSlave);
 
-    /* Configure general call & baud rate control & high drive feature. */
+    /* Configure general call & baud rate control. */
     tmpReg = base->C2;
     tmpReg &= ~(I2C_C2_SBRC_MASK | I2C_C2_GCAEN_MASK);
     tmpReg |= I2C_C2_SBRC(slaveConfig->enableBaudRateCtl) | I2C_C2_GCAEN(slaveConfig->enableGeneralCall);
-#if defined(FSL_FEATURE_I2C_HAS_HIGH_DRIVE_SELECTION) && FSL_FEATURE_I2C_HAS_HIGH_DRIVE_SELECTION
-    tmpReg &= ~I2C_C2_HDRS_MASK;
-    tmpReg |= I2C_C2_HDRS(slaveConfig->enableHighDrive);
-#endif
     base->C2 = tmpReg;
+
+/* Enable/Disable double buffering. */
+#if defined(FSL_FEATURE_I2C_HAS_DOUBLE_BUFFER_ENABLE) && FSL_FEATURE_I2C_HAS_DOUBLE_BUFFER_ENABLE
+    tmpReg = base->S2 & (~I2C_S2_DFEN_MASK);
+    base->S2 = tmpReg | I2C_S2_DFEN(slaveConfig->enableDoubleBuffering);
+#endif
+
+    /* Set hold time. */
+    I2C_SetHoldTime(base, slaveConfig->sclStopHoldTime_ns, srcClock_Hz);
 }
 
+/*!
+ * brief De-initializes the I2C slave peripheral. Calling this API gates the I2C clock.
+ * The I2C slave module can't work unless the I2C_SlaveInit is called to enable the clock.
+ * param base I2C base pointer
+ */
 void I2C_SlaveDeinit(I2C_Type *base)
 {
     /* Disable I2C module. */
     I2C_Enable(base, false);
 
+#if !(defined(FSL_SDK_DISABLE_DRIVER_CLOCK_CONTROL) && FSL_SDK_DISABLE_DRIVER_CLOCK_CONTROL)
     /* Disable I2C clock. */
     CLOCK_DisableClock(s_i2cClocks[I2C_GetInstance(base)]);
+#endif /* FSL_SDK_DISABLE_DRIVER_CLOCK_CONTROL */
 }
 
+/*!
+ * brief  Sets the I2C slave configuration structure to default values.
+ *
+ * The purpose of this API is to get the configuration structure initialized for use in the I2C_SlaveConfigure().
+ * Modify fields of the structure before calling the I2C_SlaveConfigure().
+ * This is an example.
+ * code
+ * i2c_slave_config_t config;
+ * I2C_SlaveGetDefaultConfig(&config);
+ * endcode
+ * param slaveConfig A pointer to the slave configuration structure.
+ */
 void I2C_SlaveGetDefaultConfig(i2c_slave_config_t *slaveConfig)
 {
     assert(slaveConfig);
+
+    /* Initializes the configure structure to zero. */
+    memset(slaveConfig, 0, sizeof(*slaveConfig));
 
     /* By default slave is addressed with 7-bit address. */
     slaveConfig->addressingMode = kI2C_Address7bit;
@@ -1134,51 +1722,183 @@ void I2C_SlaveGetDefaultConfig(i2c_slave_config_t *slaveConfig)
     /* Slave address match waking up MCU from low power mode is disabled. */
     slaveConfig->enableWakeUp = false;
 
-#if defined(FSL_FEATURE_I2C_HAS_HIGH_DRIVE_SELECTION) && FSL_FEATURE_I2C_HAS_HIGH_DRIVE_SELECTION
-    /* Default pin high drive is disabled. */
-    slaveConfig->enableHighDrive = false;
-#endif
-
     /* Independent slave mode baud rate at maximum frequency is disabled. */
     slaveConfig->enableBaudRateCtl = false;
+
+/* Default enable double buffering. */
+#if defined(FSL_FEATURE_I2C_HAS_DOUBLE_BUFFER_ENABLE) && FSL_FEATURE_I2C_HAS_DOUBLE_BUFFER_ENABLE
+    slaveConfig->enableDoubleBuffering = true;
+#endif
+
+    /* Set default SCL stop hold time to 4us which is minimum requirement in I2C spec. */
+    slaveConfig->sclStopHoldTime_ns = 4000;
 
     /* Enable the I2C peripheral. */
     slaveConfig->enableSlave = true;
 }
 
+/*!
+ * brief Performs a polling send transaction on the I2C bus.
+ *
+ * param base  The I2C peripheral base pointer.
+ * param txBuff The pointer to the data to be transferred.
+ * param txSize The length in bytes of the data to be transferred.
+ * retval kStatus_Success Successfully complete the data transmission.
+ * retval kStatus_I2C_ArbitrationLost Transfer error, arbitration lost.
+ * retval kStataus_I2C_Nak Transfer error, receive NAK during transfer.
+ */
 status_t I2C_SlaveWriteBlocking(I2C_Type *base, const uint8_t *txBuff, size_t txSize)
 {
-    return I2C_MasterWriteBlocking(base, txBuff, txSize);
-}
+    status_t result = kStatus_Success;
+    volatile uint8_t dummy = 0;
 
-void I2C_SlaveReadBlocking(I2C_Type *base, uint8_t *rxBuff, size_t rxSize)
-{
-    /* Clear the IICIF flag. */
-    base->S = kI2C_IntPendingFlag;
+    /* Add this to avoid build warning. */
+    dummy++;
 
-    /* Wait until the data register is ready for receive. */
-    while (!(base->S & kI2C_TransferCompleteFlag))
+#if defined(FSL_FEATURE_I2C_HAS_START_STOP_DETECT) && FSL_FEATURE_I2C_HAS_START_STOP_DETECT
+    /* Check start flag. */
+    while (!(base->FLT & I2C_FLT_STARTF_MASK))
     {
     }
+    /* Clear STARTF flag. */
+    base->FLT |= I2C_FLT_STARTF_MASK;
+    /* Clear the IICIF flag. */
+    base->S = kI2C_IntPendingFlag;
+#endif /* FSL_FEATURE_I2C_HAS_START_STOP_DETECT */
+
+#if I2C_WAIT_TIMEOUT
+    uint32_t waitTimes = I2C_WAIT_TIMEOUT;
+    /* Wait until data transfer complete. */
+    while ((!(base->S & kI2C_AddressMatchFlag)) && (--waitTimes))
+    {
+    }
+    if (waitTimes == 0)
+    {
+        return kStatus_I2C_Timeout;
+    }
+#else
+    /* Wait for address match flag. */
+    while (!(base->S & kI2C_AddressMatchFlag))
+    {
+    }
+#endif
+    /* Read dummy to release bus. */
+    dummy = base->D;
+
+    result = I2C_MasterWriteBlocking(base, txBuff, txSize, kI2C_TransferDefaultFlag);
+
+    /* Switch to receive mode. */
+    base->C1 &= ~(I2C_C1_TX_MASK | I2C_C1_TXAK_MASK);
+
+    /* Read dummy to release bus. */
+    dummy = base->D;
+
+    return result;
+}
+
+/*!
+ * brief Performs a polling receive transaction on the I2C bus.
+ *
+ * param base I2C peripheral base pointer.
+ * param rxBuff The pointer to the data to store the received data.
+ * param rxSize The length in bytes of the data to be received.
+ * retval kStatus_Success Successfully complete data receive.
+ * retval kStatus_I2C_Timeout Wait status flag timeout.
+ */
+status_t I2C_SlaveReadBlocking(I2C_Type *base, uint8_t *rxBuff, size_t rxSize)
+{
+    status_t result = kStatus_Success;
+    volatile uint8_t dummy = 0;
+
+    /* Add this to avoid build warning. */
+    dummy++;
+
+/* Wait until address match. */
+#if defined(FSL_FEATURE_I2C_HAS_START_STOP_DETECT) && FSL_FEATURE_I2C_HAS_START_STOP_DETECT
+    /* Check start flag. */
+    while (!(base->FLT & I2C_FLT_STARTF_MASK))
+    {
+    }
+    /* Clear STARTF flag. */
+    base->FLT |= I2C_FLT_STARTF_MASK;
+    /* Clear the IICIF flag. */
+    base->S = kI2C_IntPendingFlag;
+#endif /* FSL_FEATURE_I2C_HAS_START_STOP_DETECT */
+
+#if I2C_WAIT_TIMEOUT
+    uint32_t waitTimes = I2C_WAIT_TIMEOUT;
+    /* Wait for address match and int pending flag. */
+    while ((!(base->S & kI2C_AddressMatchFlag)) && (--waitTimes))
+    {
+    }
+    if (waitTimes == 0)
+    {
+        return kStatus_I2C_Timeout;
+    }
+
+    waitTimes = I2C_WAIT_TIMEOUT;
+    while ((!(base->S & kI2C_IntPendingFlag)) && (--waitTimes))
+    {
+    }
+    if (waitTimes == 0)
+    {
+        return kStatus_I2C_Timeout;
+    }
+#else
+    /* Wait for address match and int pending flag. */
+    while (!(base->S & kI2C_AddressMatchFlag))
+    {
+    }
+    while (!(base->S & kI2C_IntPendingFlag))
+    {
+    }
+#endif
+
+    /* Read dummy to release bus. */
+    dummy = base->D;
+
+    /* Clear the IICIF flag. */
+    base->S = kI2C_IntPendingFlag;
 
     /* Setup the I2C peripheral to receive data. */
     base->C1 &= ~(I2C_C1_TX_MASK);
 
     while (rxSize--)
     {
+#if I2C_WAIT_TIMEOUT
+        waitTimes = I2C_WAIT_TIMEOUT;
+        /* Wait until data transfer complete. */
+        while ((!(base->S & kI2C_IntPendingFlag)) && (--waitTimes))
+        {
+        }
+        if (waitTimes == 0)
+        {
+            return kStatus_I2C_Timeout;
+        }
+#else
+        /* Wait until data transfer complete. */
+        while (!(base->S & kI2C_IntPendingFlag))
+        {
+        }
+#endif
         /* Clear the IICIF flag. */
         base->S = kI2C_IntPendingFlag;
 
         /* Read from the data register. */
         *rxBuff++ = base->D;
-
-        /* Wait until data transfer complete. */
-        while (!(base->S & kI2C_IntPendingFlag))
-        {
-        }
     }
+
+    return result;
 }
 
+/*!
+ * brief Initializes the I2C handle which is used in transactional functions.
+ *
+ * param base I2C base pointer.
+ * param handle pointer to i2c_slave_handle_t structure to store the transfer state.
+ * param callback pointer to user callback function.
+ * param userData user parameter passed to the callback function.
+ */
 void I2C_SlaveTransferCreateHandle(I2C_Type *base,
                                    i2c_slave_handle_t *handle,
                                    i2c_slave_transfer_callback_t callback,
@@ -1205,6 +1925,30 @@ void I2C_SlaveTransferCreateHandle(I2C_Type *base,
     EnableIRQ(s_i2cIrqs[instance]);
 }
 
+/*!
+ * brief Starts accepting slave transfers.
+ *
+ * Call this API after calling the I2C_SlaveInit() and I2C_SlaveTransferCreateHandle() to start processing
+ * transactions driven by an I2C master. The slave monitors the I2C bus and passes events to the
+ * callback that was passed into the call to I2C_SlaveTransferCreateHandle(). The callback is always invoked
+ * from the interrupt context.
+ *
+ * The set of events received by the callback is customizable. To do so, set the a eventMask parameter to
+ * the OR'd combination of #i2c_slave_transfer_event_t enumerators for the events you wish to receive.
+ * The #kI2C_SlaveTransmitEvent and #kLPI2C_SlaveReceiveEvent events are always enabled and do not need
+ * to be included in the mask. Alternatively, pass 0 to get a default set of only the transmit and
+ * receive events that are always enabled. In addition, the #kI2C_SlaveAllEvents constant is provided as
+ * a convenient way to enable all events.
+ *
+ * param base The I2C peripheral base address.
+ * param handle Pointer to #i2c_slave_handle_t structure which stores the transfer state.
+ * param eventMask Bit mask formed by OR'ing together #i2c_slave_transfer_event_t enumerators to specify
+ *      which events to send to the callback. Other accepted values are 0 to get a default set of
+ *      only the transmit and receive events, and #kI2C_SlaveAllEvents to enable all events.
+ *
+ * retval #kStatus_Success Slave transfers were successfully started.
+ * retval #kStatus_I2C_Busy Slave transfers have already been started on this handle.
+ */
 status_t I2C_SlaveTransferNonBlocking(I2C_Type *base, i2c_slave_handle_t *handle, uint32_t eventMask)
 {
     assert(handle);
@@ -1226,7 +1970,7 @@ status_t I2C_SlaveTransferNonBlocking(I2C_Type *base, i2c_slave_handle_t *handle
         handle->isBusy = true;
 
         /* Set up event mask. tx and rx are always enabled. */
-        handle->eventMask = eventMask | kI2C_SlaveTransmitEvent | kI2C_SlaveReceiveEvent;
+        handle->eventMask = eventMask | kI2C_SlaveTransmitEvent | kI2C_SlaveReceiveEvent | kI2C_SlaveGenaralcallEvent;
 
         /* Clear all flags. */
         I2C_SlaveClearStatusFlags(base, kClearFlags);
@@ -1238,6 +1982,14 @@ status_t I2C_SlaveTransferNonBlocking(I2C_Type *base, i2c_slave_handle_t *handle
     return kStatus_Success;
 }
 
+/*!
+ * brief Aborts the slave transfer.
+ *
+ * note This API can be called at any time to stop slave for handling the bus events.
+ *
+ * param base I2C base pointer.
+ * param handle pointer to i2c_slave_handle_t structure which stores the transfer state.
+ */
 void I2C_SlaveTransferAbort(I2C_Type *base, i2c_slave_handle_t *handle)
 {
     assert(handle);
@@ -1255,6 +2007,15 @@ void I2C_SlaveTransferAbort(I2C_Type *base, i2c_slave_handle_t *handle)
     }
 }
 
+/*!
+ * brief Gets the slave transfer remaining bytes during a interrupt non-blocking transfer.
+ *
+ * param base I2C base pointer.
+ * param handle pointer to i2c_slave_handle_t structure.
+ * param count Number of bytes transferred so far by the non-blocking transaction.
+ * retval kStatus_InvalidArgument count is Invalid.
+ * retval kStatus_Success Successfully return the count.
+ */
 status_t I2C_SlaveTransferGetCount(I2C_Type *base, i2c_slave_handle_t *handle, size_t *count)
 {
     assert(handle);
@@ -1277,6 +2038,12 @@ status_t I2C_SlaveTransferGetCount(I2C_Type *base, i2c_slave_handle_t *handle, s
     return kStatus_Success;
 }
 
+/*!
+ * brief Slave interrupt handler.
+ *
+ * param base I2C base pointer.
+ * param i2cHandle pointer to i2c_slave_handle_t structure which stores the transfer state
+ */
 void I2C_SlaveTransferHandleIRQ(I2C_Type *base, void *i2cHandle)
 {
     assert(i2cHandle);
@@ -1315,7 +2082,10 @@ void I2C_SlaveTransferHandleIRQ(I2C_Type *base, void *i2cHandle)
             }
         }
 
-        return;
+        if (!(status & kI2C_AddressMatchFlag))
+        {
+            return;
+        }
     }
 #endif /* I2C_HAS_STOP_DETECT */
 
@@ -1328,7 +2098,7 @@ void I2C_SlaveTransferHandleIRQ(I2C_Type *base, void *i2cHandle)
         /* Clear the interrupt flag. */
         base->S = kI2C_IntPendingFlag;
 
-        xfer->event = kI2C_SlaveRepeatedStartEvent;
+        xfer->event = kI2C_SlaveStartEvent;
 
         if ((handle->eventMask & xfer->event) && (handle->callback))
         {
@@ -1385,30 +2155,11 @@ void I2C_SlaveTransferHandleIRQ(I2C_Type *base, void *i2cHandle)
         handle->isBusy = true;
         xfer->event = kI2C_SlaveAddressMatchEvent;
 
-        if ((handle->eventMask & xfer->event) && (handle->callback))
-        {
-            handle->callback(base, xfer, handle->userData);
-        }
-
         /* Slave transmit, master reading from slave. */
         if (status & kI2C_TransferDirectionFlag)
         {
             /* Change direction to send data. */
             base->C1 |= I2C_C1_TX_MASK;
-
-            /* If we're out of data, invoke callback to get more. */
-            if ((!xfer->data) || (!xfer->dataSize))
-            {
-                xfer->event = kI2C_SlaveTransmitEvent;
-
-                if (handle->callback)
-                {
-                    handle->callback(base, xfer, handle->userData);
-                }
-
-                /* Clear the transferred count now that we have a new buffer. */
-                xfer->transferredCount = 0;
-            }
 
             doTransmit = true;
         }
@@ -1417,6 +2168,30 @@ void I2C_SlaveTransferHandleIRQ(I2C_Type *base, void *i2cHandle)
             /* Slave receive, master writing to slave. */
             base->C1 &= ~(I2C_C1_TX_MASK | I2C_C1_TXAK_MASK);
 
+            /* Read dummy to release the bus. */
+            dummy = base->D;
+
+            if (dummy == 0)
+            {
+                xfer->event = kI2C_SlaveGenaralcallEvent;
+            }
+        }
+
+        if ((handle->eventMask & xfer->event) && (handle->callback))
+        {
+            handle->callback(base, xfer, handle->userData);
+        }
+    }
+    /* Check transfer complete flag. */
+    else if (status & kI2C_TransferCompleteFlag)
+    {
+        /* Slave transmit, master reading from slave. */
+        if (status & kI2C_TransferDirectionFlag)
+        {
+            doTransmit = true;
+        }
+        else
+        {
             /* If we're out of data, invoke callback to get more. */
             if ((!xfer->data) || (!xfer->dataSize))
             {
@@ -1431,20 +2206,6 @@ void I2C_SlaveTransferHandleIRQ(I2C_Type *base, void *i2cHandle)
                 xfer->transferredCount = 0;
             }
 
-            /* Read dummy to release the bus. */
-            dummy = base->D;
-        }
-    }
-    /* Check transfer complete flag. */
-    else if (status & kI2C_TransferCompleteFlag)
-    {
-        /* Slave transmit, master reading from slave. */
-        if (status & kI2C_TransferDirectionFlag)
-        {
-            doTransmit = true;
-        }
-        else
-        {
             /* Slave receive, master writing to slave. */
             uint8_t data = base->D;
 
@@ -1480,6 +2241,20 @@ void I2C_SlaveTransferHandleIRQ(I2C_Type *base, void *i2cHandle)
     /* Send data if there is the need. */
     if (doTransmit)
     {
+        /* If we're out of data, invoke callback to get more. */
+        if ((!xfer->data) || (!xfer->dataSize))
+        {
+            xfer->event = kI2C_SlaveTransmitEvent;
+
+            if (handle->callback)
+            {
+                handle->callback(base, xfer, handle->userData);
+            }
+
+            /* Clear the transferred count now that we have a new buffer. */
+            xfer->transferredCount = 0;
+        }
+
         if (handle->transfer.dataSize)
         {
             /* Send data. */
@@ -1510,27 +2285,30 @@ void I2C_SlaveTransferHandleIRQ(I2C_Type *base, void *i2cHandle)
     }
 }
 
+#if defined(I2C0)
 void I2C0_DriverIRQHandler(void)
 {
     I2C_TransferCommonIRQHandler(I2C0, s_i2cHandle[0]);
 }
+#endif
 
-#if (FSL_FEATURE_SOC_I2C_COUNT > 1)
+#if defined(I2C1)
 void I2C1_DriverIRQHandler(void)
 {
     I2C_TransferCommonIRQHandler(I2C1, s_i2cHandle[1]);
 }
-#endif /* I2C COUNT > 1 */
+#endif
 
-#if (FSL_FEATURE_SOC_I2C_COUNT > 2)
+#if defined(I2C2)
 void I2C2_DriverIRQHandler(void)
 {
     I2C_TransferCommonIRQHandler(I2C2, s_i2cHandle[2]);
 }
-#endif /* I2C COUNT > 2 */
-#if (FSL_FEATURE_SOC_I2C_COUNT > 3)
+#endif
+
+#if defined(I2C3)
 void I2C3_DriverIRQHandler(void)
 {
     I2C_TransferCommonIRQHandler(I2C3, s_i2cHandle[3]);
 }
-#endif /* I2C COUNT > 3 */
+#endif

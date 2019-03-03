@@ -70,13 +70,13 @@ public:
 
     virtual void on() override
     {
-        GPIO_WritePinOutput((GPIO_Type *)gpio, pin, true ^ _polarity);
+    	GPIO_PinWrite((GPIO_Type *)gpio, pin, true ^ _polarity);
         _state = true;
     }
 
     virtual void off() override
     {
-        GPIO_WritePinOutput((GPIO_Type *)gpio, pin, false ^ _polarity);
+    	GPIO_PinWrite((GPIO_Type *)gpio, pin, false ^ _polarity);
         _state = false;
     }
 

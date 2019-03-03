@@ -391,7 +391,7 @@ void init_adc_config()
 void init_audio_out()
 {
     // Reset DAC.
-    GPIO_ClearPinsOutput(PIN_DAC_RESET_GPIO, PIN_DAC_RESET);
+    GPIO_PinWrite(PIN_DAC_RESET_GPIO, PIN_DAC_RESET_BIT, 0);
 
     // Configure the audio format.
     AudioOutput::Format format;
@@ -415,7 +415,7 @@ void init_audio_out()
 
     // Release DAC from reset after sleeping a bit.
     Ar::Thread::sleep(10);
-    GPIO_SetPinsOutput(PIN_DAC_RESET_GPIO, PIN_DAC_RESET);
+    GPIO_PinWrite(PIN_DAC_RESET_GPIO, PIN_DAC_RESET_BIT, 1);
 }
 
 void init_thread(void * arg)
