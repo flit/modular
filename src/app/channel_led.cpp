@@ -58,7 +58,7 @@ void ChannelLEDManager::init()
     masterConfig.ctarConfig.pcsToSckDelayInNanoSec = 10000;
     masterConfig.ctarConfig.lastSckToPcsDelayInNanoSec = 20000;
     masterConfig.ctarConfig.betweenTransferDelayInNanoSec = 0;
-    masterConfig.whichPcs = kDSPI_Pcs3;
+    masterConfig.whichPcs = PIN_CH_LED_LATCH_SPI_PCS;
     masterConfig.pcsActiveHighOrLow = kDSPI_PcsActiveLow;
     masterConfig.enableModifiedTimingFormat = false;
     masterConfig.samplePoint = kDSPI_SckToSin0Clock;
@@ -85,7 +85,7 @@ bool ChannelLEDManager::flush()
     dspi_command_data_config_t commandConfig;
     commandConfig.isPcsContinuous = false;
     commandConfig.whichCtar = kDSPI_Ctar0;
-    commandConfig.whichPcs = kDSPI_Pcs3;
+    commandConfig.whichPcs = PIN_CH_LED_LATCH_SPI_PCS;
     commandConfig.clearTransferCount = false;
     commandConfig.isEndOfQueue = false;
     DSPI_MasterWriteData(CHANNEL_LED_SPI, &commandConfig, _buffer);

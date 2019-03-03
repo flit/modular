@@ -101,7 +101,7 @@ void init_board()
     // LED pins
     PORT_SetPinMux(PIN_CH_LED_DIN_PORT, PIN_CH_LED_DIN_BIT, kPORT_MuxAlt2); // Alt2 = SPI0_SOUT
     PORT_SetPinMux(PIN_CH_LED_CLK_PORT, PIN_CH_LED_CLK_BIT, kPORT_MuxAlt2); // Alt2 = SPI0_CLK
-    PORT_SetPinMux(PIN_CH_LED_LATCH_PORT, PIN_CH_LED_LATCH_BIT, kPORT_MuxAlt2); // Alt2 = SPI0_PCS3
+    PORT_SetPinMux(PIN_CH_LED_LATCH_PORT, PIN_CH_LED_LATCH_BIT, kPORT_MuxAlt2); // Alt2 = SPI0_PCS0
     PORT_SetPinMux(PIN_CH_LED_OE_N_PORT, PIN_CH_LED_OE_N_BIT, kPORT_MuxAsGpio);
     PORT_SetPinMux(PIN_BUTTON1_LED_PORT, PIN_BUTTON1_LED_BIT, kPORT_MuxAlt4); // Alt4 = FTM3_CH3
 
@@ -113,8 +113,8 @@ void init_board()
         .pinDirection = kGPIO_DigitalOutput,
         .outputLogic = 0,
     };
+
     // LEDs off by default.
-    GPIO_PinInit(PIN_CH_LED_LATCH_GPIO, PIN_CH_LED_LATCH_BIT, &gpioOut0);
     GPIO_PinInit(PIN_CH_LED_OE_N_GPIO, PIN_CH_LED_OE_N_BIT, &gpioOut1);
 
     // Buttons

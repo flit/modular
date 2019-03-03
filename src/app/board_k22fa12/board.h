@@ -72,11 +72,12 @@ const uint32_t kXtal32Freq = 32768;
 #define PIN_DAC_RESET           (1 << PIN_DAC_RESET_BIT)
 
 // LEDs
-#define PIN_CH_LED_LATCH_PORT       (PORTD)
-#define PIN_CH_LED_LATCH_GPIO       (GPIOD)
-#define PIN_CH_LED_LATCH_GPIO_BASE  (GPIOD_BASE)
-#define PIN_CH_LED_LATCH_BIT        (6)
+#define PIN_CH_LED_LATCH_PORT       (PORTA)
+#define PIN_CH_LED_LATCH_GPIO       (GPIOA)
+#define PIN_CH_LED_LATCH_GPIO_BASE  (GPIOA_BASE)
+#define PIN_CH_LED_LATCH_BIT        (14)
 #define PIN_CH_LED_LATCH            (1 << PIN_CH_LED_LATCH_BIT)
+#define PIN_CH_LED_LATCH_SPI_PCS    (kDSPI_Pcs0)
 
 #define PIN_CH_LED_DIN_PORT         (PORTA)
 #define PIN_CH_LED_DIN_GPIO         (GPIOA)
@@ -90,10 +91,10 @@ const uint32_t kXtal32Freq = 32768;
 #define PIN_CH_LED_CLK_BIT          (15)
 #define PIN_CH_LED_CLK              (1 << PIN_CH_LED_CLK_BIT)
 
-#define PIN_CH_LED_OE_N_PORT        (PORTD)
-#define PIN_CH_LED_OE_N_GPIO        (GPIOD)
-#define PIN_CH_LED_OE_N_GPIO_BASE   (GPIOD_BASE)
-#define PIN_CH_LED_OE_N_BIT         (7)
+#define PIN_CH_LED_OE_N_PORT        (PORTA)
+#define PIN_CH_LED_OE_N_GPIO        (GPIOA)
+#define PIN_CH_LED_OE_N_GPIO_BASE   (GPIOA_BASE)
+#define PIN_CH_LED_OE_N_BIT         (17)
 #define PIN_CH_LED_OE_N             (1 << PIN_CH_LED_OE_N_BIT)
 
 #define PIN_BUTTON1_LED_PORT    (PORTD)
