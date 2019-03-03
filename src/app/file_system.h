@@ -56,7 +56,7 @@ enum fs_error : uint32_t
 using error_t = uint32_t;
 
 //! @brief String type for paths.
-using Path = SimpleString<_MAX_LFN + 1>;
+using Path = SimpleString<FF_MAX_LFN + 1>;
 
 /*!
  * @brief File object.
@@ -88,7 +88,7 @@ public:
     virtual bool remove();
 
 protected:
-    char _path[_MAX_LFN + 1];
+    char _path[FF_MAX_LFN + 1];
     FIL _fp;
     bool _isOpen;
 };

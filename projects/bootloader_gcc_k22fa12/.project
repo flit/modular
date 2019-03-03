@@ -466,11 +466,6 @@
 			<locationURI>PARENT-2-PROJECT_LOC/src/devices/MK22FA12/system_MK22FA12.h</locationURI>
 		</link>
 		<link>
-			<name>fatfs/src/argon_syscall.c</name>
-			<type>1</type>
-			<locationURI>PARENT-2-PROJECT_LOC/src/fatfs/src/argon_syscall.c</locationURI>
-		</link>
-		<link>
 			<name>fatfs/src/diskio.c</name>
 			<type>1</type>
 			<locationURI>PARENT-2-PROJECT_LOC/src/fatfs/src/diskio.c</locationURI>
@@ -496,19 +491,29 @@
 			<locationURI>PARENT-2-PROJECT_LOC/src/fatfs/src/ffconf.h</locationURI>
 		</link>
 		<link>
-			<name>fatfs/src/fsl_sd_disk</name>
-			<type>2</type>
-			<locationURI>virtual:/virtual</locationURI>
+			<name>fatfs/src/ffsystem_argon.c</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/src/fatfs/src/ffsystem_argon.c</locationURI>
+		</link>
+		<link>
+			<name>fatfs/src/ffunicode.c</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/src/fatfs/src/ffunicode.c</locationURI>
+		</link>
+		<link>
+			<name>fatfs/src/fsl_sd_disk.c</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/src/fatfs/src/fsl_sd_disk/fsl_sd_disk.c</locationURI>
+		</link>
+		<link>
+			<name>fatfs/src/fsl_sd_disk.h</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/src/fatfs/src/fsl_sd_disk/fsl_sd_disk.h</locationURI>
 		</link>
 		<link>
 			<name>fatfs/src/integer.h</name>
 			<type>1</type>
 			<locationURI>PARENT-2-PROJECT_LOC/src/fatfs/src/integer.h</locationURI>
-		</link>
-		<link>
-			<name>fatfs/src/option</name>
-			<type>2</type>
-			<locationURI>virtual:/virtual</locationURI>
 		</link>
 		<link>
 			<name>sdmmc/inc/fsl_sd.h</name>
@@ -599,21 +604,6 @@
 			<name>devices/MK22FA12/gcc/startup_MK22FA12.S</name>
 			<type>1</type>
 			<locationURI>PARENT-2-PROJECT_LOC/src/devices/MK22FA12/gcc/startup_MK22FA12.S</locationURI>
-		</link>
-		<link>
-			<name>fatfs/src/fsl_sd_disk/fsl_sd_disk.c</name>
-			<type>1</type>
-			<locationURI>PARENT-2-PROJECT_LOC/src/fatfs/src/fsl_sd_disk/fsl_sd_disk.c</locationURI>
-		</link>
-		<link>
-			<name>fatfs/src/fsl_sd_disk/fsl_sd_disk.h</name>
-			<type>1</type>
-			<locationURI>PARENT-2-PROJECT_LOC/src/fatfs/src/fsl_sd_disk/fsl_sd_disk.h</locationURI>
-		</link>
-		<link>
-			<name>fatfs/src/option/unicode.c</name>
-			<type>1</type>
-			<locationURI>PARENT-2-PROJECT_LOC/src/fatfs/src/option/unicode.c</locationURI>
 		</link>
 		<link>
 			<name>sdmmc/port/sdhc/argon</name>

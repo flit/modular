@@ -129,7 +129,7 @@ void FileManager::scan_for_files()
             continue;
         }
 
-        char * name = info.lfname[0] ? info.lfname : info.fname;
+        char * name = info.fname;
 
         // Handle special files.
         if ((info.fattrib & AM_DIR) != AM_DIR)
@@ -168,7 +168,7 @@ void FileManager::_scan_bank_directory(uint32_t bankNumber, const char * dirName
             continue;
         }
 
-        char * fileName = info.lfname[0] ? info.lfname : info.fname;
+        char * fileName = info.fname;
         uint32_t fileNameLength = strlen(fileName);
 
         // Look for '[0-9].*\.wav' files.

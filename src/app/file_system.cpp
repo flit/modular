@@ -118,10 +118,6 @@ DirectoryIterator::~DirectoryIterator()
 
 bool DirectoryIterator::next(FILINFO * info)
 {
-    static char longFileNameBuffer[_MAX_LFN + 1];
-    info->lfname = longFileNameBuffer;
-    info->lfsize = sizeof(longFileNameBuffer);
-
     FRESULT result = f_readdir(&_dir, info);
     return result == FR_OK && info->fname[0] != 0;
 }

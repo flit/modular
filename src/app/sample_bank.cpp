@@ -101,7 +101,7 @@ void SampleBank::load_params()
             return;
         }
 
-        char path[_MAX_LFN + 1];
+        char path[FF_MAX_LFN + 1];
         if (!archive.read("path", &path, sizeof(path)))
         {
             return;
@@ -149,7 +149,7 @@ void SampleBank::save_params()
             return;
         }
 
-        if (!archive.write("path", _samples[i].get_path().get(), _MAX_LFN + 1))
+        if (!archive.write("path", _samples[i].get_path().get(), FF_MAX_LFN + 1))
         {
             return;
         }
