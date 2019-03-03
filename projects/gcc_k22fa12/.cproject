@@ -29,7 +29,7 @@
             			
             <storageModule moduleId="cdtBuildSystem" version="4.0.0">
                 				
-                <configuration artifactName="${ProjName}" buildArtefactType="org.eclipse.cdt.build.core.buildArtefactType.exe" buildProperties="org.eclipse.cdt.build.core.buildArtefactType=org.eclipse.cdt.build.core.buildArtefactType.exe,org.eclipse.cdt.build.core.buildType=org.eclipse.cdt.build.core.buildType.debug" cleanCommand="${cross_rm} -rf" description="" errorParsers="org.eclipse.cdt.core.GASErrorParser;org.eclipse.cdt.core.GmakeErrorParser;org.eclipse.cdt.core.GLDErrorParser;org.eclipse.cdt.core.CWDLocator;org.eclipse.cdt.core.GCCErrorParser" id="ilg.gnuarmeclipse.managedbuild.cross.config.elf.debug.1370864789" name="Debug" optionalBuildProperties="org.eclipse.cdt.docker.launcher.containerbuild.property.enablement=null,org.eclipse.cdt.docker.launcher.containerbuild.property.volumes=null,org.eclipse.cdt.docker.launcher.containerbuild.property.connection=null,org.eclipse.cdt.docker.launcher.containerbuild.property.selectedvolumes=null,org.eclipse.cdt.docker.launcher.containerbuild.property.image=null" parent="ilg.gnuarmeclipse.managedbuild.cross.config.elf.debug" postannouncebuildStep="" postbuildStep="${ProjDirPath}/../../scripts/insert_crc.py &quot;${ProjDirPath}/${ConfigName}/${BuildArtifactFileBaseName}.elf&quot; &quot;${ProjDirPath}/${ConfigName}/${BuildArtifactFileBaseName}_crc.bin&quot;" preannouncebuildStep="" prebuildStep="${ProjDirPath}/../../scripts/pre_build.py samplbaer ${ProjDirPath}/../../src/app/version_git.h">
+                <configuration artifactName="${ProjName}" buildArtefactType="org.eclipse.cdt.build.core.buildArtefactType.exe" buildProperties="org.eclipse.cdt.build.core.buildArtefactType=org.eclipse.cdt.build.core.buildArtefactType.exe,org.eclipse.cdt.build.core.buildType=org.eclipse.cdt.build.core.buildType.debug" cleanCommand="${cross_rm} -rf" description="" errorParsers="org.eclipse.cdt.core.GASErrorParser;org.eclipse.cdt.core.GmakeErrorParser;org.eclipse.cdt.core.GLDErrorParser;org.eclipse.cdt.core.CWDLocator;org.eclipse.cdt.core.GCCErrorParser" id="ilg.gnuarmeclipse.managedbuild.cross.config.elf.debug.1370864789" name="Debug" optionalBuildProperties="org.eclipse.cdt.docker.launcher.containerbuild.property.enablement=null,org.eclipse.cdt.docker.launcher.containerbuild.property.selectedvolumes=null,org.eclipse.cdt.docker.launcher.containerbuild.property.volumes=null,org.eclipse.cdt.docker.launcher.containerbuild.property.image=null,org.eclipse.cdt.docker.launcher.containerbuild.property.connection=null" parent="ilg.gnuarmeclipse.managedbuild.cross.config.elf.debug" postannouncebuildStep="" postbuildStep="${ProjDirPath}/../../scripts/insert_crc.py &quot;${ProjDirPath}/${ConfigName}/${BuildArtifactFileBaseName}.elf&quot; &quot;${ProjDirPath}/${ConfigName}/${BuildArtifactFileBaseName}_crc.bin&quot;" preannouncebuildStep="" prebuildStep="${ProjDirPath}/../../scripts/pre_build.py samplbaer ${ProjDirPath}/../../src/app/version_git.h">
                     					
                     <folderInfo id="ilg.gnuarmeclipse.managedbuild.cross.config.elf.debug.1370864789." name="/" resourcePath="">
                         						
@@ -407,7 +407,7 @@
             			
             <storageModule moduleId="ilg.gnumcueclipse.managedbuild.packs">
                 				
-                <option id="cmsis.device.name" value="MK22FN1M0Axxx12"/>
+                <option id="cmsis.device.name" value="MK22FX512Axxx12"/>
                 				
                 <option id="cmsis.family.name" value="MK22FA12"/>
                 				
@@ -419,15 +419,17 @@
                 				
                 <option id="cmsis.device.pack.name" value="MK22FA12_DFP"/>
                 				
-                <option id="cmsis.device.pack.version" value="2.3.0"/>
+                <option id="cmsis.device.pack.version" value="10.0.1"/>
                 				
                 <option id="cmsis.core.name" value="Cortex-M4"/>
                 				
                 <option id="cmsis.compiler.define" value=""/>
                 				
+                <memory section="FLEX_NVM" size="0x020000" start="0x10000000" startup="0"/>
+                				
                 <memory section="FLEX_RAM" size="0x1000" start="0x14000000" startup="0"/>
                 				
-                <memory section="PROGRAM_FLASH" size="0x100000" start="0x00000000" startup="1"/>
+                <memory section="PROGRAM_FLASH" size="0x080000" start="0x00000000" startup="1"/>
                 				
                 <memory section="SRAM_LOWER" size="0x010000" start="0x1fff0000" startup="0"/>
                 				
@@ -839,7 +841,7 @@
             			
             <storageModule moduleId="ilg.gnumcueclipse.managedbuild.packs">
                 				
-                <option id="cmsis.device.name" value="MK22FN1M0Axxx12"/>
+                <option id="cmsis.device.name" value="MK22FX512Axxx12"/>
                 				
                 <option id="cmsis.family.name" value="MK22FA12"/>
                 				
@@ -851,15 +853,17 @@
                 				
                 <option id="cmsis.device.pack.name" value="MK22FA12_DFP"/>
                 				
-                <option id="cmsis.device.pack.version" value="2.3.0"/>
+                <option id="cmsis.device.pack.version" value="10.0.1"/>
                 				
                 <option id="cmsis.core.name" value="Cortex-M4"/>
                 				
                 <option id="cmsis.compiler.define" value=""/>
                 				
+                <memory section="FLEX_NVM" size="0x020000" start="0x10000000" startup="0"/>
+                				
                 <memory section="FLEX_RAM" size="0x1000" start="0x14000000" startup="0"/>
                 				
-                <memory section="PROGRAM_FLASH" size="0x100000" start="0x00000000" startup="1"/>
+                <memory section="PROGRAM_FLASH" size="0x080000" start="0x00000000" startup="1"/>
                 				
                 <memory section="SRAM_LOWER" size="0x010000" start="0x1fff0000" startup="0"/>
                 				
@@ -1281,7 +1285,7 @@
             			
             <storageModule moduleId="ilg.gnumcueclipse.managedbuild.packs">
                 				
-                <option id="cmsis.device.name" value="MK22FN1M0Axxx12"/>
+                <option id="cmsis.device.name" value="MK22FX512Axxx12"/>
                 				
                 <option id="cmsis.family.name" value="MK22FA12"/>
                 				
@@ -1293,15 +1297,17 @@
                 				
                 <option id="cmsis.device.pack.name" value="MK22FA12_DFP"/>
                 				
-                <option id="cmsis.device.pack.version" value="2.3.0"/>
+                <option id="cmsis.device.pack.version" value="10.0.1"/>
                 				
                 <option id="cmsis.core.name" value="Cortex-M4"/>
                 				
                 <option id="cmsis.compiler.define" value=""/>
                 				
+                <memory section="FLEX_NVM" size="0x020000" start="0x10000000" startup="0"/>
+                				
                 <memory section="FLEX_RAM" size="0x1000" start="0x14000000" startup="0"/>
                 				
-                <memory section="PROGRAM_FLASH" size="0x100000" start="0x00000000" startup="1"/>
+                <memory section="PROGRAM_FLASH" size="0x080000" start="0x00000000" startup="1"/>
                 				
                 <memory section="SRAM_LOWER" size="0x010000" start="0x1fff0000" startup="0"/>
                 				
@@ -1717,7 +1723,7 @@
             			
             <storageModule moduleId="ilg.gnumcueclipse.managedbuild.packs">
                 				
-                <option id="cmsis.device.name" value="MK22FN1M0Axxx12"/>
+                <option id="cmsis.device.name" value="MK22FX512Axxx12"/>
                 				
                 <option id="cmsis.family.name" value="MK22FA12"/>
                 				
@@ -1729,15 +1735,17 @@
                 				
                 <option id="cmsis.device.pack.name" value="MK22FA12_DFP"/>
                 				
-                <option id="cmsis.device.pack.version" value="2.3.0"/>
+                <option id="cmsis.device.pack.version" value="10.0.1"/>
                 				
                 <option id="cmsis.core.name" value="Cortex-M4"/>
                 				
                 <option id="cmsis.compiler.define" value=""/>
                 				
+                <memory section="FLEX_NVM" size="0x020000" start="0x10000000" startup="0"/>
+                				
                 <memory section="FLEX_RAM" size="0x1000" start="0x14000000" startup="0"/>
                 				
-                <memory section="PROGRAM_FLASH" size="0x100000" start="0x00000000" startup="1"/>
+                <memory section="PROGRAM_FLASH" size="0x080000" start="0x00000000" startup="1"/>
                 				
                 <memory section="SRAM_LOWER" size="0x010000" start="0x1fff0000" startup="0"/>
                 				
