@@ -1,37 +1,20 @@
 /*
  * Copyright (c) 2015, Freescale Semiconductor, Inc.
- * Copyright 2016-2017 NXP
+ * Copyright 2016-2018 NXP
+ * All rights reserved.
  *
- * Redistribution and use in source and binary forms, with or without modification,
- * are permitted provided that the following conditions are met:
- *
- * o Redistributions of source code must retain the above copyright notice, this list
- *   of conditions and the following disclaimer.
- *
- * o Redistributions in binary form must reproduce the above copyright notice, this
- *   list of conditions and the following disclaimer in the documentation and/or
- *   other materials provided with the distribution.
- *
- * o Neither the name of the copyright holder nor the names of its
- *   contributors may be used to endorse or promote products derived from this
- *   software without specific prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
- * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
- * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
- * ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
- * ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * SPDX-License-Identifier: BSD-3-Clause
  */
 
 #ifndef _FSL_SDMMC_SPEC_H_
 #define _FSL_SDMMC_SPEC_H_
 
 #include <stdint.h>
+
+/*!
+ * @addtogroup CARD
+ * @{
+ */
 
 /*******************************************************************************
  * Definitions
@@ -51,45 +34,51 @@
 /*! @brief MMC card bus frequency 2 in high-speed mode */
 #define MMC_CLOCK_52MHZ (52000000U)
 /*! @brief MMC card bus frequency  in high-speed DDR52 mode */
-#define MMC_CLOCK_DDR52 (104000000U)
+#define MMC_CLOCK_DDR52 (52000000U)
 /*! @brief MMC card bus frequency  in high-speed HS200 mode */
 #define MMC_CLOCK_HS200 (200000000U)
 /*! @brief MMC card bus frequency  in high-speed HS400 mode */
 #define MMC_CLOCK_HS400 (400000000U)
 
+/*!@brief mask convert  */
+#define SDMMC_MASK(bit) (1U << (bit))
+
 /*! @brief Card status bit in R1 */
 enum _sdmmc_r1_card_status_flag
 {
-    kSDMMC_R1OutOfRangeFlag = (1U << 31U),                 /*!< Out of range status bit */
-    kSDMMC_R1AddressErrorFlag = (1U << 30U),               /*!< Address error status bit */
-    kSDMMC_R1BlockLengthErrorFlag = (1U << 29U),           /*!< Block length error status bit */
-    kSDMMC_R1EraseSequenceErrorFlag = (1U << 28U),         /*!< Erase sequence error status bit */
-    kSDMMC_R1EraseParameterErrorFlag = (1U << 27U),        /*!< Erase parameter error status bit */
-    kSDMMC_R1WriteProtectViolationFlag = (1U << 26U),      /*!< Write protection violation status bit */
-    kSDMMC_R1CardIsLockedFlag = (1U << 25U),               /*!< Card locked status bit */
-    kSDMMC_R1LockUnlockFailedFlag = (1U << 24U),           /*!< lock/unlock error status bit */
-    kSDMMC_R1CommandCrcErrorFlag = (1U << 23U),            /*!< CRC error status bit */
-    kSDMMC_R1IllegalCommandFlag = (1U << 22U),             /*!< Illegal command status bit */
-    kSDMMC_R1CardEccFailedFlag = (1U << 21U),              /*!< Card ecc error status bit */
-    kSDMMC_R1CardControllerErrorFlag = (1U << 20U),        /*!< Internal card controller error status bit */
-    kSDMMC_R1ErrorFlag = (1U << 19U),                      /*!< A general or an unknown error status bit */
-    kSDMMC_R1CidCsdOverwriteFlag = (1U << 16U),            /*!< Cid/csd overwrite status bit */
-    kSDMMC_R1WriteProtectEraseSkipFlag = (1U << 15U),      /*!< Write protection erase skip status bit */
-    kSDMMC_R1CardEccDisabledFlag = (1U << 14U),            /*!< Card ecc disabled status bit */
-    kSDMMC_R1EraseResetFlag = (1U << 13U),                 /*!< Erase reset status bit */
-    kSDMMC_R1ReadyForDataFlag = (1U << 8U),                /*!< Ready for data status bit */
-    kSDMMC_R1SwitchErrorFlag = (1U << 7U),                 /*!< Switch error status bit */
-    kSDMMC_R1ApplicationCommandFlag = (1U << 5U),          /*!< Application command enabled status bit */
-    kSDMMC_R1AuthenticationSequenceErrorFlag = (1U << 3U), /*!< error in the sequence of authentication process */
-
-    kSDMMC_R1ErrorAllFlag =
-        (kSDMMC_R1OutOfRangeFlag | kSDMMC_R1AddressErrorFlag | kSDMMC_R1BlockLengthErrorFlag |
-         kSDMMC_R1EraseSequenceErrorFlag | kSDMMC_R1EraseParameterErrorFlag | kSDMMC_R1WriteProtectViolationFlag |
-         kSDMMC_R1CardIsLockedFlag | kSDMMC_R1LockUnlockFailedFlag | kSDMMC_R1CommandCrcErrorFlag |
-         kSDMMC_R1IllegalCommandFlag | kSDMMC_R1CardEccFailedFlag | kSDMMC_R1CardControllerErrorFlag |
-         kSDMMC_R1ErrorFlag | kSDMMC_R1CidCsdOverwriteFlag |
-         kSDMMC_R1AuthenticationSequenceErrorFlag), /*!< Card error status */
+    kSDMMC_R1OutOfRangeFlag = 31,                 /*!< Out of range status bit */
+    kSDMMC_R1AddressErrorFlag = 30,               /*!< Address error status bit */
+    kSDMMC_R1BlockLengthErrorFlag = 29,           /*!< Block length error status bit */
+    kSDMMC_R1EraseSequenceErrorFlag = 28,         /*!< Erase sequence error status bit */
+    kSDMMC_R1EraseParameterErrorFlag = 27,        /*!< Erase parameter error status bit */
+    kSDMMC_R1WriteProtectViolationFlag = 26,      /*!< Write protection violation status bit */
+    kSDMMC_R1CardIsLockedFlag = 25,               /*!< Card locked status bit */
+    kSDMMC_R1LockUnlockFailedFlag = 24,           /*!< lock/unlock error status bit */
+    kSDMMC_R1CommandCrcErrorFlag = 23,            /*!< CRC error status bit */
+    kSDMMC_R1IllegalCommandFlag = 22,             /*!< Illegal command status bit */
+    kSDMMC_R1CardEccFailedFlag = 21,              /*!< Card ecc error status bit */
+    kSDMMC_R1CardControllerErrorFlag = 20,        /*!< Internal card controller error status bit */
+    kSDMMC_R1ErrorFlag = 19,                      /*!< A general or an unknown error status bit */
+    kSDMMC_R1CidCsdOverwriteFlag = 16,            /*!< Cid/csd overwrite status bit */
+    kSDMMC_R1WriteProtectEraseSkipFlag = 15,      /*!< Write protection erase skip status bit */
+    kSDMMC_R1CardEccDisabledFlag = 14,            /*!< Card ecc disabled status bit */
+    kSDMMC_R1EraseResetFlag = 13,                 /*!< Erase reset status bit */
+    kSDMMC_R1ReadyForDataFlag = 8,                /*!< Ready for data status bit */
+    kSDMMC_R1SwitchErrorFlag = 7,                 /*!< Switch error status bit */
+    kSDMMC_R1ApplicationCommandFlag = 5,          /*!< Application command enabled status bit */
+    kSDMMC_R1AuthenticationSequenceErrorFlag = 3, /*!< error in the sequence of authentication process */
 };
+
+/*! @brief R1 all the error flag */
+#define SDMMC_R1_ALL_ERROR_FLAG                                                                      \
+    (SDMMC_MASK(kSDMMC_R1OutOfRangeFlag) | SDMMC_MASK(kSDMMC_R1AddressErrorFlag) |                   \
+     SDMMC_MASK(kSDMMC_R1BlockLengthErrorFlag) | SDMMC_MASK(kSDMMC_R1EraseSequenceErrorFlag) |       \
+     SDMMC_MASK(kSDMMC_R1EraseParameterErrorFlag) | SDMMC_MASK(kSDMMC_R1WriteProtectViolationFlag) | \
+     SDMMC_MASK(kSDMMC_R1CardIsLockedFlag) | SDMMC_MASK(kSDMMC_R1LockUnlockFailedFlag) |             \
+     SDMMC_MASK(kSDMMC_R1CommandCrcErrorFlag) | SDMMC_MASK(kSDMMC_R1IllegalCommandFlag) |            \
+     SDMMC_MASK(kSDMMC_R1CardEccFailedFlag) | SDMMC_MASK(kSDMMC_R1CardControllerErrorFlag) |         \
+     SDMMC_MASK(kSDMMC_R1ErrorFlag) | SDMMC_MASK(kSDMMC_R1CidCsdOverwriteFlag) |                     \
+     SDMMC_MASK(kSDMMC_R1AuthenticationSequenceErrorFlag))
 
 /*! @brief R1: current state */
 #define SDMMC_R1_CURRENT_STATE(x) (((x)&0x00001E00U) >> 9U)
@@ -193,6 +182,12 @@ typedef enum _sd_command
     kSD_SendTuningBlock = 19U,       /*!< Send Tuning Block */
 } sd_command_t;
 
+/*! @brief SDSPI individual commands */
+typedef enum _sdspi_command
+{
+    kSDSPI_CommandCrc = 59U, /*!< Command crc protection on/off */
+} sdspi_command_t;
+
 /*! @brief SD card individual application commands */
 typedef enum _sd_application_command
 {
@@ -222,20 +217,20 @@ enum _sdmmc_command_class
 /*! @brief OCR register in SD card */
 enum _sd_ocr_flag
 {
-    kSD_OcrPowerUpBusyFlag = (1U << 31U),                            /*!< Power up busy status */
-    kSD_OcrHostCapacitySupportFlag = (1U << 30U),                    /*!< Card capacity status */
+    kSD_OcrPowerUpBusyFlag = 31,                                     /*!< Power up busy status */
+    kSD_OcrHostCapacitySupportFlag = 30,                             /*!< Card capacity status */
     kSD_OcrCardCapacitySupportFlag = kSD_OcrHostCapacitySupportFlag, /*!< Card capacity status */
-    kSD_OcrSwitch18RequestFlag = (1U << 24U),                        /*!< Switch to 1.8V request */
+    kSD_OcrSwitch18RequestFlag = 24,                                 /*!< Switch to 1.8V request */
     kSD_OcrSwitch18AcceptFlag = kSD_OcrSwitch18RequestFlag,          /*!< Switch to 1.8V accepted */
-    kSD_OcrVdd27_28Flag = (1U << 15U),                               /*!< VDD 2.7-2.8 */
-    kSD_OcrVdd28_29Flag = (1U << 16U),                               /*!< VDD 2.8-2.9 */
-    kSD_OcrVdd29_30Flag = (1U << 17U),                               /*!< VDD 2.9-3.0 */
-    kSD_OcrVdd30_31Flag = (1U << 18U),                               /*!< VDD 2.9-3.0 */
-    kSD_OcrVdd31_32Flag = (1U << 19U),                               /*!< VDD 3.0-3.1 */
-    kSD_OcrVdd32_33Flag = (1U << 20U),                               /*!< VDD 3.1-3.2 */
-    kSD_OcrVdd33_34Flag = (1U << 21U),                               /*!< VDD 3.2-3.3 */
-    kSD_OcrVdd34_35Flag = (1U << 22U),                               /*!< VDD 3.3-3.4 */
-    kSD_OcrVdd35_36Flag = (1U << 23U),                               /*!< VDD 3.4-3.5 */
+    kSD_OcrVdd27_28Flag = 15,                                        /*!< VDD 2.7-2.8 */
+    kSD_OcrVdd28_29Flag = 16,                                        /*!< VDD 2.8-2.9 */
+    kSD_OcrVdd29_30Flag = 17,                                        /*!< VDD 2.9-3.0 */
+    kSD_OcrVdd30_31Flag = 18,                                        /*!< VDD 2.9-3.0 */
+    kSD_OcrVdd31_32Flag = 19,                                        /*!< VDD 3.0-3.1 */
+    kSD_OcrVdd32_33Flag = 20,                                        /*!< VDD 3.1-3.2 */
+    kSD_OcrVdd33_34Flag = 21,                                        /*!< VDD 3.2-3.3 */
+    kSD_OcrVdd34_35Flag = 22,                                        /*!< VDD 3.3-3.4 */
+    kSD_OcrVdd35_36Flag = 23,                                        /*!< VDD 3.4-3.5 */
 };
 
 /*! @brief SD card specification version number */
@@ -439,27 +434,26 @@ enum _sdio_status_flag
 /*! @brief sdio operation condition flag */
 enum _sdio_ocr_flag
 {
-    kSDIO_OcrPowerUpBusyFlag = (1U << 31U), /*!< Power up busy status */
-    kSDIO_OcrIONumber = (7U << 28U),        /*!< number of IO function */
-    kSDIO_OcrMemPresent = (1U << 27U),      /*!< memory present flag */
+    kSDIO_OcrPowerUpBusyFlag = 31, /*!< Power up busy status */
+    kSDIO_OcrIONumber = 28,        /*!< number of IO function */
+    kSDIO_OcrMemPresent = 27,      /*!< memory present flag */
 
-    kSDIO_OcrVdd20_21Flag = (1U << 8U),  /*!< VDD 2.0-2.1 */
-    kSDIO_OcrVdd21_22Flag = (1U << 9U),  /*!< VDD 2.1-2.2 */
-    kSDIO_OcrVdd22_23Flag = (1U << 10U), /*!< VDD 2.2-2.3 */
-    kSDIO_OcrVdd23_24Flag = (1U << 11U), /*!< VDD 2.3-2.4 */
-    kSDIO_OcrVdd24_25Flag = (1U << 12U), /*!< VDD 2.4-2.5 */
-    kSDIO_OcrVdd25_26Flag = (1U << 13U), /*!< VDD 2.5-2.6 */
-    kSDIO_OcrVdd26_27Flag = (1U << 14U), /*!< VDD 2.6-2.7 */
-    kSDIO_OcrVdd27_28Flag = (1U << 15U), /*!< VDD 2.7-2.8 */
-    kSDIO_OcrVdd28_29Flag = (1U << 16U), /*!< VDD 2.8-2.9 */
-    kSDIO_OcrVdd29_30Flag = (1U << 17U), /*!< VDD 2.9-3.0 */
-    kSDIO_OcrVdd30_31Flag = (1U << 18U), /*!< VDD 2.9-3.0 */
-    kSDIO_OcrVdd31_32Flag = (1U << 19U), /*!< VDD 3.0-3.1 */
-    kSDIO_OcrVdd32_33Flag = (1U << 20U), /*!< VDD 3.1-3.2 */
-    kSDIO_OcrVdd33_34Flag = (1U << 21U), /*!< VDD 3.2-3.3 */
-    kSDIO_OcrVdd34_35Flag = (1U << 22U), /*!< VDD 3.3-3.4 */
-    kSDIO_OcrVdd35_36Flag = (1U << 23U), /*!< VDD 3.4-3.5 */
-
+    kSDIO_OcrVdd20_21Flag = 8,  /*!< VDD 2.0-2.1 */
+    kSDIO_OcrVdd21_22Flag = 9,  /*!< VDD 2.1-2.2 */
+    kSDIO_OcrVdd22_23Flag = 10, /*!< VDD 2.2-2.3 */
+    kSDIO_OcrVdd23_24Flag = 11, /*!< VDD 2.3-2.4 */
+    kSDIO_OcrVdd24_25Flag = 12, /*!< VDD 2.4-2.5 */
+    kSDIO_OcrVdd25_26Flag = 13, /*!< VDD 2.5-2.6 */
+    kSDIO_OcrVdd26_27Flag = 14, /*!< VDD 2.6-2.7 */
+    kSDIO_OcrVdd27_28Flag = 15, /*!< VDD 2.7-2.8 */
+    kSDIO_OcrVdd28_29Flag = 16, /*!< VDD 2.8-2.9 */
+    kSDIO_OcrVdd29_30Flag = 17, /*!< VDD 2.9-3.0 */
+    kSDIO_OcrVdd30_31Flag = 18, /*!< VDD 2.9-3.0 */
+    kSDIO_OcrVdd31_32Flag = 19, /*!< VDD 3.0-3.1 */
+    kSDIO_OcrVdd32_33Flag = 20, /*!< VDD 3.1-3.2 */
+    kSDIO_OcrVdd33_34Flag = 21, /*!< VDD 3.2-3.3 */
+    kSDIO_OcrVdd34_35Flag = 22, /*!< VDD 3.3-3.4 */
+    kSDIO_OcrVdd35_36Flag = 23, /*!< VDD 3.4-3.5 */
 };
 
 /*! @brief sdio capability flag */
@@ -635,13 +629,10 @@ enum _mmc_support_boot_mode
 /*! @brief MMC card high-speed timing(HS_TIMING in Extended CSD) */
 typedef enum _mmc_high_speed_timing
 {
-    kMMC_HighSpeedTimingNone = 0U,  /*!< MMC card using none high-speed timing */
-    kMMC_HighSpeedTiming = 1U,      /*!< MMC card using high-speed timing */
-    kMMC_HighSpeed200Timing = 2U,   /*!< MMC card high speed 200 timing*/
-    kMMC_HighSpeed400Timing = 3U,   /*!< MMC card high speed 400 timing*/
-    kMMC_HighSpeed26MHZTiming = 4U, /*!< MMC high speed 26MHZ timing */
-    kMMC_HighSpeed52MHZTiming = 5U, /*!< MMC high speed 52MHZ timing */
-    kMMC_HighSpeedDDR52Timing = 6U, /*!< MMC high speed timing DDR52 1.8V */
+    kMMC_HighSpeedTimingNone = 0U, /*!< MMC card using none high-speed timing */
+    kMMC_HighSpeedTiming = 1U,     /*!< MMC card using high-speed timing */
+    kMMC_HighSpeed200Timing = 2U,  /*!< MMC card high speed 200 timing*/
+    kMMC_HighSpeed400Timing = 3U,  /*!< MMC card high speed 400 timing*/
 } mmc_high_speed_timing_t;
 
 /*! @brief The number of data bus width type */
@@ -665,6 +656,52 @@ typedef enum _mmc_boot_partition_enable
     kMMC_BootPartitionEnableUserAera = 7U,   /*!< User area enabled for boot */
 } mmc_boot_partition_enable_t;
 
+/*! @brief boot mode configuration
+ * Note: HS200 & HS400 is not support during BOOT operation.
+ */
+typedef enum _mmc_boot_timing_mode
+{
+    kMMC_BootModeSDRWithDefaultTiming = 0U << 3U,   /*!< boot mode single data rate with backward compatiable timings */
+    kMMC_BootModeSDRWithHighSpeedTiming = 1U << 3U, /*!< boot mode single data rate with high speed timing */
+    kMMC_BootModeDDRTiming = 2U << 3U,              /*!< boot mode dual date rate */
+} mmc_boot_timing_mode_t;
+
+/*! @brief MMC card boot partition write protect configurations
+ * All the bits in BOOT_WP register, except the two R/W bits B_PERM_WP_DIS
+ * and B_PERM_WP_EN, shall only be written once per power cycle.The protection
+ * mdde intended for both boot areas will be set with a single write.
+ */
+typedef enum _mmc_boot_partition_wp
+{
+    kMMC_BootPartitionWPDisable = 0x50U, /*!< boot partition write protection disable */
+    kMMC_BootPartitionPwrWPToBothPartition =
+        0x01U, /*!< power on period write protection apply to both boot partitions */
+    kMMC_BootPartitionPermWPToBothPartition = 0x04U, /*!< permanent write protection apply to both boot partitions */
+
+    kMMC_BootPartitionPwrWPToPartition1 = (1U << 7U) | 1U, /*!< power on period write protection apply to partition1 */
+    kMMC_BootPartitionPwrWPToPartition2 = (1U << 7U) | 3U, /*!< power on period write protection apply to partition2 */
+
+    kMMC_BootPartitionPermWPToPartition1 =
+        (1U << 7U) | (1U << 2U), /*!< permanent write protection apply to partition1 */
+    kMMC_BootPartitionPermWPToPartition2 =
+        (1U << 7U) | (3U << 2U), /*!< permanent write protection apply to partition2 */
+
+    kMMC_BootPartitionPermWPToPartition1PwrWPToPartition2 =
+        (1U << 7U) | (1U << 2U) |
+        3U, /*!< permanent write protection apply to partition1, power on period write protection apply to partition2 */
+    kMMC_BootPartitionPermWPToPartition2PwrWPToPartition1 =
+        (1U << 7U) | (3U << 2U) |
+        1U, /*!< permanent write protection apply to partition2, power on period write protection apply to partition1 */
+} mmc_boot_partition_wp_t;
+
+/*! @brief MMC card boot partition write protect status */
+enum _mmc_boot_partition_wp_status
+{
+    kMMC_BootPartitionNotProtected = 0U,  /*!< boot partition not protected */
+    kMMC_BootPartitionPwrProtected = 1U,  /*!< boot partition is power on period write protected */
+    kMMC_BootPartitionPermProtected = 2U, /*!< boot partition is permanently protected */
+};
+
 /*! @brief MMC card partition to be accessed(BOOT_PARTITION_ACCESS in Extended CSD) */
 typedef enum _mmc_access_partition
 {
@@ -679,25 +716,27 @@ typedef enum _mmc_access_partition
 } mmc_access_partition_t;
 
 /*! @brief The bit shift for PARTITION ACCESS filed in BOOT CONFIG (BOOT_CONFIG in Extend CSD) */
-#define MMC_BOOT_CONFIG_PARTITION_ACCESS_SHIFT (0U)
+#define MMC_PARTITION_CONFIG_PARTITION_ACCESS_SHIFT (0U)
 /*! @brief The bit mask for PARTITION ACCESS field in BOOT CONFIG */
-#define MMC_BOOT_CONFIG_PARTITION_ACCESS_MASK (0x00000007U)
+#define MMC_PARTITION_CONFIG_PARTITION_ACCESS_MASK (0x00000007U)
 /*! @brief The bit shift for PARTITION ENABLE field in BOOT CONFIG */
-#define MMC_BOOT_CONFIG_PARTITION_ENABLE_SHIFT (3U)
+#define MMC_PARTITION_CONFIG_PARTITION_ENABLE_SHIFT (3U)
 /*! @brief The bit mask for PARTITION ENABLE field in BOOT CONFIG */
-#define MMC_BOOT_CONFIG_PARTITION_ENABLE_MASK (0x00000038U)
+#define MMC_PARTITION_CONFIG_PARTITION_ENABLE_MASK (0x00000038U)
 /*! @brief The bit shift for ACK field in BOOT CONFIG */
-#define MMC_BOOT_CONFIG_ACK_SHIFT (6U)
+#define MMC_PARTITION_CONFIG_BOOT_ACK_SHIFT (6U)
 /*! @brief The bit mask for ACK field in BOOT CONFIG */
-#define MMC_BOOT_CONFIG_ACK_MASK (0x00000040U)
+#define MMC_PARTITION_CONFIG_BOOT_ACK_MASK (0x00000040U)
 /*! @brief The bit shift for BOOT BUS WIDTH field in BOOT CONFIG */
-#define MMC_BOOT_BUS_WIDTH_WIDTH_SHIFT (8U)
+#define MMC_BOOT_BUS_CONDITION_BUS_WIDTH_SHIFT (0U)
 /*! @brief The bit mask for BOOT BUS WIDTH field in BOOT CONFIG */
-#define MMC_BOOT_BUS_WIDTH_WIDTH_MASK (0x00000300U)
+#define MMC_BOOT_BUS_CONDITION_BUS_WIDTH_MASK (3U)
 /*! @brief The bit shift for BOOT BUS WIDTH RESET field in BOOT CONFIG */
-#define MMC_BOOT_BUS_WIDTH_RESET_SHIFT (10U)
+#define MMC_BOOT_BUS_CONDITION_RESET_BUS_CONDITION_SHIFT (2U)
 /*! @brief The bit mask for BOOT BUS WIDTH RESET field in BOOT CONFIG */
-#define MMC_BOOT_BUS_WIDTH_RESET_MASK (0x00000400U)
+#define MMC_BOOT_BUS_CONDITION_RESET_BUS_CONDITION_MASK (4U)
+/*! @brief The bit mask for BOOT BUS WIDTH RESET field in BOOT CONFIG */
+#define MMC_BOOT_BUS_CONDITION_BOOT_MODE_MASK (0x18U)
 
 /*! @brief MMC card CSD register flags */
 enum _mmc_csd_flag
@@ -727,9 +766,11 @@ typedef enum _mmc_extended_csd_access_mode
 /*! @brief EXT CSD byte index */
 typedef enum _mmc_extended_csd_index
 {
+    kMMC_ExtendedCsdIndexBootPartitionWP = 173U,      /*!< Boot partition write protect */
     kMMC_ExtendedCsdIndexEraseGroupDefinition = 175U, /*!< Erase Group Def */
-    kMMC_ExtendedCsdIndexBootBusWidth = 177U,         /*!< Boot Bus Width */
-    kMMC_ExtendedCsdIndexBootConfig = 179U,           /*!< Boot Config */
+    kMMC_ExtendedCsdIndexBootBusConditions = 177U,    /*!< Boot Bus conditions */
+    kMMC_ExtendedCsdIndexBootConfigWP = 178U,         /*!< Boot config write protect */
+    kMMC_ExtendedCsdIndexPartitionConfig = 179U,      /*!< Partition Config, before BOOT_CONFIG */
     kMMC_ExtendedCsdIndexBusWidth = 183U,             /*!< Bus Width */
     kMMC_ExtendedCsdIndexHighSpeedTiming = 185U,      /*!< High-speed Timing */
     kMMC_ExtendedCsdIndexPowerClass = 187U,           /*!< Power Class */
@@ -757,6 +798,13 @@ typedef enum _mmc_extended_csd_flags
     kMMC_ExtCsdDataTagSupport = (1 << 5U),            /*!< data tag support[499]*/
     kMMC_ExtCsdModeOperationCodeSupport = (1 << 6U),  /*!< mode operation code support[493]*/
 } mmc_extended_csd_flags_t;
+
+/*! @brief MMC card boot mode */
+enum _mmc_boot_mode
+{
+    kMMC_BootModeNormal = 0U,      /*!< Normal boot */
+    kMMC_BootModeAlternative = 1U, /*!< Alternative boot */
+};
 
 /*! @brief The length of Extended CSD register, unit as bytes. */
 #define MMC_EXTENDED_CSD_BYTES (512U)
@@ -827,6 +875,28 @@ typedef struct _sdio_func_cis
     uint16_t ioLowCurrentMaxCurrent;  /*!< the max peak current (mA)
                                       when IO operating in lower current mode */
 } sdio_func_cis_t;
+
+/*! @brief SD AU start value */
+#define SD_AU_START_VALUE (1U)
+/*! @brief SD UHS AU start value */
+#define SD_UHS_AU_START_VALUE (7U)
+
+/*! @brief SD card status */
+typedef struct _sd_status
+{
+    uint8_t busWidth;        /*!< current buswidth */
+    uint8_t secureMode;      /*!< secured mode */
+    uint16_t cardType;       /*!< sdcard type */
+    uint32_t protectedSize;  /*!< size of protected area */
+    uint8_t speedClass;      /*!< speed class of card */
+    uint8_t performanceMove; /*!< Performance of move indicated by 1[MB/S]step */
+    uint8_t auSize;          /*!< size of AU */
+    uint16_t eraseSize;      /*!< number of AUs to be erased at a time */
+    uint8_t eraseTimeout;    /*!< timeout value for erasing areas specified by UNIT OF ERASE AU */
+    uint8_t eraseOffset;     /*!< fixed offset value added to erase time */
+    uint8_t uhsSpeedGrade;   /*!< speed grade for UHS mode */
+    uint8_t uhsAuSize;       /*!< size of AU for UHS mode */
+} sd_status_t;
 
 /*! @brief SD card CID register */
 typedef struct _sd_cid
@@ -935,46 +1005,45 @@ typedef struct _mmc_csd
 /*! @brief MMC card Extended CSD register (unit: byte). */
 typedef struct _mmc_extended_csd
 {
-    uint32_t flags;
-    uint8_t SecureRemoveType;                 /*!< secure removal type[16]*/
-    uint8_t enProductStateAware;              /*!< product state awareness enablement[17]*/
-    uint32_t maxPreLoadDataSize;              /*!< max preload data size[21-18]*/
-    uint32_t preLoadDataSize;                 /*!< pre-load data size[25-22]*/
-    uint8_t ffuStatus;                        /*!< FFU status [26]*/
-    uint8_t modeOperationCode;                /*!< mode operation code[29]*/
-    uint8_t modeConfig;                       /*!< mode config [30]*/
-    uint8_t cacheCtrl;                        /*!< control to turn on/off cache[33]*/
-    uint8_t pwroffNotify;                     /*!< power off notification[34]*/
-    uint8_t packedCmdFailIndex;               /*!< packed cmd fail index [35]*/
-    uint8_t packedCmdStatus;                  /*!< packed cmd status[36]*/
-    uint32_t contextConfig[4U];               /*!< context configuration[51-37]*/
-    uint16_t extPartitionAttr;                /*!< extended partitions attribut[53-52]*/
-    uint16_t exceptEventStatus;               /*!< exception events status[55-54]*/
-    uint16_t exceptEventControl;              /*!< exception events control[57-56]*/
-    uint8_t toReleaseAddressedGroup;          /*!< number of group to be released[58]*/
-    uint8_t class6CmdCtrl;                    /*!< class 6 command control[59]*/
-    uint8_t intTimeoutEmu;                    /*!< 1st initiallization after disabling sector size emu[60]*/
-    uint8_t sectorSize;                       /*!< sector size[61] */
-    uint8_t sectorSizeEmu;                    /*!< sector size emulation[62]*/
-    uint8_t nativeSectorSize;                 /*!< native sector size[63]*/
-    uint8_t periodWakeup;                     /*!< period wakeup [131]*/
-    uint8_t tCASESupport;                     /*!< package case temperature is controlled[132]*/
-    uint8_t productionStateAware;             /*!< production state awareness[133]*/
-    uint32_t enhanceUsrDataStartAddr;         /*!< enhanced user data start addr [139-136]*/
-    uint32_t enhanceUsrDataSize;              /*!< enhanced user data area size[142-140]*/
-    uint32_t generalPartitionSize[3];         /*!< general purpose partition size[154-143]*/
+    /*uint8_t SecureRemoveType;*/             /*!< secure removal type[16]*/
+    /*uint8_t enProductStateAware;*/          /*!< product state awareness enablement[17]*/
+    /*uint32_t maxPreLoadDataSize;*/          /*!< max preload data size[21-18]*/
+    /*uint32_t preLoadDataSize;*/             /*!< pre-load data size[25-22]*/
+    /*uint8_t ffuStatus;*/                    /*!< FFU status [26]*/
+    /*uint8_t modeOperationCode;*/            /*!< mode operation code[29]*/
+    /*uint8_t modeConfig;*/                   /*!< mode config [30]*/
+    /*uint8_t cacheCtrl;*/                    /*!< control to turn on/off cache[33]*/
+    /*uint8_t pwroffNotify;*/                 /*!< power off notification[34]*/
+    /*uint8_t packedCmdFailIndex;*/           /*!< packed cmd fail index [35]*/
+    /*uint8_t packedCmdStatus;*/              /*!< packed cmd status[36]*/
+    /*uint32_t contextConfig[4U];*/           /*!< context configuration[51-37]*/
+    /*uint16_t extPartitionAttr;*/            /*!< extended partitions attribut[53-52]*/
+    /*uint16_t exceptEventStatus;*/           /*!< exception events status[55-54]*/
+    /*uint16_t exceptEventControl;*/          /*!< exception events control[57-56]*/
+    /*uint8_t toReleaseAddressedGroup;*/      /*!< number of group to be released[58]*/
+    /*uint8_t class6CmdCtrl;*/                /*!< class 6 command control[59]*/
+    /*uint8_t intTimeoutEmu;*/                /*!< 1st initiallization after disabling sector size emu[60]*/
+    /*uint8_t sectorSize;*/                   /*!< sector size[61] */
+    /*uint8_t sectorSizeEmu;*/                /*!< sector size emulation[62]*/
+    /*uint8_t nativeSectorSize;*/             /*!< native sector size[63]*/
+    /*uint8_t periodWakeup;*/                 /*!< period wakeup [131]*/
+    /*uint8_t tCASESupport;*/                 /*!< package case temperature is controlled[132]*/
+    /*uint8_t productionStateAware;*/         /*!< production state awareness[133]*/
+    /*uint32_t enhanceUsrDataStartAddr;*/     /*!< enhanced user data start addr [139-136]*/
+    /*uint32_t enhanceUsrDataSize;*/          /*!< enhanced user data area size[142-140]*/
+    /*uint32_t generalPartitionSize[3];*/     /*!< general purpose partition size[154-143]*/
     uint8_t partitionAttribute;               /*!< partition attribute [156]*/
-    uint32_t maxEnhanceAreaSize;              /*!< max enhance area size [159-157]*/
-    uint8_t hpiManagementEn;                  /*!< HPI management [161]*/
-    uint8_t writeReliabilityParameter;        /*!< write reliability parameter register[166] */
-    uint8_t writeReliabilitySet;              /*!< write reliability setting register[167] */
-    uint8_t rpmbSizeMult;                     /*!< RPMB size multi [168]*/
-    uint8_t fwConfig;                         /*!< FW configuration[169]*/
-    uint8_t userWPRegister;                   /*!< user write protect register[171] */
-    uint8_t bootWPRegister;                   /*!< boot write protect register[173]*/
-    uint8_t bootWPStatusRegister;             /*!< boot write protect status register[174]*/
+    /*uint32_t maxEnhanceAreaSize;*/          /*!< max enhance area size [159-157]*/
+    /*uint8_t hpiManagementEn;*/              /*!< HPI management [161]*/
+    /*uint8_t writeReliabilityParameter;*/    /*!< write reliability parameter register[166] */
+    /*uint8_t writeReliabilitySet;*/          /*!< write reliability setting register[167] */
+    /*uint8_t rpmbSizeMult;*/                 /*!< RPMB size multi [168]*/
+    /*uint8_t fwConfig;*/                     /*!< FW configuration[169]*/
+    uint8_t userWP;                           /*!< user write protect register[171] */
+    uint8_t bootPartitionWP;                  /*!< boot write protect register[173]*/
+    uint8_t bootWPStatus;                     /*!< boot write protect status register[174]*/
     uint8_t highDensityEraseGroupDefinition;  /*!< High-density erase group definition [175] */
-    uint8_t bootDataBusWidth;                 /*!< Boot bus width [177] */
+    uint8_t bootDataBusConditions;            /*!< Boot bus conditions [177] */
     uint8_t bootConfigProtect;                /*!< Boot config protection [178]*/
     uint8_t partitionConfig;                  /*!< Boot configuration [179] */
     uint8_t eraseMemoryContent;               /*!< Erased memory content [181] */
@@ -987,8 +1056,8 @@ typedef struct _mmc_extended_csd
     uint8_t csdStructureVersion;              /*!< CSD structure version [194] */
     uint8_t cardType;                         /*!< Card Type [196] */
     uint8_t ioDriverStrength;                 /*!< IO driver strength [197] */
-    uint8_t OutofInterruptBusyTiming;         /*!< out of interrupt busy timing [198] */
-    uint8_t partitionSwitchTiming;            /*!< partition switch timing [199] */
+    /*uint8_t OutofInterruptBusyTiming;*/     /*!< out of interrupt busy timing [198] */
+    /*uint8_t partitionSwitchTiming;*/        /*!< partition switch timing [199] */
     uint8_t powerClass52MHz195V;              /*!< Power Class for 52MHz @ 1.95V [200] */
     uint8_t powerClass26MHz195V;              /*!< Power Class for 26MHz @ 1.95V [201] */
     uint8_t powerClass52MHz360V;              /*!< Power Class for 52MHz @ 3.6V [202] */
@@ -1002,9 +1071,9 @@ typedef struct _mmc_extended_csd
     uint8_t minimumReadPerformance8Bit52MHz;   /*!< Minimum Read Performance for 8bit at 52MHz [209] */
     uint8_t minimumWritePerformance8Bit52MHz;  /*!< Minimum Write Performance for 8bit at 52MHz [210] */
     uint32_t sectorCount;                      /*!< Sector Count [215:212] */
-    uint8_t sleepNotificationTimeout;          /*!< sleep notification timeout [216]*/
+    /*uint8_t sleepNotificationTimeout;*/      /*!< sleep notification timeout [216]*/
     uint8_t sleepAwakeTimeout;                 /*!< Sleep/awake timeout [217] */
-    uint8_t productionStateAwareTimeout;       /*!< Production state awareness timeout [218]*/
+    /*uint8_t productionStateAwareTimeout;*/   /*!< Production state awareness timeout [218]*/
     uint8_t sleepCurrentVCCQ;                  /*!< Sleep current (VCCQ) [219] */
     uint8_t sleepCurrentVCC;                   /*!< Sleep current (VCC) [220] */
     uint8_t highCapacityWriteProtectGroupSize; /*!< High-capacity write protect group size [221] */
@@ -1012,47 +1081,45 @@ typedef struct _mmc_extended_csd
     uint8_t highCapacityEraseTimeout;          /*!< High-capacity erase timeout [223] */
     uint8_t highCapacityEraseUnitSize;         /*!< High-capacity erase unit size [224] */
     uint8_t accessSize;                        /*!< Access size [225] */
-    uint8_t bootSizeMultiplier;                /*!< Boot partition size [226] */
-    uint8_t bootInformation;                   /*!< Boot information [228] */
-    uint8_t secureTrimMultiplier;              /*!< secure trim multiplier[229]*/
-    uint8_t secureEraseMultiplier;             /*!< secure erase multiplier[230]*/
-    uint8_t secureFeatureSupport;              /*!< secure feature support[231]*/
-    uint32_t trimMultiplier;                   /*!< trim multiplier[232]*/
+    /*uint8_t secureTrimMultiplier;*/          /*!< secure trim multiplier[229]*/
+    /*uint8_t secureEraseMultiplier;*/         /*!< secure erase multiplier[230]*/
+    /*uint8_t secureFeatureSupport;*/          /*!< secure feature support[231]*/
+    /*uint32_t trimMultiplier;*/               /*!< trim multiplier[232]*/
     uint8_t minReadPerformance8bitAt52MHZDDR;  /*!< Minimum read performance for 8bit at DDR 52MHZ[234]*/
     uint8_t minWritePerformance8bitAt52MHZDDR; /*!< Minimum write performance for 8bit at DDR 52MHZ[235]*/
     uint8_t powerClass200MHZVCCQ130VVCC360V;   /*!< power class for 200MHZ, at VCCQ= 1.3V,VCC=3.6V[236]*/
     uint8_t powerClass200MHZVCCQ195VVCC360V;   /*!< power class for 200MHZ, at VCCQ= 1.95V,VCC=3.6V[237]*/
     uint8_t powerClass52MHZDDR195V;            /*!< power class for 52MHZ,DDR at Vcc 1.95V[238]*/
     uint8_t powerClass52MHZDDR360V;            /*!< power class for 52MHZ,DDR at Vcc 3.6V[239]*/
-    uint8_t iniTimeoutAP;                      /*!< 1st initialization time after partitioning[241]*/
-    uint32_t correctPrgSectorNum;              /*!< correct prg sectors number[245-242]*/
-    uint8_t bkOpsStatus;                       /*!< background operations status[246]*/
-    uint8_t powerOffNotifyTimeout;             /*!< power off notification timeout[247]*/
-    uint8_t genericCMD6Timeout;                /*!< generic CMD6 timeout[248]*/
+    /*uint8_t iniTimeoutAP;*/                  /*!< 1st initialization time after partitioning[241]*/
+    /*uint32_t correctPrgSectorNum;*/          /*!< correct prg sectors number[245-242]*/
+    /*uint8_t bkOpsStatus;*/                   /*!< background operations status[246]*/
+    /*uint8_t powerOffNotifyTimeout;*/         /*!< power off notification timeout[247]*/
+    /*uint8_t genericCMD6Timeout;*/            /*!< generic CMD6 timeout[248]*/
     uint32_t cacheSize;                        /*!< cache size[252-249]*/
     uint8_t powerClass200MHZDDR360V;           /*!< power class for 200MHZ, DDR at VCC=2.6V[253]*/
-    uint32_t fwVer[2U];                        /*!< fw VERSION [261-254]*/
-    uint16_t deviveVer;                        /*!< device version[263-262]*/
-    uint8_t optimalTrimSize;                   /*!< optimal trim size[264]*/
-    uint8_t optimalWriteSize;                  /*!< optimal write size[265]*/
-    uint8_t optimalReadSize;                   /*!< optimal read size[266]*/
-    uint8_t preEolInfo;                        /*!< pre EOL information[267]*/
-    uint8_t deviceLifeTimeEstimationA;         /*!< device life time estimation typeA[268]*/
-    uint8_t deviceLifeTimeEstimationB;         /*!< device life time estimation typeB[269]*/
-    uint32_t correctPrgFWSectorNum;            /*!< number of FW sectors correctly programmed[305-302]*/
-    uint32_t ffuArg;                           /*!< FFU argument[490-487]*/
-    uint8_t operationCodeTimeout;              /*!< operation code timeout[491]*/
-    uint8_t supportMode;                       /*!< support mode [493]*/
+    /*uint32_t fwVer[2U];*/                    /*!< fw VERSION [261-254]*/
+    /*uint16_t deviceVer;*/                    /*!< device version[263-262]*/
+    /*uint8_t optimalTrimSize;*/               /*!< optimal trim size[264]*/
+    /*uint8_t optimalWriteSize;*/              /*!< optimal write size[265]*/
+    /*uint8_t optimalReadSize;*/               /*!< optimal read size[266]*/
+    /*uint8_t preEolInfo;*/                    /*!< pre EOL information[267]*/
+    /*uint8_t deviceLifeTimeEstimationA;*/     /*!< device life time estimation typeA[268]*/
+    /*uint8_t deviceLifeTimeEstimationB;*/     /*!< device life time estimation typeB[269]*/
+    /*uint32_t correctPrgFWSectorNum;*/        /*!< number of FW sectors correctly programmed[305-302]*/
+    /*uint32_t ffuArg;*/                       /*!< FFU argument[490-487]*/
+    /*uint8_t operationCodeTimeout;*/          /*!< operation code timeout[491]*/
+    /*uint8_t supportMode;*/                   /*!< support mode [493]*/
     uint8_t extPartitionSupport;               /*!< extended partition attribute support[494]*/
-    uint8_t largeUnitSize;                     /*!< large unit size[495]*/
-    uint8_t contextManageCap;                  /*!< context management capability[496]*/
-    uint8_t tagResourceSize;                   /*!< tag resource size[497]*/
-    uint8_t tagUnitSize;                       /*!< tag unit size[498]*/
-    uint8_t maxPackedWriteCmd;                 /*!< max packed write cmd[500]*/
-    uint8_t maxPackedReadCmd;                  /*!< max packed read cmd[501]*/
-    uint8_t hpiFeature;                        /*!< HPI feature[503]*/
+    /*uint8_t largeUnitSize;*/                 /*!< large unit size[495]*/
+    /*uint8_t contextManageCap;*/              /*!< context management capability[496]*/
+    /*uint8_t tagResourceSize;*/               /*!< tag resource size[497]*/
+    /*uint8_t tagUnitSize;*/                   /*!< tag unit size[498]*/
+    /*uint8_t maxPackedWriteCmd;*/             /*!< max packed write cmd[500]*/
+    /*uint8_t maxPackedReadCmd;*/              /*!< max packed read cmd[501]*/
+    /*uint8_t hpiFeature;*/                    /*!< HPI feature[503]*/
     uint8_t supportedCommandSet;               /*!< Supported Command Sets [504] */
-    uint8_t extSecurityCmdError;               /*!< extended security commands error[505]*/
+    /*uint8_t extSecurityCmdError;*/           /*!< extended security commands error[505]*/
 } mmc_extended_csd_t;
 
 /*! @brief The bit shift for COMMAND SET field in SWITCH command. */
@@ -1080,5 +1147,25 @@ typedef struct _mmc_extended_csd_config
     uint8_t ByteIndex;                         /*!< The byte index in Extended CSD(mmc_extended_csd_index_t) */
     mmc_extended_csd_access_mode_t accessMode; /*!< Access mode */
 } mmc_extended_csd_config_t;
+
+/*! @brief MMC card boot configuration definition. */
+typedef struct _mmc_boot_config
+{
+    bool enableBootAck;                        /*!< Enable boot ACK */
+    mmc_boot_partition_enable_t bootPartition; /*!< Boot partition */
+
+    mmc_boot_timing_mode_t bootTimingMode; /*!< boot mode */
+    mmc_data_bus_width_t bootDataBusWidth; /*!< Boot data bus width */
+    bool retainBootbusCondition;           /*!< If retain boot bus width and boot mode conditions */
+
+    bool pwrBootConfigProtection;  /*!< Disable the change of boot configuration register bits from at this point
+                                   until next power cycle or next H/W reset operation */
+    bool premBootConfigProtection; /*!< Disable the change of boot configuration register bits permanently */
+
+    mmc_boot_partition_wp_t bootPartitionWP; /*!< boot partition write protect configurations */
+
+} mmc_boot_config_t;
+
+/* @} */
 
 #endif /* _FSL_SDMMC_SPEC_H_ */

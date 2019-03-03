@@ -1,31 +1,9 @@
 /*
  * Copyright (c) 2015, Freescale Semiconductor, Inc.
- * Copyright 2016-2017 NXP
+ * Copyright 2016-2018 NXP
+ * All rights reserved.
  *
- * Redistribution and use in source and binary forms, with or without modification,
- * are permitted provided that the following conditions are met:
- *
- * o Redistributions of source code must retain the above copyright notice, this list
- *   of conditions and the following disclaimer.
- *
- * o Redistributions in binary form must reproduce the above copyright notice, this
- *   list of conditions and the following disclaimer in the documentation and/or
- *   other materials provided with the distribution.
- *
- * o Neither the name of the copyright holder nor the names of its
- *   contributors may be used to endorse or promote products derived from this
- *   software without specific prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
- * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
- * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
- * ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
- * ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * SPDX-License-Identifier: BSD-3-Clause
  */
 
 #ifndef _FSL_SDSPI_H_
@@ -38,7 +16,7 @@
  * Definitions
  *****************************************************************************/
 /*! @brief Driver version. */
-#define FSL_SDSPI_DRIVER_VERSION (MAKE_VERSION(2U, 1U, 2U)) /*2.1.2*/
+#define FSL_SDSPI_DRIVER_VERSION (MAKE_VERSION(2U, 1U, 4U)) /*2.1.4*/
 
 /*! @brief Default block size */
 #define FSL_SDSPI_DEFAULT_BLOCK_SIZE (512U)
@@ -55,6 +33,19 @@
 #define SPI_DUMMYDATA (0xFFU)
 #endif
 
+/*! @brief This macro is used to enable or disable the CRC protection for SD card
+* command. The SPI interface is intialized in the CRC off mode by default.However, the
+* RESET command(cmd0) that is used to switch the card to SPI mode, is recieved by by the card
+* while in SD mode and therefore, shall have a valid CRC filed, after the card put into SPI mode
+* , CRC check for all command include CMD0 will be done according to CMD59 setting, host can turn
+* CRC option on and off using the CMD59, this command should be call before ACMD41.
+* CMD8 CRC verification is always enabled. The host shall set correct CRC in the argument of CMD8.
+* If CRC check is enabled, then sdspi code size and read/write performance will be lower than CRC off.
+* CRC check is off by default.
+*/
+#ifndef SDSPI_CARD_CRC_PROTECTION_ENABLE
+#define SDSPI_CARD_CRC_PROTECTION_ENABLE 0U
+#endif
 /*!
  * @addtogroup SDSPI
  * @{
@@ -82,7 +73,11 @@ enum _sdspi_status
     kStatus_SDSPI_SendCidFailed = MAKE_STATUS(kStatusGroup_SDSPI, 14U),          /*!< Send CID failed */
     kStatus_SDSPI_StopTransmissionFailed = MAKE_STATUS(kStatusGroup_SDSPI, 15U), /*!< Stop transmission failed */
     kStatus_SDSPI_SendApplicationCommandFailed =
-        MAKE_STATUS(kStatusGroup_SDSPI, 16U), /*!< Send application command failed */
+        MAKE_STATUS(kStatusGroup_SDSPI, 16U),                            /*!< Send application command failed */
+    kStatus_SDSPI_InvalidVoltage = MAKE_STATUS(kStatusGroup_SDSPI, 17U), /*!< invaild supply voltage */
+    kStatus_SDSPI_SwitchCmdFail = MAKE_STATUS(kStatusGroup_SDSPI, 18U),  /*!< switch command crc protection on/off */
+    kStatus_SDSPI_NotSupportYet = MAKE_STATUS(kStatusGroup_SDSPI, 19U),  /*!< not support */
+
 };
 
 /*! @brief SDSPI card flag */
@@ -95,23 +90,43 @@ enum _sdspi_card_flag
 };
 
 /*! @brief SDSPI response type */
-typedef enum _sdspi_response_type
+enum _sdspi_response_type
 {
     kSDSPI_ResponseTypeR1 = 0U,  /*!< Response 1 */
     kSDSPI_ResponseTypeR1b = 1U, /*!< Response 1 with busy */
     kSDSPI_ResponseTypeR2 = 2U,  /*!< Response 2 */
     kSDSPI_ResponseTypeR3 = 3U,  /*!< Response 3 */
     kSDSPI_ResponseTypeR7 = 4U,  /*!< Response 7 */
-} sdspi_response_type_t;
+};
 
-/*! @brief SDSPI command */
-typedef struct _sdspi_command
+/*! @brief SDSPI command type */
+enum _sdspi_cmd
 {
-    uint8_t index;        /*!< Command index */
-    uint32_t argument;    /*!< Command argument */
-    uint8_t responseType; /*!< Response type */
-    uint8_t response[5U]; /*!< Response content */
-} sdspi_command_t;
+    kSDSPI_CmdGoIdle = kSDMMC_GoIdleState << 8U | kSDSPI_ResponseTypeR1, /*!< command go idle */
+    kSDSPI_CmdCrc = kSDSPI_CommandCrc << 8U | kSDSPI_ResponseTypeR1,     /*!< command crc protection */
+    kSDSPI_CmdSendInterfaceCondition =
+        kSD_SendInterfaceCondition << 8U | kSDSPI_ResponseTypeR7, /*!< command send interface condition */
+    kSDSPI_CmdApplicationCmd = kSDMMC_ApplicationCommand << 8U | kSDSPI_ResponseTypeR1,
+    kSDSPI_CmdAppSendOperationCondition = kSD_ApplicationSendOperationCondition << 8U | kSDSPI_ResponseTypeR1,
+    kSDSPI_CmdReadOcr = kSDMMC_ReadOcr << 8U | kSDSPI_ResponseTypeR3,
+    kSDSPI_CmdSetBlockLength = kSDMMC_SetBlockLength << 8U | kSDSPI_ResponseTypeR1,
+    kSDSPI_CmdSendCsd = kSDMMC_SendCsd << 8U | kSDSPI_ResponseTypeR1,
+    kSDSPI_CmdSendCid = kSDMMC_SendCid << 8U | kSDSPI_ResponseTypeR1,
+    kSDSPI_CmdSendScr = kSD_ApplicationSendScr << 8U | kSDSPI_ResponseTypeR1,
+    kSDSPI_CmdStopTransfer = kSDMMC_StopTransmission << 8U | kSDSPI_ResponseTypeR1b,
+    kSDSPI_CmdWriteSigleBlock = kSDMMC_WriteSingleBlock << 8U | kSDSPI_ResponseTypeR1,
+    kSDSPI_CmdWriteMultiBlock = kSDMMC_WriteMultipleBlock << 8U | kSDSPI_ResponseTypeR1,
+    kSDSPI_CmdReadSigleBlock = kSDMMC_ReadSingleBlock << 8U | kSDSPI_ResponseTypeR1,
+    kSDSPI_CmdReadMultiBlock = kSDMMC_ReadMultipleBlock << 8U | kSDSPI_ResponseTypeR1,
+
+    kSDSPI_CmdWrBlkEraseCount = kSD_ApplicationSetWriteBlockEraseCount << 8U | kSDSPI_ResponseTypeR1,
+    kSDSPI_CmdWrBlkEraseStart = kSD_EraseWriteBlockStart << 8U | kSDSPI_ResponseTypeR1,
+    kSDSPI_CmdWrBlkEraseEnd = kSD_EraseWriteBlockEnd << 8U | kSDSPI_ResponseTypeR1,
+    kSDSPI_CmdWrBlkErase = kSDMMC_Erase << 8U | kSDSPI_ResponseTypeR1b,
+
+    kSDSPI_CmdSwitch = kSD_Switch << 8U | kSDSPI_ResponseTypeR1,
+
+};
 
 /*! @brief SDSPI host state. */
 typedef struct _sdspi_host
@@ -120,7 +135,6 @@ typedef struct _sdspi_host
 
     status_t (*setFrequency)(uint32_t frequency);                   /*!< Set frequency of SPI */
     status_t (*exchange)(uint8_t *in, uint8_t *out, uint32_t size); /*!< Exchange data over SPI */
-    uint32_t (*getCurrentMilliseconds)(void);                       /*!< Get current time in milliseconds */
 } sdspi_host_t;
 
 /*!
@@ -230,6 +244,68 @@ status_t SDSPI_ReadBlocks(sdspi_card_t *card, uint8_t *buffer, uint32_t startBlo
  * @retval kStatus_Success Operate successfully.
  */
 status_t SDSPI_WriteBlocks(sdspi_card_t *card, uint8_t *buffer, uint32_t startBlock, uint32_t blockCount);
+
+/*!
+ * @brief Send GET-CID command
+ * In our sdspi init function, this function is removed for better code size, if id information
+ * is needed, you can call it after the init function directly.
+ * @param card Card descriptor.
+ * @retval kStatus_SDSPI_SendCommandFailed Send command failed.
+ * @retval kStatus_SDSPI_ReadFailed Read data blocks failed.
+ * @retval kStatus_Success Operate successfully.
+ */
+status_t SDSPI_SendCid(sdspi_card_t *card);
+
+#if SDSPI_CARD_CMD_CRC_PROTECTION_ENABLE
+/*!
+ * @brief Command CRC protection on/off.
+ * The SPI interface is intialized in the CRC off mode in default.However, the
+ * RESET command(cmd0) that is used to switch the card to SPI mode, is recieved by by the card
+ * while in SD mode and therefore, shall have a valid CRC filed, after the card put into SPI mode
+ * , CRC check for all command include CMD0 will be done according to CMD59 setting, host can turn
+ * CRC option on and off using the CMD59, this command should be call before ACMD41.
+ * @param card Card descriptor.
+ * @param enable true is enable command crc protection, false is diable command crc protection.
+ * @retval kStatus_SDSPI_SendCommandFailed Send command failed.
+ * @retval kStatus_Success Operate successfully.
+ */
+status_t SDSPI_CommandCrc(sdspi_card_t *card, bool enable);
+#endif
+
+/*!
+ * @brief Multiple blocks write pre-erase function.
+ * This function should be called before SDSPI_WriteBlocks, it is used to set the
+ * number of the write blocks to be pre-erased before writing.
+ * @param card Card descriptor.
+ * @param blockCount the block counts to be write.
+ * @retval kStatus_SDSPI_SendCommandFailed Send command failed.
+ * @retval kStatus_SDSPI_SendApplicationCommandFailed
+ * @retval kStatus_SDSPI_ResponseError
+ * @retval kStatus_Success Operate successfully.
+ */
+status_t SDSPI_SendPreErase(sdspi_card_t *card, uint32_t blockCount);
+
+/*!
+ * @brief Block erase function.
+ * @param card Card descriptor.
+ * @param startBlock start block address to be erase.
+ * @param blockCount the block counts to be erase.
+ * @retval kStatus_SDSPI_WaitReadyFailed Wait ready failed.
+ * @retval kStatus_SDSPI_SendCommandFailed Send command failed.
+ * @retval kStatus_Success Operate successfully.
+ */
+status_t SDSPI_EraseBlocks(sdspi_card_t *card, uint32_t startBlock, uint32_t blockCount);
+
+/*!
+ * @brief Switch to high speed function.
+ * This function can be called after SDSPI_Init function if target board's
+ * layout support >25MHZ spi baudrate, otherwise this function is useless.Be careful with
+ * call this function, code size and stack usage will be enlarge.
+ * @param card Card descriptor.
+ * @retval kStatus_Fail switch failed.
+ * @retval kStatus_Success Operate successfully.
+ */
+status_t SDSPI_SwitchToHighSpeed(sdspi_card_t *card);
 
 /* @} */
 #if defined(__cplusplus)

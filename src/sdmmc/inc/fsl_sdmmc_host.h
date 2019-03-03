@@ -1,31 +1,9 @@
 /*
- * Copyright (c) 2016, Freescale Semiconductor, Inc.
- * Copyright 2016-2017 NXP
+ * Copyright (c) 2015, Freescale Semiconductor, Inc.
+ * Copyright 2016-2018 NXP
+ * All rights reserved.
  *
- * Redistribution and use in source and binary forms, with or without modification,
- * are permitted provided that the following conditions are met:
- *
- * o Redistributions of source code must retain the above copyright notice, this list
- *   of conditions and the following disclaimer.
- *
- * o Redistributions in binary form must reproduce the above copyright notice, this
- *   list of conditions and the following disclaimer in the documentation and/or
- *   other materials provided with the distribution.
- *
- * o Neither the name of the copyright holder nor the names of its
- *   contributors may be used to endorse or promote products derived from this
- *   software without specific prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
- * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
- * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
- * ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
- * ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * SPDX-License-Identifier: BSD-3-Clause
  */
 
 #ifndef _FSL_SDMMC_HOST_H
@@ -39,15 +17,10 @@
 #include "fsl_sdif.h"
 #elif defined(FSL_FEATURE_SOC_USDHC_COUNT) && FSL_FEATURE_SOC_USDHC_COUNT > 0U
 #include "fsl_usdhc.h"
-#if (FSL_FEATURE_SOC_IOMUXC_COUNT != 0U)
-#include "fsl_iomuxc.h"
-#else
-#include "fsl_port.h"
-#endif
 #endif
 
 /*!
- * @addtogroup CARD
+ * @addtogroup SDMMCHOST
  * @{
  */
 
@@ -80,7 +53,7 @@
 #endif
 
 /* Common definition for SDMMCHOST transfer complete timeout */
-#define SDMMCHOST_TRANSFER_COMPLETE_TIMEOUT (1000U)
+#define SDMMCHOST_TRANSFER_COMPLETE_TIMEOUT (500U)
 /* Common definition for card detect timeout */
 #define SDMMCHOST_CARD_DETECT_TIMEOUT (~0U)
 
@@ -126,12 +99,13 @@
 #define SDMMCHOST_DATA sdhc_data_t
 #define SDMMCHOST_BUS_WIDTH_TYPE sdhc_data_bus_width_t
 #define SDMMCHOST_CAPABILITY sdhc_capability_t
+#define SDMMCHOST_BOOT_CONFIG sdhc_boot_config_t
 
-#define CARD_DATA0_STATUS_MASK kSDHC_Data0LineLevelFlag
-#define CARD_DATA0_NOT_BUSY kSDHC_Data0LineLevelFlag
-#define CARD_DATA1_STATUS_MASK kSDHC_Data1LineLevelFlag
-#define CARD_DATA2_STATUS_MASK kSDHC_Data2LineLevelFlag
-#define CARD_DATA3_STATUS_MASK kSDHC_Data3LineLevelFlag
+#define CARD_DATA0_STATUS_MASK (kSDHC_Data0LineLevelFlag)
+#define CARD_DATA0_NOT_BUSY (kSDHC_Data0LineLevelFlag)
+#define CARD_DATA1_STATUS_MASK (kSDHC_Data1LineLevelFlag)
+#define CARD_DATA2_STATUS_MASK (kSDHC_Data2LineLevelFlag)
+#define CARD_DATA3_STATUS_MASK (kSDHC_Data3LineLevelFlag)
 
 #define kSDMMCHOST_DATABUSWIDTH1BIT kSDHC_DataBusWidth1Bit /*!< 1-bit mode */
 #define kSDMMCHOST_DATABUSWIDTH4BIT kSDHC_DataBusWidth4Bit /*!< 4-bit mode */
@@ -159,7 +133,7 @@
 #define SDMMCHOST_EXECUTE_STANDARD_TUNING_RESULT(base) (1U)
 #define SDMMCHOST_CONFIG_SD_IO(speed, strength)
 #define SDMMCHOST_CONFIG_MMC_IO(speed, strength)
-#define SDMMCHOST_ENABLE_DDR_MODE(base, flag)
+#define SDMMCHOST_ENABLE_DDR_MODE(base, flag, nibblePos)
 #define SDMMCHOST_FORCE_SDCLOCK_ON(base, enable)
 #define SDMMCHOST_EXECUTE_MANUAL_TUNING_ENABLE(base, flag)
 #define SDMMCHOST_ADJUST_MANUAL_TUNING_DELAY(base, delay)
@@ -169,7 +143,8 @@
 #define SDMMCHOST_CHECK_TUNING_ERROR(base) (0U)
 #define SDMMCHOST_ADJUST_TUNING_DELAY(base, delay)
 #define SDMMCHOST_AUTO_STANDARD_RETUNING_TIMER(base)
-
+#define SDMMCHOST_TRANSFER_DATA_ERROR kStatus_SDHC_TransferDataFailed
+#define SDMMCHOST_TRANSFER_CMD_ERROR kStatus_SDHC_SendCommandFailed
 #define SDMMCHOST_ENABLE_HS400_MODE(base, flag)
 #define SDMMCHOST_RESET_STROBE_DLL(base)
 #define SDMMCHOST_ENABLE_STROBE_DLL(base, flag)
@@ -184,6 +159,12 @@
 #define SDMMCHOST_INIT_MMC_POWER()
 #define SDMMCHOST_ENABLE_MMC_POWER(enable)
 #define SDMMCHOST_ENABLE_TUNING_FLAG(data)
+#define SDMMCHOST_ENABLE_BOOT_FLAG(data)
+#define SDMMCHOST_ENABLE_BOOT_CONTINOUS_FLAG(data)
+#define SDMMCHOST_GET_HOST_CONFIG_BLOCK_SIZE(config) (0U)
+#define SDMMCHOST_GET_HOST_CONFIG_BLOCK_COUNT(config) (0U)
+#define SDMMCHOST_GET_HOST_CONFIG_BOOT_MODE(config) (0U)
+#define SDMMCHOST_EMPTY_CMD_FLAG(command)
 #define SDMMCHOST_CARD_DETECT_GPIO_INTERRUPT_HANDLER BOARD_SDHC_CD_PORT_IRQ_HANDLER
 #define SDMMCHOST_CARD_DETECT_IRQ BOARD_SDHC_CD_PORT_IRQ
 /* sd card detect through host CD */
@@ -196,12 +177,16 @@
     (SDHC_DisableInterruptSignal(base, kSDHC_CardInsertionFlag))
 #define SDMMCHOST_CARD_DETECT_REMOVE_INTERRUPT_ENABLE(base) (SDHC_EnableInterruptSignal(base, kSDHC_CardRemovalFlag))
 #define SDMMCHOST_CARD_DETECT_DATA3_ENABLE(base, flag) (SDHC_CardDetectByData3(base, flag))
+#define SDMMCHOST_ENABLE_MMC_BOOT(base, flag)
+#define SDMMCHOST_SETMMCBOOTCONFIG(base, config) (SDHC_SetMmcBootConfig(base, config))
 /* define card detect pin voltage level when card inserted */
 #if defined BOARD_SDHC_CARD_INSERT_CD_LEVEL
 #define SDMMCHOST_CARD_INSERT_CD_LEVEL BOARD_SDHC_CARD_INSERT_CD_LEVEL
 #else
 #define SDMMCHOST_CARD_INSERT_CD_LEVEL (0U)
 #endif
+#define SDMMCHOST_AUTO_TUNING_ENABLE(base, flag)
+
 /*! @brief SDHC host capability*/
 enum _host_capability
 {
@@ -275,6 +260,7 @@ enum _host_capability
 #define SDMMCHOST_DATA sdif_data_t
 #define SDMMCHOST_BUS_WIDTH_TYPE sdif_bus_width_t
 #define SDMMCHOST_CAPABILITY sdif_capability_t
+#define SDMMCHOST_BOOT_CONFIG void
 
 #define CARD_DATA0_STATUS_MASK SDIF_STATUS_DATA_BUSY_MASK
 #define CARD_DATA0_NOT_BUSY 0U
@@ -309,7 +295,7 @@ enum _host_capability
 #define SDMMCHOST_EXECUTE_STANDARD_TUNING_RESULT(base) (1U)
 #define SDMMCHOST_CONFIG_SD_IO(speed, strength)
 #define SDMMCHOST_CONFIG_MMC_IO(speed, strength)
-#define SDMMCHOST_ENABLE_DDR_MODE(base, flag)
+#define SDMMCHOST_ENABLE_DDR_MODE(base, flag, nibblePos)
 #define SDMMCHOST_FORCE_SDCLOCK_ON(base, enable)
 #define SDMMCHOST_EXECUTE_MANUAL_TUNING_ENABLE(base, flag)
 #define SDMMCHOST_ADJUST_MANUAL_TUNING_DELAY(base, delay)
@@ -334,20 +320,29 @@ enum _host_capability
 #define SDMMCHOST_INIT_MMC_POWER()
 #define SDMMCHOST_ENABLE_MMC_POWER(enable)
 #define SDMMCHOST_ENABLE_TUNING_FLAG(data)
-
+#define SDMMCHOST_ENABLE_MMC_BOOT(base, flag)
+#define SDMMCHOST_SETMMCBOOTCONFIG(base, config)
+#define SDMMCHOST_ENABLE_BOOT_FLAG(data)
+#define SDMMCHOST_ENABLE_BOOT_CONTINOUS_FLAG(data)
+#define SDMMCHOST_GET_HOST_CONFIG_BLOCK_SIZE(config) (0U)
+#define SDMMCHOST_GET_HOST_CONFIG_BLOCK_COUNT(config) (0U)
+#define SDMMCHOST_GET_HOST_CONFIG_BOOT_MODE(config) (0U)
+#define SDMMCHOST_EMPTY_CMD_FLAG(command)
 #define SDMMCHOST_CARD_DETECT_STATUS() BOARD_SDIF_CD_STATUS()
 #define SDMMCHOST_CARD_DETECT_INIT() BOARD_SDIF_CD_GPIO_INIT()
 #define SDMMCHOST_CARD_DETECT_INTERRUPT_STATUS() BOARD_SDIF_CD_INTERRUPT_STATUS()
 #define SDMMCHOST_CARD_DETECT_INTERRUPT_CLEAR(flag) BOARD_SDIF_CD_CLEAR_INTERRUPT(flag)
 #define SDMMCHOST_CARD_DETECT_GPIO_INTERRUPT_HANDLER BOARD_SDIF_CD_PORT_IRQ_HANDLER
 #define SDMMCHOST_CARD_DETECT_IRQ BOARD_SDIF_CD_PORT_IRQ
+#define SDMMCHOST_TRANSFER_DATA_ERROR kStatus_SDIF_DataTransferFail
+#define SDMMCHOST_TRANSFER_CMD_ERROR kStatus_SDIF_SendCmdFail
 /* define card detect pin voltage level when card inserted */
 #if defined BOARD_SDIF_CARD_INSERT_CD_LEVEL
 #define SDMMCHOST_CARD_INSERT_CD_LEVEL BOARD_SDIF_CARD_INSERT_CD_LEVEL
 #else
 #define SDMMCHOST_CARD_INSERT_CD_LEVEL (0U)
 #endif
-
+#define SDMMCHOST_AUTO_TUNING_ENABLE(base, flag)
 /* sd card detect through host CD */
 #define SDMMCHOST_CARD_DETECT_INSERT_ENABLE(base) (SDIF_EnableInterrupt(base, kSDIF_CardDetect))
 #define SDMMCHOST_CARD_DETECT_INSERT_STATUS(base, data3) (SDIF_DetectCardInsert(base, data3))
@@ -399,12 +394,12 @@ enum _host_capability
 #define SDMMCHOST_TRANSFER usdhc_transfer_t
 #define SDMMCHOST_COMMAND usdhc_command_t
 #define SDMMCHOST_DATA usdhc_data_t
-
-#define CARD_DATA0_STATUS_MASK kUSDHC_Data0LineLevelFlag
-#define CARD_DATA1_STATUS_MASK kUSDHC_Data1LineLevelFlag
-#define CARD_DATA2_STATUS_MASK kUSDHC_Data2LineLevelFlag
-#define CARD_DATA3_STATUS_MASK kUSDHC_Data3LineLevelFlag
-#define CARD_DATA0_NOT_BUSY kUSDHC_Data0LineLevelFlag
+#define SDMMCHOST_BOOT_CONFIG usdhc_boot_config_t
+#define CARD_DATA0_STATUS_MASK (kUSDHC_Data0LineLevelFlag)
+#define CARD_DATA1_STATUS_MASK (kUSDHC_Data1LineLevelFlag)
+#define CARD_DATA2_STATUS_MASK (kUSDHC_Data2LineLevelFlag)
+#define CARD_DATA3_STATUS_MASK (kUSDHC_Data3LineLevelFlag)
+#define CARD_DATA0_NOT_BUSY (kUSDHC_Data0LineLevelFlag)
 
 #define SDMMCHOST_BUS_WIDTH_TYPE usdhc_data_bus_width_t
 #define SDMMCHOST_CAPABILITY usdhc_capability_t
@@ -419,6 +414,8 @@ enum _host_capability
 #define SDMMCHOST_TUNING_DELAY_MAX (0x7FU)
 #define SDMMCHOST_RETUNING_REQUEST kStatus_USDHC_ReTuningRequest
 #define SDMMCHOST_TUNING_ERROR kStatus_USDHC_TuningError
+#define SDMMCHOST_TRANSFER_DATA_ERROR kStatus_USDHC_TransferDataFailed
+#define SDMMCHOST_TRANSFER_CMD_ERROR kStatus_USDHC_SendCommandFailed
 /* define for card bus speed/strength cnofig */
 #define CARD_BUS_FREQ_50MHZ (0U)
 #define CARD_BUS_FREQ_100MHZ0 (1U)
@@ -449,8 +446,8 @@ enum _host_capability
 #define SDMMCHOST_SEND_CARD_ACTIVE(base, timeout) (USDHC_SetCardActive(base, timeout))
 #define SDMMCHOST_SWITCH_VOLTAGE180V(base, enable18v) (UDSHC_SelectVoltage(base, enable18v))
 #define SDMMCHOST_SWITCH_VOLTAGE120V(base, enable12v)
-#define SDMMCHOST_CONFIG_SD_IO(speed, strength) BOARD_SD_PIN_CONFIG(speed, strength)
-#define SDMMCHOST_CONFIG_MMC_IO(speed, strength) BOARD_MMC_PIN_CONFIG(speed, strength)
+#define SDMMCHOST_CONFIG_SD_IO(speed, strength) BOARD_SD_Pin_Config(speed, strength)
+#define SDMMCHOST_CONFIG_MMC_IO(speed, strength) BOARD_MMC_Pin_Config(speed, strength)
 #define SDMMCHOST_SWITCH_VCC_TO_180V()
 #define SDMMCHOST_SWITCH_VCC_TO_330V()
 
@@ -479,7 +476,7 @@ enum _host_capability
         (USDHC_Reset(base, kUSDHC_ResetTuning | kUSDHC_ResetData | kUSDHC_ResetCommand, timeout)); \
     }
 
-#define SDMMCHOST_ENABLE_DDR_MODE(base, flag) (USDHC_EnableDDRMode(base, flag, 1U))
+#define SDMMCHOST_ENABLE_DDR_MODE(base, flag, nibblePos) (USDHC_EnableDDRMode(base, flag, nibblePos))
 
 #if FSL_FEATURE_USDHC_HAS_HS400_MODE
 #define SDMMCHOST_ENABLE_HS400_MODE(base, flag) (USDHC_EnableHS400Mode(base, flag))
@@ -495,6 +492,8 @@ enum _host_capability
 #define SDMMCHOST_GET_STROBE_DLL_STATUS(base)
 #endif
 
+#define SDMMCHOST_ENABLE_MMC_BOOT(base, flag) (USDHC_EnableMmcBoot(base, flag))
+#define SDMMCHOST_SETMMCBOOTCONFIG(base, config) (USDHC_SetMmcBootConfig(base, config))
 /* sd card power */
 #define SDMMCHOST_INIT_SD_POWER() BOARD_USDHC_SDCARD_POWER_CONTROL_INIT()
 #define SDMMCHOST_ENABLE_SD_POWER(enable) BOARD_USDHC_SDCARD_POWER_CONTROL(enable)
@@ -524,7 +523,13 @@ enum _host_capability
 #else
 #define SDMMCHOST_CARD_INSERT_CD_LEVEL (0U)
 #endif
-#define SDMMCHOST_ENABLE_TUNING_FLAG(data) (data.executeTuning = true)
+#define SDMMCHOST_ENABLE_TUNING_FLAG(data) (data.dataType = kUSDHC_TransferDataTuning)
+#define SDMMCHOST_ENABLE_BOOT_FLAG(data) (data.dataType = kUSDHC_TransferDataBoot)
+#define SDMMCHOST_ENABLE_BOOT_CONTINOUS_FLAG(data) (data.dataType = kUSDHC_TransferDataBootcontinous)
+#define SDMMCHOST_GET_HOST_CONFIG_BLOCK_SIZE(config) (config->blockSize)
+#define SDMMCHOST_GET_HOST_CONFIG_BLOCK_COUNT(config) (config->blockCount)
+#define SDMMCHOST_GET_HOST_CONFIG_BOOT_MODE(config) (config->bootMode)
+#define SDMMCHOST_EMPTY_CMD_FLAG(command) (command.type = kCARD_CommandTypeEmpty)
 /*! @brief USDHC host capability*/
 enum _host_capability
 {
@@ -691,6 +696,12 @@ status_t SDMMCHOST_Init(SDMMCHOST_CONFIG *host, void *userData);
 void SDMMCHOST_Reset(SDMMCHOST_TYPE *base);
 
 /*!
+ * @brief host controller error recovery.
+ * @param host base address.
+ */
+void SDMMCHOST_ErrorRecovery(SDMMCHOST_TYPE *base);
+
+/*!
  * @brief Deinit host controller.
  * @param host the pointer to host structure in card structure.
  */
@@ -721,5 +732,5 @@ void SDMMCHOST_Delay(uint32_t milliseconds);
 #if defined(__cplusplus)
 }
 #endif
-
+/* @} */
 #endif /* _FSL_SDMMC_HOST_H */

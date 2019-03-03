@@ -1,31 +1,9 @@
 /*
  * Copyright (c) 2015, Freescale Semiconductor, Inc.
- * Copyright 2016-2017 NXP
+ * Copyright 2016-2018 NXP
+ * All rights reserved.
  *
- * Redistribution and use in source and binary forms, with or without modification,
- * are permitted provided that the following conditions are met:
- *
- * o Redistributions of source code must retain the above copyright notice, this list
- *   of conditions and the following disclaimer.
- *
- * o Redistributions in binary form must reproduce the above copyright notice, this
- *   list of conditions and the following disclaimer in the documentation and/or
- *   other materials provided with the distribution.
- *
- * o Neither the name of the copyright holder nor the names of its
- *   contributors may be used to endorse or promote products derived from this
- *   software without specific prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
- * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
- * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
- * ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
- * ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * SPDX-License-Identifier: BSD-3-Clause
  */
 
 #ifndef _FSL_MMC_H_
@@ -56,12 +34,13 @@ enum _mmc_card_flag
     kMMC_SupportAlternateBootFlag = (1U << 9U),            /*!< Support alternate boot */
     kMMC_SupportDDRBootFlag = (1U << 10U),                 /*!< support DDR boot flag*/
     kMMC_SupportHighSpeedBootFlag = (1U << 11U),           /*!< support high speed boot flag*/
-
-    kMMC_DataBusWidth4BitFlag = (1U << 12U), /*!< current data bus is 4 bit mode*/
-    kMMC_DataBusWidth8BitFlag = (1U << 13U), /*!< current data bus is 8 bit mode*/
-    kMMC_DataBusWidth1BitFlag = (1U << 14U), /*!< current data bus is 1 bit mode */
-
 };
+
+/*! @brief card user parameter, user can define the parameter according the board, card capability */
+typedef struct _mmccard_usr_param
+{
+    const sdmmchost_pwr_card_t *pwr; /*!< power control configuration */
+} mmccard_usr_param_t;
 
 /*!
  * @brief mmc card state
@@ -70,15 +49,18 @@ enum _mmc_card_flag
  */
 typedef struct _mmc_card
 {
-    SDMMCHOST_CONFIG host; /*!< Host information */
+    SDMMCHOST_CONFIG host;        /*!< Host information */
+    mmccard_usr_param_t usrParam; /*!< user parameter */
 
-    bool isHostReady;                                     /*!< use this flag to indicate if need host re-init or not*/
-    uint32_t busClock_Hz;                                 /*!< MMC bus clock united in Hz */
-    uint32_t relativeAddress;                             /*!< Relative address of the card */
-    bool enablePreDefinedBlockCount;                      /*!< Enable PRE-DEFINED block count when read/write */
-    uint32_t flags;                                       /*!< Capability flag in _mmc_card_flag */
-    uint32_t rawCid[4U];                                  /*!< Raw CID content */
-    uint32_t rawCsd[4U];                                  /*!< Raw CSD content */
+    bool isHostReady;                /*!< Use this flag to indicate if need host re-init or not*/
+    bool noInteralAlign;             /*!< use this flag to disable sdmmc align. If disable, sdmmc will not make sure the
+                           data buffer address is word align, otherwise all the transfer are align to low level driver */
+    uint32_t busClock_Hz;            /*!< MMC bus clock united in Hz */
+    uint32_t relativeAddress;        /*!< Relative address of the card */
+    bool enablePreDefinedBlockCount; /*!< Enable PRE-DEFINED block count when read/write */
+    uint32_t flags;                  /*!< Capability flag in _mmc_card_flag */
+    uint32_t rawCid[4U];             /*!< Raw CID content */
+    uint32_t rawCsd[4U];             /*!< Raw CSD content */
     uint32_t rawExtendedCsd[MMC_EXTENDED_CSD_BYTES / 4U]; /*!< Raw MMC Extended CSD content */
     uint32_t ocr;                                         /*!< Raw OCR content */
     mmc_cid_t cid;                                        /*!< CID */
@@ -91,18 +73,9 @@ typedef struct _mmc_card
     mmc_access_partition_t currentPartition;              /*!< Current access partition */
     mmc_voltage_window_t hostVoltageWindowVCCQ;           /*!< Host IO voltage window */
     mmc_voltage_window_t hostVoltageWindowVCC; /*!< application must set this value according to board specific */
-    mmc_high_speed_timing_t currentTiming;     /*!< indicate the current host timing mode*/
-
+    mmc_high_speed_timing_t busTiming;         /*!< indicate the current work timing mode*/
+    mmc_data_bus_width_t busWidth;             /*!< indicate the current work bus width */
 } mmc_card_t;
-
-/*! @brief MMC card boot configuration definition. */
-typedef struct _mmc_boot_config
-{
-    bool enableBootAck;                        /*!< Enable boot ACK */
-    mmc_boot_partition_enable_t bootPartition; /*!< Boot partition */
-    bool retainBootBusWidth;                   /*!< If retain boot bus width */
-    mmc_data_bus_width_t bootDataBusWidth;     /*!< Boot data bus width */
-} mmc_boot_config_t;
 
 /*************************************************************************************************
  * API
@@ -200,6 +173,24 @@ void MMC_HostDeinit(mmc_card_t *card);
 void MMC_HostReset(SDMMCHOST_CONFIG *host);
 
 /*!
+ * @brief power on card.
+ *
+ * The power on operation depend on host or the user define power on function.
+ * @param base host base address.
+ * @param pwr user define power control configuration
+ */
+void MMC_PowerOnCard(SDMMCHOST_TYPE *base, const sdmmchost_pwr_card_t *pwr);
+
+/*!
+ * @brief power off card.
+ *
+ * The power off operation depend on host or the user define power on function.
+ * @param base host base address.
+ * @param pwr user define power control configuration
+ */
+void MMC_PowerOffCard(SDMMCHOST_TYPE *base, const sdmmchost_pwr_card_t *pwr);
+
+/*!
  * @brief Checks if the card is read-only.
  *
  * @param card Card descriptor.
@@ -277,6 +268,56 @@ status_t MMC_SelectPartition(mmc_card_t *card, mmc_access_partition_t partitionN
  * @retval kStatus_Success Operate successfully.
  */
 status_t MMC_SetBootConfig(mmc_card_t *card, const mmc_boot_config_t *config);
+
+/*!
+ * @brief MMC card start boot.
+ *
+ * @param card Card descriptor.
+ * @param mmcConfig mmc Boot configuration structure.
+ * @param buffer address to recieve data.
+ * @param hostConfig host boot configurations.
+ * @retval kStatus_Fail fail.
+ * @retval kStatus_SDMMC_TransferFailed transfer fail.
+ * @retval kStatus_SDMMC_GoIdleFailed reset card fail.
+ * @retval kStatus_Success Operate successfully.
+ */
+status_t MMC_StartBoot(mmc_card_t *card,
+                       const mmc_boot_config_t *mmcConfig,
+                       uint8_t *buffer,
+                       SDMMCHOST_BOOT_CONFIG *hostConfig);
+
+/*!
+ * @brief MMC card set boot configuration write protect.
+ *
+ * @param card Card descriptor.
+ * @param wp write protect value.
+ */
+status_t MMC_SetBootConfigWP(mmc_card_t *card, uint8_t wp);
+
+/*!
+ * @brief MMC card continous read boot data.
+ *
+ * @param card Card descriptor.
+ * @param buffer buffer address.
+ * @param hostConfig host boot configurations.
+ */
+status_t MMC_ReadBootData(mmc_card_t *card, uint8_t *buffer, SDMMCHOST_BOOT_CONFIG *hostConfig);
+
+/*!
+ * @brief MMC card stop boot mode.
+ *
+ * @param card Card descriptor.
+ * @param bootMode boot mode.
+ */
+status_t MMC_StopBoot(mmc_card_t *card, uint32_t bootMode);
+
+/*!
+ * @brief MMC card set boot partition write protect.
+ *
+ * @param card Card descriptor.
+ * @param bootPartitionWP boot partition write protect value.
+ */
+status_t MMC_SetBootPartitionWP(mmc_card_t *card, mmc_boot_partition_wp_t bootPartitionWP);
 
 /* @} */
 #if defined(__cplusplus)

@@ -1,31 +1,9 @@
 /*
  * Copyright (c) 2015, Freescale Semiconductor, Inc.
- * Copyright 2016-2017 NXP
+ * Copyright 2016-2018 NXP
+ * All rights reserved.
  *
- * Redistribution and use in source and binary forms, with or without modification,
- * are permitted provided that the following conditions are met:
- *
- * o Redistributions of source code must retain the above copyright notice, this list
- *   of conditions and the following disclaimer.
- *
- * o Redistributions in binary form must reproduce the above copyright notice, this
- *   list of conditions and the following disclaimer in the documentation and/or
- *   other materials provided with the distribution.
- *
- * o Neither the name of the copyright holder nor the names of its
- *   contributors may be used to endorse or promote products derived from this
- *   software without specific prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
- * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
- * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
- * ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
- * ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * SPDX-License-Identifier: BSD-3-Clause
  */
 
 #include "fsl_sdmmc_common.h"
@@ -61,7 +39,7 @@ status_t SDMMC_SelectCard(SDMMCHOST_TYPE *base,
 
     content.command = &command;
     content.data = NULL;
-    if ((kStatus_Success != transfer(base, &content)) || (command.response[0U] & kSDMMC_R1ErrorAllFlag))
+    if ((kStatus_Success != transfer(base, &content)) || (command.response[0U] & SDMMC_R1_ALL_ERROR_FLAG))
     {
         return kStatus_SDMMC_TransferFailed;
     }
@@ -85,12 +63,12 @@ status_t SDMMC_SendApplicationCommand(SDMMCHOST_TYPE *base,
 
     content.command = &command;
     content.data = 0U;
-    if ((kStatus_Success != transfer(base, &content)) || (command.response[0U] & kSDMMC_R1ErrorAllFlag))
+    if ((kStatus_Success != transfer(base, &content)) || (command.response[0U] & SDMMC_R1_ALL_ERROR_FLAG))
     {
         return kStatus_SDMMC_TransferFailed;
     }
 
-    if (!(command.response[0U] & kSDMMC_R1ApplicationCommandFlag))
+    if (!(command.response[0U] & SDMMC_MASK(kSDMMC_R1ApplicationCommandFlag)))
     {
         return kStatus_SDMMC_CardNotSupport;
     }
@@ -111,7 +89,7 @@ status_t SDMMC_SetBlockCount(SDMMCHOST_TYPE *base, SDMMCHOST_TRANSFER_FUNCTION t
 
     content.command = &command;
     content.data = 0U;
-    if ((kStatus_Success != transfer(base, &content)) || (command.response[0U] & kSDMMC_R1ErrorAllFlag))
+    if ((kStatus_Success != transfer(base, &content)) || (command.response[0U] & SDMMC_R1_ALL_ERROR_FLAG))
     {
         return kStatus_SDMMC_TransferFailed;
     }
@@ -151,7 +129,7 @@ status_t SDMMC_SetBlockSize(SDMMCHOST_TYPE *base, SDMMCHOST_TRANSFER_FUNCTION tr
 
     content.command = &command;
     content.data = 0U;
-    if ((kStatus_Success != transfer(base, &content)) || (command.response[0U] & kSDMMC_R1ErrorAllFlag))
+    if ((kStatus_Success != transfer(base, &content)) || (command.response[0U] & SDMMC_R1_ALL_ERROR_FLAG))
     {
         return kStatus_SDMMC_TransferFailed;
     }
@@ -186,6 +164,7 @@ status_t SDMMC_SwitchVoltage(SDMMCHOST_TYPE *base, SDMMCHOST_TRANSFER_FUNCTION t
 
     SDMMCHOST_TRANSFER content = {0};
     SDMMCHOST_COMMAND command = {0};
+    status_t error = kStatus_Success;
 
     command.index = kSD_VoltageSwitch;
     command.argument = 0U;
@@ -225,10 +204,28 @@ status_t SDMMC_SwitchVoltage(SDMMCHOST_TYPE *base, SDMMCHOST_TRANSFER_FUNCTION t
     if ((GET_SDMMCHOST_STATUS(base) &
          (CARD_DATA1_STATUS_MASK | CARD_DATA2_STATUS_MASK | CARD_DATA3_STATUS_MASK | CARD_DATA0_NOT_BUSY)) == 0U)
     {
-        return kStatus_SDMMC_SwitchVoltageFail;
+        error = kStatus_SDMMC_SwitchVoltageFail;
+        /* power reset the card */
+        SDMMCHOST_ENABLE_SD_POWER(false);
+        SDMMCHOST_Delay(10U);
+        SDMMCHOST_ENABLE_SD_POWER(true);
+        SDMMCHOST_Delay(10U);
+        /* re-check the data line status */
+        if ((GET_SDMMCHOST_STATUS(base) &
+             (CARD_DATA1_STATUS_MASK | CARD_DATA2_STATUS_MASK | CARD_DATA3_STATUS_MASK | CARD_DATA0_NOT_BUSY)))
+        {
+            error = kStatus_SDMMC_SwitchVoltage18VFail33VSuccess;
+            SDMMC_LOG("\r\nNote: Current card support 1.8V, but board don't support, so sdmmc switch back to 3.3V.");
+        }
+        else
+        {
+            SDMMC_LOG(
+                "\r\nError: Current card support 1.8V, but board don't support, sdmmc tried to switch back\
+                    to 3.3V, but failed, please check board setting.");
+        }
     }
 
-    return kStatus_Success;
+    return error;
 }
 
 status_t SDMMC_ExecuteTuning(SDMMCHOST_TYPE *base,
@@ -287,16 +284,15 @@ status_t SDMMC_ExecuteTuning(SDMMCHOST_TYPE *base,
         }
     }
 
-    /* delay to wait the host controller stable */
-    SDMMCHOST_Delay(100U);
-
     /* check tuning result*/
     if (SDMMCHOST_EXECUTE_STANDARD_TUNING_RESULT(base) == 0U)
     {
         return kStatus_SDMMC_TuningFail;
     }
 
-    SDMMCHOST_AUTO_STANDARD_RETUNING_TIMER(base);
+#if !SDMMC_ENABLE_SOFTWARE_TUNING
+    SDMMCHOST_AUTO_TUNING_ENABLE(base, true);
+#endif
 
     return kStatus_Success;
 }
