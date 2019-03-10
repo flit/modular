@@ -218,8 +218,8 @@ void FileManager::_check_special_files(const char * name)
             {
                 _path.set("/");
                 _path.append(name);
-                fs::File fileToDelete(_path);
-                fileToDelete.remove();
+                std::unique_ptr<fs::File> fileToDelete{new fs::File(_path)};
+                fileToDelete->remove();
             }
 
             return;

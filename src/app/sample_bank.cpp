@@ -31,6 +31,7 @@
 #include "debug_log.h"
 #include "wav_file.h"
 #include "samplbaer.h"
+#include <memory>
 
 using namespace slab;
 
@@ -66,16 +67,16 @@ bool SampleBank::is_valid() const
 
 void SampleBank::load_params()
 {
-    fs::Path settingsPath(_dirPath);
-    settingsPath.append("/settings.bin");
-    fs::File settingsFile(settingsPath.get());
-    if (settingsFile.open() != fs::kSuccess)
+    std::unique_ptr<fs::Path> settingsPath{new fs::Path(_dirPath)};
+    settingsPath->append("/settings.bin");
+    std::unique_ptr<fs::File> settingsFile{new fs::File(settingsPath->get())};
+    if (settingsFile->open() != fs::kSuccess)
     {
         return;
     }
 
     uint32_t version;
-    BinaryArchive archive(settingsFile);
+    BinaryArchive archive(*settingsFile);
     if (!archive.open(&version)
         || version != kSettingsFileDataVersion)
     {
@@ -121,16 +122,16 @@ void SampleBank::load_params()
 
 void SampleBank::save_params()
 {
-    fs::Path settingsPath(_dirPath);
-    settingsPath.append("/settings.bin");
-    fs::File settingsFile(settingsPath.get());
-    settingsFile.remove();
-    if (settingsFile.open(true, true) != fs::kSuccess)
+    std::unique_ptr<fs::Path> settingsPath{new fs::Path(_dirPath)};
+    settingsPath->append("/settings.bin");
+    std::unique_ptr<fs::File> settingsFile{new fs::File(settingsPath->get())};
+    settingsFile->remove();
+    if (settingsFile->open(true, true) != fs::kSuccess)
     {
         return;
     }
 
-    BinaryArchive archive(settingsFile);
+    BinaryArchive archive(*settingsFile);
     if (!archive.init(kSettingsFileDataVersion))
     {
         return;
