@@ -34,5 +34,13 @@ tags
 # Mac
 .DS_Store
 
+# Python
+__pycache__
+*.pyc
+venv*
+.pytest_cache
+
+# Editors
+.vscode
 
 
