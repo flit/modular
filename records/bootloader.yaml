@@ -1,0 +1,79 @@
+common:
+  includes:
+    - src
+    - src/app
+    - src/app/board_k22fa12
+    - src/argon/include
+    - src/argon/src/cortex_m
+    - src/sdmmc/inc
+    - src/sdmmc/port
+    - src/sdmmc/port/sdhc
+    - src/fatfs/src
+    - src/fatfs/src/fsl_sd_disk
+    - src/ksdk
+    - src/devices/MK22FA12
+    - src/CMSIS/Include
+  sources:
+    bootloader:
+      - src/bootloader/bootloader.cpp
+    argon:
+      - src/argon/src/cortex_m/ar_atomics_cm4.S
+      - src/argon/src/cortex_m/ar_handlers_cm4.S
+      - src/argon/src/cortex_m/ar_port.cpp
+      - src/argon/src/
+    board_k22fa12:
+      - src/app/board_k22fa12/board.cpp
+      - src/app/board_k22fa12/clock_config.c
+    app:
+      - src/app/card_manager.cpp
+      - src/app/card_manager.h
+      - src/app/channel_led.cpp
+      - src/app/channel_led.h
+      - src/app/crc32.cpp
+      - src/app/crc32.h
+      - src/app/debug_log.h
+      - src/app/fault_handlers.cpp
+      - src/app/fault_handlers.h
+      - src/app/file_system.cpp
+      - src/app/file_system.h
+      - src/app/led.h
+      - src/app/microseconds.cpp
+      - src/app/microseconds.h
+      - src/app/ring_buffer.h
+      - src/app/simple_string.h
+      - src/app/stream.h
+      - src/app/utility.h
+    fatfs:
+      - src/fatfs/src/fsl_sd_disk/fsl_sd_disk.c
+      - src/fatfs/src/option/unicode.c
+      - src/fatfs/src/argon_syscall.c
+      - src/fatfs/src/diskio.c
+      - src/fatfs/src/ff.c
+    ksdk:
+      - src/ksdk/fsl_common.c
+      - src/ksdk/fsl_debug_console.c
+      - src/ksdk/fsl_dspi.c
+      - src/ksdk/fsl_flash.c
+      - src/ksdk/fsl_gpio.c
+      - src/ksdk/fsl_pit.c
+      - src/ksdk/fsl_sbrk.c
+      - src/ksdk/fsl_sdhc.c
+      - src/ksdk/fsl_uart.c
+    sdmmc:
+      - src/sdmmc/port/sdhc/argon/fsl_sdmmc_event.c
+      - src/sdmmc/port/sdhc/argon/fsl_sdmmc_host.c
+      - src/sdmmc/src/fsl_sd.c
+      - src/sdmmc/src/fsl_sdmmc_common.c
+#   misc:
+#     pre_build_script:
+#       - scripts/pre_build.py
+#     post_build_script:
+#       - scripts/insert_crc.py
+
+tool_specific:
+  make_gcc_arm:
+    linker_file:
+      - src/devices/MK22FA12/gcc/MK22FX512Axxx12_flash.ld
+    ld_flags:
+      - -Wl,--defsym=__stack_size__=0x1000
+      - -Wl,--defsym=__heap_size__=0x4000

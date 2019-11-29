@@ -1,0 +1,28 @@
+common:
+  target:
+    - cortex-m4
+  core:
+    - cortex-m4f
+  sources:
+    devices:
+      - src/devices/MK22FA12/fsl_clock.c
+      - src/devices/MK22FA12/system_MK22FA12.c
+
+tool_specific:
+  make_gcc_arm:
+    macros:
+      - CPU_MK22FX512AVLK12
+      - __FPU_PRESENT=1
+      - ARM_MATH_CM4
+    sources:
+      devices:
+        - src/devices/MK22FA12/gcc/startup_MK22FA12.S
+    linker_file:
+      - src/devices/MK22FA12/gcc/MK22FX512Axxx12_flash.ld
+    misc:
+      common_flags:
+        - -mfloat-abi=hard
+        - -mfpu=fpv4-sp-d16
+      ld_flags:
+        - -mfloat-abi=hard
+        - -mfpu=fpv4-sp-d16

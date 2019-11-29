@@ -1,0 +1,15 @@
+common:
+  macros:
+    - DEBUG
+    - DEBUG_PRINTF_TO_UART=1
+
+tool_specific:
+  make_gcc_arm:
+    misc:
+      common_flags:
+        - -Og
+        - -g3
+        - -fno-inline-functions
+        - -fno-move-loop-invariants
+
+

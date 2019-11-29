@@ -8,4 +8,5 @@ build.ninja
 cmake_install.cmake
 debug
 release
+make_gcc_arm
 

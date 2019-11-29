@@ -1,0 +1,52 @@
+tool_specific:
+  make_gcc_arm:
+    misc:
+      libraries:
+        - m
+        - g
+        - gcc
+        - nosys
+        # FIXME: remove stdc++_nano when progen supports using g++ to link.
+        - stdc++_nano
+      common_flags:
+        - -g3
+        - -ffunction-sections
+        - -fdata-sections
+        - -fno-common
+        - -ffreestanding
+        - -fsigned-char
+        - -fsingle-precision-constant
+        - -fabi-version=0
+        - -mno-unaligned-access
+        - -Wall
+        - -Werror
+        - -Wno-unused-variable
+        - -Wno-multichar
+        - -Wno-format
+        - -Wa,-adln=$@.lst
+        - -fverbose-asm
+        - -fmessage-length=0
+      c_flags:
+        - -std=gnu11
+      cxx_flags:
+        - -std=gnu++17
+        - -fno-exceptions
+        - -fno-rtti
+        - -fno-use-cxa-atexit
+        - -fno-threadsafe-statics
+        - -Wno-register
+      ld_flags:
+        - --specs=nano.specs
+        - --specs=nosys.specs
+        - -Wl,--gc-sections
+        - -g3
+        - -fno-common
+        - -ffreestanding
+        - -fsigned-char
+        - -fsingle-precision-constant
+        - -mno-unaligned-access
+        - -Wall
+        - -Werror
+        - -fmessage-length=0
+
+

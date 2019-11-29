@@ -1,0 +1,12 @@
+common:
+  macros:
+    - NDEBUG
+
+tool_specific:
+  make_gcc_arm:
+    misc:
+      common_flags:
+        - -Os
+        - -g3
+
+

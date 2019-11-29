@@ -1,0 +1,27 @@
+settings:
+  export_dir:
+    - projects/{tool}/{project_name}
+
+module:
+  tools: &module_tools
+    - records/toolchain.yaml
+  cfg_debug: &cfg_debug
+    - records/config_debug.yaml
+  cfg_release: &cfg_release
+    - records/config_release.yaml
+  mcu_k22fa12: &module_k22fa12
+    - records/mcu_k22fa12.yaml
+
+projects:
+  bootloader_k22fa12_debug:
+    - *module_tools
+    - *cfg_debug
+    - *module_k22fa12
+    - records/bootloader.yaml
+  bootloader_k22fa12_release:
+    - *module_tools
+    - *cfg_release
+    - *module_k22fa12
+    - records/bootloader.yaml
+
+
