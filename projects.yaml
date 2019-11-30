@@ -9,19 +9,49 @@ module:
     - records/config_debug.yaml
   cfg_release: &cfg_release
     - records/config_release.yaml
-  mcu_k22fa12: &module_k22fa12
+  mcu_k22fa12: &mcu_k22fa12
     - records/mcu_k22fa12.yaml
+  mcu_k22fa12_standalone: &link_standalone_k22fa12
+    - records/mcu_k22fa12_standalone.yaml
+  mcu_k22fa12_app: &link_app_k22fa12
+    - records/mcu_k22fa12_app.yaml
 
 projects:
   bootloader_k22fa12_debug:
     - *module_tools
     - *cfg_debug
-    - *module_k22fa12
+    - *mcu_k22fa12
+    - *link_standalone_k22fa12
     - records/bootloader.yaml
   bootloader_k22fa12_release:
     - *module_tools
     - *cfg_release
-    - *module_k22fa12
+    - *mcu_k22fa12
+    - *link_standalone_k22fa12
     - records/bootloader.yaml
+  samplbaer_debug:
+    - *module_tools
+    - *cfg_debug
+    - *mcu_k22fa12
+    - *link_app_k22fa12
+    - records/samplbaer.yaml
+  samplbaer_debug_standalone:
+    - *module_tools
+    - *cfg_debug
+    - *mcu_k22fa12
+    - *link_standalone_k22fa12
+    - records/samplbaer.yaml
+  samplbaer_release:
+    - *module_tools
+    - *cfg_release
+    - *mcu_k22fa12
+    - *link_app_k22fa12
+    - records/samplbaer.yaml
+  samplbaer_release_standalone:
+    - *module_tools
+    - *cfg_release
+    - *mcu_k22fa12
+    - *link_standalone_k22fa12
+    - records/samplbaer.yaml
 
 

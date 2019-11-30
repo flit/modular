@@ -1,0 +1,4 @@
+tool_specific:
+  make_gcc_arm:
+    linker_file:
+      - src/devices/MK22FA12/gcc/MK22FX512Axxx12_flash_app.ld

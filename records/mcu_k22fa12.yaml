@@ -17,8 +17,6 @@ tool_specific:
     sources:
       devices:
         - src/devices/MK22FA12/gcc/startup_MK22FA12.S
-    linker_file:
-      - src/devices/MK22FA12/gcc/MK22FX512Axxx12_flash.ld
     misc:
       common_flags:
         - -mfloat-abi=hard

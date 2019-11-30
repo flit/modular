@@ -1,0 +1,161 @@
+common:
+  includes:
+    - src
+    - src/app
+    - src/app/board_k22fa12
+    - src/argon/include
+    - src/argon/src/cortex_m
+    - src/sdmmc/inc
+    - src/sdmmc/port
+    - src/sdmmc/port/sdhc
+    - src/fatfs/src
+    - src/fatfs/src/fsl_sd_disk
+    - src/ksdk
+    - src/devices/MK22FA12
+    - src/CMSIS/Include
+  sources:
+    argon:
+      - src/argon/src/cortex_m/ar_atomics_cm4.S
+      - src/argon/src/cortex_m/ar_handlers_cm4.S
+      - src/argon/src/cortex_m/ar_port.cpp
+      - src/argon/src/
+    board_k22fa12:
+      - src/app/board_k22fa12/board.cpp
+      - src/app/board_k22fa12/clock_config.c
+    app:
+      - src/app/adc_sequencer.cpp
+      - src/app/adc_sequencer.h
+      - src/app/ar_config.h
+      - src/app/asr_envelope.cpp
+      - src/app/asr_envelope.h
+      - src/app/audio_buffer.h
+      - src/app/audio_defs.h
+      - src/app/audio_filter.cpp
+      - src/app/audio_filter.h
+      - src/app/audio_output.cpp
+      - src/app/audio_output.h
+      - src/app/audio_ramp.cpp
+      - src/app/audio_ramp.h
+      - src/app/button.cpp
+      - src/app/button.h
+      - src/app/calibration.h
+      - src/app/calibrator.cpp
+      - src/app/calibrator.h
+      - src/app/card_manager.cpp
+      - src/app/card_manager.h
+      - src/app/channel_adc_processor.cpp
+      - src/app/channel_adc_processor.h
+      - src/app/channel_cv.cpp
+      - src/app/channel_cv.h
+      - src/app/channel_gate.cpp
+      - src/app/channel_gate.h
+      - src/app/channel_led.cpp
+      - src/app/channel_led.h
+      - src/app/cie1931.cpp
+      - src/app/crc16.cpp
+      - src/app/crc16.h
+      - src/app/crc32.cpp
+      - src/app/crc32.h
+      - src/app/debug_log.h
+      - src/app/fader_led.h
+      - src/app/fault_handlers.cpp
+      - src/app/file_manager.cpp
+      - src/app/file_manager.h
+      - src/app/file_system.cpp
+      - src/app/file_system.h
+      - src/app/led.h
+      - src/app/microseconds.cpp
+      - src/app/microseconds.h
+      - src/app/moving_average.h
+      - src/app/persistent_data_store.cpp
+      - src/app/persistent_data_store.h
+      - src/app/pin_irq_manager.cpp
+      - src/app/pin_irq_manager.h
+      - src/app/pot.cpp
+      - src/app/pot.h
+      - src/app/protected_queue.h
+      - src/app/reader_thread.cpp
+      - src/app/reader_thread.h
+      - src/app/ring_buffer.h
+      - src/app/samplbaer.cpp
+      - src/app/samplbaer.h
+      - src/app/sample_bank.cpp
+      - src/app/sample_bank.h
+      - src/app/sample_buffer_manager.cpp
+      - src/app/sample_buffer_manager.h
+      - src/app/sample_buffer.h
+      - src/app/sampler_synth.cpp
+      - src/app/sampler_synth.h
+      - src/app/sampler_voice.cpp
+      - src/app/sampler_voice.h
+      - src/app/serializer.cpp
+      - src/app/serializer.h
+      - src/app/simple_queue.h
+      - src/app/simple_string.h
+      - src/app/stream.h
+      - src/app/ui_events.h
+      - src/app/ui.cpp
+      - src/app/ui.h
+      - src/app/utility.h
+      - src/app/voice_parameters.h
+      - src/app/wav_file.cpp
+      - src/app/wav_file.h
+    fatfs:
+      - src/fatfs/src/fsl_sd_disk/fsl_sd_disk.c
+      - src/fatfs/src/option/unicode.c
+      - src/fatfs/src/argon_syscall.c
+      - src/fatfs/src/diskio.c
+      - src/fatfs/src/ff.c
+    ksdk:
+      - src/ksdk/fsl_adc16.c
+      - src/ksdk/fsl_adc16.h
+      - src/ksdk/fsl_common.c
+      - src/ksdk/fsl_common.h
+      - src/ksdk/fsl_debug_console.c
+      - src/ksdk/fsl_debug_console.h
+      - src/ksdk/fsl_dmamux.c
+      - src/ksdk/fsl_dmamux.h
+      - src/ksdk/fsl_dspi.c
+      - src/ksdk/fsl_dspi.h
+      - src/ksdk/fsl_edma.c
+      - src/ksdk/fsl_edma.h
+      - src/ksdk/fsl_flash.c
+      - src/ksdk/fsl_flash.h
+      - src/ksdk/fsl_ftm.c
+      - src/ksdk/fsl_ftm.h
+      - src/ksdk/fsl_gpio.c
+      - src/ksdk/fsl_gpio.h
+      - src/ksdk/fsl_pit.c
+      - src/ksdk/fsl_pit.h
+      - src/ksdk/fsl_port.h
+      - src/ksdk/fsl_sai.c
+      - src/ksdk/fsl_sai.h
+      - src/ksdk/fsl_sbrk.c
+      - src/ksdk/fsl_sdhc.c
+      - src/ksdk/fsl_sdhc.h
+      - src/ksdk/fsl_sim.c
+      - src/ksdk/fsl_sim.h
+      - src/ksdk/fsl_smc.c
+      - src/ksdk/fsl_smc.h
+      - src/ksdk/fsl_uart.c
+      - src/ksdk/fsl_uart.h
+    sdmmc:
+      - src/sdmmc/port/sdhc/argon/fsl_sdmmc_event.c
+      - src/sdmmc/port/sdhc/argon/fsl_sdmmc_host.c
+      - src/sdmmc/src/fsl_sd.c
+      - src/sdmmc/src/fsl_sdmmc_common.c
+  misc:
+    pre_build_script:
+      - scripts/get_version.py -p bootloader ../../../src/app/version_git.h
+    post_build_script:
+      - scripts/insert_crc.py $(TARGET_OUT) $(TARGET_BIN:%.bin=%_crc.bin)
+
+tool_specific:
+  make_gcc_arm:
+    misc:
+      libraries:
+        - arm_cortexM4lf_math
+      ld_flags:
+        - -Wl,--defsym=__stack_size__=0x1000
+        - -Wl,--defsym=__heap_size__=0x4000
+        - -L../../../src/CMSIS/Lib/GCC
