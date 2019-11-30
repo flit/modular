@@ -64,11 +64,9 @@ common:
       - src/sdmmc/port/sdhc/argon/fsl_sdmmc_host.c
       - src/sdmmc/src/fsl_sd.c
       - src/sdmmc/src/fsl_sdmmc_common.c
-#   misc:
-#     pre_build_script:
-#       - scripts/pre_build.py
-#     post_build_script:
-#       - scripts/insert_crc.py
+  misc:
+    pre_build_script:
+      - scripts/get_version.py -p bootloader ../../../src/app/version_git.h
 
 tool_specific:
   make_gcc_arm:

@@ -58,22 +58,24 @@ def parse_version(git_vers):
     return versionFields
 
 def pre_build():
+    parser = argparse.ArgumentParser(description='Git version extractor')
+    parser.add_argument("-p", "--prefix", type=str, default="", help="Git tab prefix.")
+    parser.add_argument("output", type=str, help="Output file name.")
+    args = parser.parse_args()
+
     # Tag prefix argument
-    if len(sys.argv) > 1:
-        tagPrefix = sys.argv[1]
-    else:
-        tagPrefix = ""
-    if len(tagPrefix):
+    tagPrefix = args.prefix
+    if len(tagPrefix) and not tagPrefix.endswith("-"):
         tagPrefix += "-"
 
     # Output file argument.
-    outputFilePath = sys.argv[-1]
+    outputFilePath = args.output
 
     # Get the git SHA.
     try:
         git_sha = check_output("git rev-parse --verify HEAD", shell=True)
         git_sha = git_sha.strip()
-    except:
+    except CalledProcessError:
         print("#> ERROR: Failed to get git SHA")
         git_sha = "<unknown>"
 
@@ -81,9 +83,12 @@ def pre_build():
     try:
         git_vers = check_output("git describe --match '{}v*' --always".format(tagPrefix), shell=True)
         git_vers = git_vers.strip()
+        # Convert to string for python3.
+        if not isinstance(git_vers, str):
+            git_vers = git_vers.decode('utf-8')
         if len(tagPrefix) and git_vers.startswith(tagPrefix):
             git_vers = git_vers[len(tagPrefix):]
-    except CalledProcessError, WindowsError:
+    except (CalledProcessError, OSError):
         git_vers = "v0.0.0"
 
     # Parse the version tag.
@@ -110,7 +115,7 @@ def pre_build():
     try:
         with open(outputFilePath, 'r') as f:
             content = f.read()
-    except IOError:
+    except (OSError, IOError):
         content = None
 
     # Only write file if the content has changed, so we don't always retrigger a build.
